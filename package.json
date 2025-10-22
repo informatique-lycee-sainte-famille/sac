@@ -1,0 +1,23 @@
+{
+  "name": "sac",
+  "version": "1.0.0",
+  "description": "Saintonge Access Control",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/informatique-lycee-sainte-famille/SAC.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/informatique-lycee-sainte-famille/SAC/issues"
+  },
+  "homepage": "https://github.com/informatique-lycee-sainte-famille/SAC#readme",
+  "dependencies": {
+    "dotenv": "^17.2.3"
+  }
+}
