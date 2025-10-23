@@ -18,6 +18,7 @@
   },
   "homepage": "https://github.com/informatique-lycee-sainte-famille/SAC#readme",
   "dependencies": {
-    "dotenv": "^17.2.3"
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0"
   }
 }
