@@ -4,7 +4,7 @@ const router = express.Router();
 
 router.get("/test", async (req, res) => {
   res.json({
-    message: `Yo test route works!`,
+    message: `Hello test route works!`,
   });
 });
 
