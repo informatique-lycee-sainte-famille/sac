@@ -3,6 +3,7 @@ const TOKEN = process.env.ECOLEDIRECTE_USER_TOKEN;
 const USER_ID = process.env.ECOLEDIRECTE_USER_ID;
 
 const fs = require('fs');
+const path = require('path');
 
 if (!TOKEN) {
   console.error('⚠️  Variable ECOLEDIRECTE_USER_TOKEN manquante dans .env');
