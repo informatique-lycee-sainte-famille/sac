@@ -1,7 +1,5 @@
 // scripts/get_data.js
-const { DATA_URLS, BASE_URLS, API_VERSION_PARAM } = require('../API_SAC/commons/constants');
-const { fetchData, USER_ID, outputJSON } = require('../API_SAC/commons/helpers');
-
+const { fetchData, USER_ID, parseArgs, buildUrl, outputJSON } = require('../API_SAC/commons/helpers');
 /**
  * ============================================================================
  *  Script: get_data.js
@@ -82,51 +80,6 @@ const { fetchData, USER_ID, outputJSON } = require('../API_SAC/commons/helpers')
  * ============================================================================
  */
 
-// --- argument parsing ---
-function parseArgs() {
-  const args = {};
-  process.argv.slice(2).forEach(arg => {
-    const [key, value] = arg.replace(/^--/, '').split('=');
-    if (!value) {
-      // Bare argument (e.g., "MESSAGES")
-      args._ = key.toUpperCase();
-    } else {
-      // Convert common truthy/falsey strings to booleans
-      const lowerVal = value.toLowerCase();
-      if (lowerVal === 'true') args[key.toLowerCase()] = true;
-      else if (lowerVal === 'false') args[key.toLowerCase()] = false;
-      else args[key.toLowerCase()] = value;
-    }
-  });
-  return args;
-}
-
-// --- dynamic URL builder ---
-async function buildUrl(type, params) {
-  const upper = type.toUpperCase();
-  let path = DATA_URLS.APIP[upper] || DATA_URLS.API[upper];
-  if (!path) throw new Error(`Type de donnée inconnu : ${type}`);
-
-  // replace placeholders
-  if (path.includes(':id')) {
-    const id =
-      params.id ||
-      params.classe ||
-      params.salle ||
-      params.niveau ||
-      params.etab ||
-      USER_ID;
-    if (!id) throw new Error(`Aucun ID fourni pour ${type}.`);
-    path = path.replace(':id', id);
-  }
-
-  const base = DATA_URLS.API[upper] ? BASE_URLS.API : BASE_URLS.APIP;
-
-  // build full URL with proper query separator
-  const separator = path.includes('?') ? '&' : '?';
-  return `${base}${path}${separator}verbe=get&v=${API_VERSION_PARAM}`;
-}
-
 // --- main entrypoint ---
 async function main() {
   const args = parseArgs();
@@ -140,20 +93,6 @@ async function main() {
 
   try {
     let data;
-
-    // ⚡ For ELEVES, skip the initial API call if no --classe provided
-    if (dataType === 'ELEVES' && !args.classe) {
-      data = { code: 200 }; // dummy success to trigger custom logic below
-    } else {
-      const url = await buildUrl(dataType, args);
-      data = await fetchData(url);
-
-      if (data?.code !== 200) {
-        console.error(`❌ Erreur ${data.code}: ${data.message || 'Aucune donnée trouvée (ID invalide ?)'}`);
-        process.exitCode = 2;
-        return;
-      }
-    }
 
     // --- Specific logic per data type ---
     if (dataType === 'ELEVES') {
@@ -230,6 +169,98 @@ async function main() {
       }
 
       outputJSON(eleves, args);
+    }
+
+    else if (dataType === 'EDT') {
+      let cours = [];
+
+      // If no class specified, fetch all classes via NIVEAUX_ALL
+      if (!args.classe) {
+        console.log('📡 Aucun --classe spécifié → récupération de toutes les classes depuis NIVEAUX_ALL…');
+
+        const niveauxAllUrl = await buildUrl('NIVEAUX_ALL', {});
+        const niveauxAllData = await fetchData(niveauxAllUrl);
+
+        if (niveauxAllData?.code !== 200) {
+          console.error('❌ Impossible de récupérer la structure NIVEAUX_ALL.');
+          process.exit(2);
+          return;
+        }
+
+        const etablissements = niveauxAllData.data?.etablissements || [];
+        const allClasses = etablissements.flatMap(e =>
+          (e.niveaux || []).flatMap(n => n.classes || [])
+        );
+
+        console.log(`🔍 ${allClasses.length} classes détectées, récupération en cours…`);
+
+        // Sequential fetching
+        for (const c of allClasses) {
+          const url = await buildUrl('EDT', { classe: c.id });
+          try {
+            const res = await fetchData(url, {
+                dateDebut: "2025-11-03",
+                dateFin: "2025-11-09",
+                avecTrous: false
+            });
+            if (res?.code === 200 && Array.isArray(res.data)) {
+              cours.push(
+                ...res.data.map(ev => ({
+                  ...ev,
+                  classeCode: c.code,
+                  classeLibelle: c.libelle,
+                  classeId: c.id,
+                }))
+              );
+            }
+          } catch (err) {
+            console.warn(`⚠️  Erreur pour classe ${c.id}: ${err.message}`);
+          }
+        }
+
+        console.log(`✅ ${cours.length} cours récupérés au total.`);
+      }
+
+      // Normal behavior: single class
+      else {
+        const url = await buildUrl('EDT', { classe: args.classe });
+        const res = await fetchData(url, {
+                dateDebut: "2025-11-03",
+                dateFin: "2025-11-09",
+                avecTrous: false
+            });
+        console.log(res);
+        if (res?.code === 200 && Array.isArray(res.data)) {
+          cours = res.data;
+        } else {
+          console.error('❌ Aucun cours trouvé pour la classe demandée.');
+          process.exit(2);
+          return;
+        }
+      }
+
+      // Optional filters
+      if (args.search) {
+        const keyword = args.search.toLowerCase();
+        cours = cours.filter(ev =>
+          ev.matiere?.toLowerCase().includes(keyword) ||
+          ev.prof?.toLowerCase().includes(keyword) ||
+          ev.salle?.toLowerCase().includes(keyword) ||
+          ev.classe?.toLowerCase().includes(keyword)
+        );
+      }
+
+      if (args.prof) {
+        const keyword = args.prof.toLowerCase();
+        cours = cours.filter(ev => ev.prof?.toLowerCase().includes(keyword));
+      }
+
+      if (args.salle) {
+        const keyword = args.salle.toLowerCase();
+        cours = cours.filter(ev => ev.salle?.toLowerCase().includes(keyword));
+      }
+
+      outputJSON(cours, args);
     }
 
     else if (dataType === 'MESSAGES') {

@@ -13,6 +13,7 @@ const DATA_URLS = {
     ETABLISSEMENTS: '/niveauxListe.awp',
     ELEVES: '/classes/:id/eleves.awp',
     SALLES: '/salles.awp',
+    EDT: '/C/:id/emploidutemps.awp',
     MESSAGES: '/enseignants/:id/messages.awp?force=true&typeRecuperation=received&idClasseur=0&orderBy=date&order=desc&query=&onlyRead=&page=0&itemsPerPage=100&getAll=0',
   },
   API: {
