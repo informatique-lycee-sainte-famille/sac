@@ -9,6 +9,7 @@ const DATA_URLS = {
   APIP: {
     CLASSES: '/niveauxListe.awp',
     NIVEAUX: '/niveauxListe.awp',
+    NIVEAUX_ALL: '/niveauxListeAll.awp',
     ETABLISSEMENTS: '/niveauxListe.awp',
     ELEVES: '/classes/:id/eleves.awp',
     SALLES: '/salles.awp',

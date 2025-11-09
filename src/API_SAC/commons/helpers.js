@@ -2,6 +2,8 @@
 const TOKEN = process.env.ECOLEDIRECTE_USER_TOKEN;
 const USER_ID = process.env.ECOLEDIRECTE_USER_ID;
 
+const fs = require('fs');
+
 if (!TOKEN) {
   console.error('⚠️  Variable ECOLEDIRECTE_USER_TOKEN manquante dans .env');
   process.exit(1);
@@ -24,8 +26,14 @@ async function fetchData(url, bodyData = '{}') {
   });
 }
 
-function printJSON(obj) {
-  console.log(JSON.stringify(obj, null, 2));
+function outputJSON(data, args) {
+  if (args.savepath) {
+    fs.mkdirSync(path.dirname(args.savepath), { recursive: true });
+    fs.writeFileSync(args.savepath, JSON.stringify(data, null, 2), "utf8");
+    console.log(`💾 Data saved to ${args.savepath}`);
+  } else {
+    console.log(JSON.stringify(data, null, 2));
+  }
 }
 
-module.exports = { fetchData, USER_ID, TOKEN, HEADERS, printJSON };
+module.exports = { fetchData, USER_ID, TOKEN, HEADERS, outputJSON };

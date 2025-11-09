@@ -1,6 +1,6 @@
 // scripts/get_data.js
 const { DATA_URLS, BASE_URLS, API_VERSION_PARAM } = require('../API_SAC/commons/constants');
-const { fetchData, USER_ID, printJSON } = require('../API_SAC/commons/helpers');
+const { fetchData, USER_ID, outputJSON } = require('../API_SAC/commons/helpers');
 
 /**
  * ============================================================================
@@ -43,6 +43,12 @@ const { fetchData, USER_ID, printJSON } = require('../API_SAC/commons/helpers');
  *    node scripts/get_data.js NIVEAUX --etab=7
  *    node scripts/get_data.js NIVEAUX --niveau=12
  *    node scripts/get_data.js NIVEAUX --search="lycée"
+ * 
+ *  🎓 NIVEAUX_ALL
+ *    node scripts/get_data.js NIVEAUX_ALL
+ *    node scripts/get_data.js NIVEAUX_ALL --etab=4
+ *    node scripts/get_data.js NIVEAUX_ALL --search="BTS"
+ *    node scripts/get_data.js NIVEAUX_ALL --classe=17
  *
  *  🏫 CLASSES
  *    node scripts/get_data.js CLASSES
@@ -72,7 +78,7 @@ const { fetchData, USER_ID, printJSON } = require('../API_SAC/commons/helpers');
  *  Notes:
  *    - All filters are optional unless required by the API (e.g. --classe for ELEVES).
  *    - The script automatically chooses between APIP and API URLs based on the data type.
- *    - Output is raw JSON (same structure as the API), printed via printJSON().
+ *    - Output is raw JSON (same structure as the API), printed via outputJSON().
  * ============================================================================
  */
 
@@ -133,27 +139,85 @@ async function main() {
   }
 
   try {
-    const url = await buildUrl(dataType, args);
+    let data;
 
-    const data = await fetchData(url);
+    // ⚡ For ELEVES, skip the initial API call if no --classe provided
+    if (dataType === 'ELEVES' && !args.classe) {
+      data = { code: 200 }; // dummy success to trigger custom logic below
+    } else {
+      const url = await buildUrl(dataType, args);
+      data = await fetchData(url);
 
-    if (data?.code !== 200) {
-      console.error(`❌ Erreur ${data.code}: ${data.message || 'Aucune donnée trouvée (ID invalide ?)'}`);
-      process.exitCode = 2;
-      return;
+      if (data?.code !== 200) {
+        console.error(`❌ Erreur ${data.code}: ${data.message || 'Aucune donnée trouvée (ID invalide ?)'}`);
+        process.exitCode = 2;
+        return;
+      }
     }
 
     // --- Specific logic per data type ---
     if (dataType === 'ELEVES') {
-      let eleves = data.data?.eleves || [];
+      let eleves = [];
 
-      if (!args.id && !args.classe) {
-        console.error('⚠️  Utilisation: node scripts/get_data.js ELEVES --classe=<idClasse> [--eleve=<idEleve>]');
-        process.exitCode = 1;
-        return;
+      // If no class specified, fetch all classes via NIVEAUX_ALL
+      if (!args.classe) {
+        console.log('📡 Aucun --classe spécifié → récupération de toutes les classes depuis NIVEAUX_ALL…');
+
+        const niveauxAllUrl = await buildUrl('NIVEAUX_ALL', {});
+        const niveauxAllData = await fetchData(niveauxAllUrl);
+
+        if (niveauxAllData?.code !== 200) {
+          console.error('❌ Impossible de récupérer la structure NIVEAUX_ALL.');
+          process.exit(2);
+          return;
+        }
+
+        const etablissements = niveauxAllData.data?.etablissements || [];
+
+        const allClasses = etablissements.flatMap(e =>
+          (e.niveaux || []).flatMap(n => n.classes || [])
+        );
+
+        console.log(`🔍 ${allClasses.length} classes détectées, récupération en cours…`);
+
+        // Sequential fetching (safer for rate limits)
+        for (const c of allClasses) {
+          const classeId = c.id;
+          const urlClasse = await buildUrl('ELEVES', { classe: classeId });
+          try {
+            const res = await fetchData(urlClasse);
+            if (res?.code === 200 && Array.isArray(res.data?.eleves)) {
+              eleves.push(
+                ...res.data.eleves.map(e => ({
+                  ...e,
+                  classeCode: c.code,
+                  classeLibelle: c.libelle,
+                  classeId,
+                }))
+              );
+            }
+          } catch (err) {
+            console.warn(`⚠️  Erreur pour classe ${classeId}: ${err.message}`);
+          }
+        }
+
+        console.log(`✅ ${eleves.length} élèves récupérés au total.`);
       }
 
-      // Optional élève filter
+      // Normal behavior: single class
+      else {
+        const url = await buildUrl('ELEVES', args);
+        const res = await fetchData(url);
+        if (res?.code === 200 && Array.isArray(res.data?.eleves)) {
+          eleves = res.data.eleves;
+        } else {
+          console.error('❌ Aucun élève trouvé pour la classe demandée.');
+          process.exit(2);
+          return;
+        }
+      }
+
+      // Optional filters (still apply globally)
       if (args.eleve) {
         eleves = eleves.filter(e => e.id.toString() === args.eleve.toString());
       } else if (args.search) {
@@ -163,8 +227,9 @@ async function main() {
           e.prenom?.toLowerCase().includes(keyword) ||
           (e.email && e.email.toLowerCase().includes(keyword))
         );
-      } 
-      printJSON(eleves);
+      }
+
+      outputJSON(eleves, args);
     }
 
     else if (dataType === 'MESSAGES') {
@@ -209,7 +274,7 @@ async function main() {
         messages = messages.slice(0, parseInt(args.limit, 10));
       }
 
-      printJSON(messages);
+      outputJSON(messages, args);
     }
 
     else if (dataType === 'CLASSES') {
@@ -262,7 +327,7 @@ async function main() {
 
         for (const n of niveaux) {
           const classes = n.classes || [];
-          printJSON(classes);
+          outputJSON(classes, args);
         }
       }
     }
@@ -287,7 +352,54 @@ async function main() {
           )
         })).filter(e => e.niveaux.length > 0);
       }
-      printJSON(etablissements);
+      outputJSON(etablissements, args);
+    }
+
+    else if (dataType === 'NIVEAUX_ALL') {
+      let etablissements = data.data?.etablissements || [];
+      let groupes = data.data?.groupes || [];
+
+      // Filters
+      if (args.etab) {
+        etablissements = etablissements.filter(e => e.id.toString() === args.etab.toString());
+        groupes = groupes.filter(g => g.etabId?.toString() === args.etab.toString());
+      }
+
+      if (args.niveau) {
+        etablissements = etablissements.map(e => ({
+          ...e,
+          niveaux: (e.niveaux || []).filter(n => n.id.toString() === args.niveau.toString())
+        })).filter(e => e.niveaux.length > 0);
+      }
+
+      if (args.classe) {
+        etablissements = etablissements.map(e => ({
+          ...e,
+          niveaux: (e.niveaux || []).map(n => ({
+            ...n,
+            classes: (n.classes || []).filter(c => c.id.toString() === args.classe.toString())
+          })).filter(n => n.classes?.length)
+        })).filter(e => e.niveaux?.length);
+      }
+
+      if (args.search) {
+        const kw = args.search.toLowerCase();
+        etablissements = etablissements.map(e => ({
+          ...e,
+          niveaux: (e.niveaux || []).map(n => ({
+            ...n,
+            classes: (n.classes || []).filter(c =>
+              c.libelle?.toLowerCase().includes(kw) || c.code?.toLowerCase().includes(kw)
+            )
+          })).filter(n =>
+            n.libelle?.toLowerCase().includes(kw) || n.classes?.length
+          )
+        })).filter(e =>
+          e.libelle?.toLowerCase().includes(kw) || e.niveaux?.length
+        );
+      }
+
+      outputJSON({ etablissements, groupes }, args);
     }
 
     else if (dataType === 'ETABLISSEMENTS') {
@@ -301,7 +413,7 @@ async function main() {
           e.code?.toLowerCase().includes(keyword)
         );
       }
-      printJSON(etablissements);
+      outputJSON(etablissements, args);
     }
 
     else if (dataType === 'SALLES') {
@@ -314,11 +426,11 @@ async function main() {
           s.id.toString() === keyword
         );
       }
-      printJSON(salles);
+      outputJSON(salles, args);
     }
 
     else {
-      printJSON(data.data || data);
+      outputJSON(data.data || data, args);
     }
 
   } catch (err) {
