@@ -16,6 +16,7 @@ if (!IDENT || !PASS) {
 
 const GTK_URL = `${BASE_URLS.API}/login.awp?gtk=1&v=${API_VERSION_PARAM}`;
 const LOGIN_URL = `${BASE_URLS.API}/login.awp?v=${API_VERSION_PARAM}`;
+const RENEW_URL = `${BASE_URLS.API}/renewtoken.awp?verbe=put&v=${API_VERSION_PARAM}`;
 
 const BASE_HEADERS = {
   Accept: "application/json, text/plain, */*",
@@ -23,9 +24,6 @@ const BASE_HEADERS = {
   "Sec-GPC": "1",
 };
 
-/**
- * Parse cookie string or array into an object.
- */
 function parseCookies(raw) {
   if (!raw) return {};
   const str = Array.isArray(raw) ? raw.join("; ") : String(raw);
@@ -34,9 +32,6 @@ function parseCookies(raw) {
   );
 }
 
-/**
- * Fetch GTK and longest cookie.
- */
 async function fetchCookies() {
   const res = await fetch(GTK_URL, { headers: BASE_HEADERS });
   const raw = res.headers?.raw?.()["set-cookie"] || res.headers.get("set-cookie") || "";
@@ -61,9 +56,6 @@ async function fetchCookies() {
   };
 }
 
-/**
- * Perform login request with cookies.
- */
 async function login(cookieHeader, gtk) {
   const body = new URLSearchParams({
     data: JSON.stringify({
@@ -92,8 +84,37 @@ async function login(cookieHeader, gtk) {
 }
 
 /**
- * Update multiple values in .env atomically.
+ * SWITCH PROFILE (P → A)
  */
+async function switchProfile(token, uid, profil = "A") {
+  const headers = {
+    ...BASE_HEADERS,
+    "Content-Type": "application/x-www-form-urlencoded",
+    "x-token": token,
+  };
+
+  const body = new URLSearchParams({
+    data: JSON.stringify({
+      profil,
+      uid,
+      uuid: ""
+    })
+  });
+
+  const res = await fetch(RENEW_URL, {
+    method: "POST",
+    headers,
+    body
+  });
+
+  const text = await res.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error("Réponse non JSON à switchProfile: " + text);
+  }
+}
+
 function updateEnvBatch(updates) {
   if (!updates || !Object.keys(updates).length) return;
   let envContent = fs.existsSync(ENV_PATH) ? fs.readFileSync(ENV_PATH, "utf8") : "";
@@ -109,9 +130,6 @@ function updateEnvBatch(updates) {
   console.log(`🔑 ${Object.keys(updates).join(", ")} enregistré(s) dans .env (${ENV_PATH})`);
 }
 
-/**
- * Main flow.
- */
 (async () => {
   try {
     console.log("1️⃣  Récupération GTK + cookie long…");
@@ -122,21 +140,45 @@ function updateEnvBatch(updates) {
     console.log("2️⃣  Tentative de login…");
     const resp = await login(header, gtk);
 
-    if (resp?.code === 200 && resp.token) {
-      console.log("✅ Login réussi !");
-      console.log(`   • Token: ${resp.token}`);
-      console.log(`   • ID utilisateur: ${resp.data?.accounts?.[0]?.id}`);
-
-      updateEnvBatch({
-        ECOLEDIRECTE_USER_TOKEN: resp.token,
-        ECOLEDIRECTE_USER_ID: resp.data.accounts[0].id,
-      });
-    } else {
-      console.error(
-        `❌ Login échoué (${resp.code}) : ${resp.message || resp.error || "Erreur inconnue"}`
-      );
-      process.exitCode = 2;
+    if (!(resp?.code === 200 && resp.token)) {
+      console.error(`❌ Login échoué (${resp.code}) : ${resp.message}`);
+      process.exit(2);
     }
+
+    const baseToken = resp.token;
+    const account = resp.data.accounts[0];
+    const uid = account.uid ?? account.id;
+
+    console.log("   • Profil actuel : " + account.typeCompte);
+    console.log("   • Token de base : " + baseToken);
+    console.log("   • UID : " + uid);
+
+    // 🔥 Si déjà en A, on saute
+    if (account.typeCompte !== "A") {
+      console.log("3️⃣  Changement de profil vers A…");
+      const sw = await switchProfile(baseToken, uid, "A");
+
+      if (sw.code === 200 && sw.token) {
+        console.log("Nouveau token profil A : " + sw.token);
+        console.log("Nouveau type compte : A");
+
+        updateEnvBatch({
+          ECOLEDIRECTE_USER_TOKEN: sw.token,
+          ECOLEDIRECTE_USER_ID: sw.data.id,
+        });
+      } else {
+        console.error("❌ Impossible de changer de profil :", sw);
+        process.exit(2);
+      }
+    } else {
+      // Déjà en A
+      updateEnvBatch({
+        ECOLEDIRECTE_USER_TOKEN: baseToken,
+        ECOLEDIRECTE_USER_ID: account.id,
+      });
+    }
+
+    console.log("✅ Tout est OK !");
   } catch (err) {
     console.error("💥 Erreur :", err.message);
     process.exitCode = 2;

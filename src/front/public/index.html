@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>SAC – Office Login</title>
+  <style>
+    body { font-family: sans-serif; background: #111; color: #eee; padding: 20px }
+    button { padding: 10px 20px; border: 0; margin-right: 10px; cursor: pointer }
+    #info { margin-top: 20px; white-space: pre; }
+  </style>
+</head>
+
+<body>
+  <h1>Office 365 Login (Entra ID)</h1>
+
+  <button onclick="location.href='/api/auth/login'">Login</button>
+  <button onclick="location.href='/api/auth/logout'">Logout</button>
+
+  <div id="info">Not loaded</div>
+
+  <script>
+    async function loadProfile() {
+      try {
+        const res = await fetch("/api/profile/me");
+        if (!res.ok) throw new Error("Not logged in");
+        const data = await res.json();
+        document.getElementById("info").innerText = JSON.stringify(data, null, 2);
+      } catch {
+        document.getElementById("info").innerText = "Not logged in";
+      }
+    }
+    async function sendNfc() {
+        // get nfc parameter from url and send it to the server with some user infos
+        const urlParams = new URLSearchParams(window.location.search);
+        const nfc = urlParams.get('nfc');
+        if (nfc) {
+            await fetch('/api/nfc/scan', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ 
+                    nfc_token: nfc
+                })
+            });
+        }
+    }
+    sendNfc();
+    loadProfile();
+  </script>
+</body>
+</html>
