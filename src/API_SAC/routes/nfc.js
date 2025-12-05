@@ -1,6 +1,7 @@
 // src/routes/test.js
 const express = require("express");
 const { eleveScan } = require('../workflows/eleveScan.js');
+const { enseignantScan } = require('../workflows/enseignantScan.js');
 const router = express.Router();
 
 router.post("/scan", async (req, res) => {
@@ -18,10 +19,11 @@ router.post("/scan", async (req, res) => {
       console.log("Processing NFC token for staff");
       break;
     case "enseignant":
+    case "formateur":
       // Handle teacher NFC token
       console.log("Processing NFC token for teacher");
       const teacherSalleId = await enseignantScan(req, res);
-      console.log(`Salle ID for teacher: ${teacherSalleId}`);
+      // console.log(`Salle ID for teacher: ${JSON.stringify(teacherSalleId)}`);
       break;
     default:
       break;
