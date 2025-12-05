@@ -30,13 +30,14 @@ router.get("/redirect", async (req, res) => {
       },
     }).then(res => res.json());
 
-    if(userInfo.jobTitle) {
+    if(userInfo.jobTitle && userInfo.jobTitle !== "PERSONNEL") {
         console.log(`User is a ${userInfo.jobTitle}`);
         console.log("User info:", userInfo);
         const edProfile = await returnEDAccount(userInfo, userInfo.jobTitle.toLowerCase());
         req.session.edProfile = edProfile;
     }
     req.session.account = tokenResponse.account;
+    req.session.userInfo = userInfo;
     req.session.accessToken = tokenResponse.accessToken;
 
     res.redirect("/");

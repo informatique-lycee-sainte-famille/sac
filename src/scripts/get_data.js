@@ -9,7 +9,7 @@ const {
 
 /**
  * ---------------------------------------------------------------------------
- * Helper: compute date range for EDT
+ * Helper: compute date range for EDT_CLASSE
  * ---------------------------------------------------------------------------
  */
 function computeEdtDateRange(rawDateOpt) {
@@ -88,7 +88,7 @@ function computeEdtDateRange(rawDateOpt) {
     return { dateDebut: opt, dateFin: opt };
   }
 
-  throw new Error(`Option de date EDT invalide: ${rawDateOpt}`);
+  throw new Error(`Option de date EDT_CLASSE  invalide: ${rawDateOpt}`);
 }
 
 /**
@@ -251,9 +251,9 @@ async function getDataByType(type, args = {}) {
   }
 
   // -------------------------------------------------------------------------
-  // EDT (custom fetching, with date range helper)
+  // EDT_CLASSE (custom fetching, with date range helper)
   // -------------------------------------------------------------------------
-  if (dataType === 'EDT') {
+  if (dataType === 'EDT_CLASSE') {
     let cours = [];
 
     let dateParams;
@@ -280,7 +280,7 @@ async function getDataByType(type, args = {}) {
       );
 
       for (const c of allClasses) {
-        const url = await buildUrl('EDT', { classe: c.id });
+        const url = await buildUrl('EDT_CLASSE', { classe: c.id });
         try {
           const res = await fetchData(url, commonBody);
           if (res?.code === 200 && Array.isArray(res.data)) {
@@ -298,7 +298,7 @@ async function getDataByType(type, args = {}) {
         }
       }
     } else {
-      const url = await buildUrl('EDT', { classe: args.classe });
+      const url = await buildUrl('EDT_CLASSE', { classe: args.classe });
       const res = await fetchData(url, commonBody);
       if (res?.code === 200 && Array.isArray(res.data)) {
         cours = res.data;
@@ -328,6 +328,161 @@ async function getDataByType(type, args = {}) {
 
     return cours;
   }
+
+  // -------------------------------------------------------------------------
+  // EDT_SALLE (custom fetching, with date range helper)
+  // -------------------------------------------------------------------------
+  if (dataType === 'EDT_SALLE') {
+    let cours = [];
+
+    let dateParams;
+    try {
+      dateParams = computeEdtDateRange(args.date || 'today');
+    } catch (e) {
+      throw e;
+    }
+
+    const commonBody = {
+      ...dateParams,
+      avecTrous: false,
+    };
+
+    if (!args.salle) {
+      const sallesUrl = await buildUrl('SALLES', {});
+      const sallesAllData = await fetchData(sallesUrl);
+      if (sallesAllData?.code !== 200) {
+        throw new Error('Impossible de récupérer la structure SALLES.');
+      }
+
+      for (const s of sallesAllData.data?.salles || []) {
+        const url = await buildUrl('EDT_SALLE', { salle: s.id });
+        try {
+          const res = await fetchData(url, commonBody);
+          if (res?.code === 200 && Array.isArray(res.data)) {
+            cours.push(
+              ...res.data.map(ev => ({
+                ...ev,
+                salleCode: s.code,
+                salleLibelle: s.libelle,
+                salleId: s.id,
+              })),
+            );
+          }
+        } catch {
+          // ignore per-salle errors
+        }
+      }
+    } else {
+      const url = await buildUrl('EDT_SALLE', { salle: args.salle });
+      const res = await fetchData(url, commonBody);
+      if (res?.code === 200 && Array.isArray(res.data)) {
+        console.log(`res: ${JSON.stringify(res)}`);
+        cours = res.data;
+      } else {
+        throw new Error('Aucun cours trouvé pour la salle demandée.');
+      }
+    }
+
+    if (args.search) {
+      const keyword = args.search.toLowerCase();
+      cours = cours.filter(
+        ev =>
+          ev.salle?.toLowerCase().includes(keyword) ||
+          ev.matiere?.toLowerCase().includes(keyword)
+      );
+    }
+    // Do NOT filter again by salle: API already scoped results correctly.
+
+    return cours;
+  }
+
+  // -------------------------------------------------------------------------
+  // EDT_PROFESSEUR (custom fetching, with date range helper)
+  // -------------------------------------------------------------------------
+  if (dataType === 'EDT_PROFESSEUR') {
+    let cours = [];
+
+    // ---- date range
+    let dateParams;
+    try {
+      dateParams = computeEdtDateRange(args.date || 'today');
+    } catch (e) {
+      throw e;
+    }
+
+    const commonBody = {
+      ...dateParams,
+      avecTrous: false,
+    };
+
+    // ---- fetch all teachers if no --prof is provided
+    if (!args.prof) {
+      const profsUrl = await buildUrl('PROFESSEURS', {});
+      const profsData = await fetchData(profsUrl);
+
+      if (!(profsData?.code === 200 && Array.isArray(profsData.data?.contacts))) {
+        throw new Error('Impossible de récupérer la structure PROFESSEURS.');
+      }
+
+      for (const p of profsData.data.contacts) {
+        const url = await buildUrl('EDT_PROFESSEUR', { prof: p.id });
+
+        try {
+          const res = await fetchData(url, commonBody);
+          if (res?.code === 200 && Array.isArray(res.data)) {
+            cours.push(
+              ...res.data.map(ev => ({
+                ...ev,
+                profId: p.id,
+                profNom: p.nom,
+                profPrenom: p.prenom,
+                profCode: p.code,
+              }))
+            );
+          }
+        } catch {
+          // ignore per-prof errors
+        }
+      }
+    } else {
+      // ---- fetch only one teacher
+      const url = await buildUrl('EDT_PROFESSEUR', { prof: args.prof });
+      const res = await fetchData(url, commonBody);
+
+      console.log(`res: ${JSON.stringify(res)}`);
+
+      if (res?.code === 200 && Array.isArray(res.data)) {
+        cours = res.data;
+      } else {
+        throw new Error('Aucun cours trouvé pour le professeur demandé.');
+      }
+    }
+
+    // ---- extra filtering
+    if (args.search) {
+      const keyword = args.search.toLowerCase();
+      cours = cours.filter(
+        ev =>
+          ev.matiere?.toLowerCase().includes(keyword) ||
+          ev.salle?.toLowerCase().includes(keyword) ||
+          ev.prof?.toLowerCase().includes(keyword) ||
+          ev.classe?.toLowerCase().includes(keyword)
+      );
+    }
+
+    if (args.salle) {
+      const keyword = args.salle.toLowerCase();
+      cours = cours.filter(ev => ev.salle?.toLowerCase().includes(keyword));
+    }
+
+    if (args.classe) {
+      const keyword = args.classe.toLowerCase();
+      cours = cours.filter(ev => ev.classeCode?.toLowerCase().includes(keyword));
+    }
+
+    return cours;
+  }
+
 
   // -------------------------------------------------------------------------
   // For the remaining types, first do a generic fetch like in old script

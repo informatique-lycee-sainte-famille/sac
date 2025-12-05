@@ -2,23 +2,32 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SAC – Office Login</title>
   <style>
     body { font-family: sans-serif; background: #111; color: #eee; padding: 20px }
     button { padding: 10px 20px; border: 0; margin-right: 10px; cursor: pointer }
     #info { margin-top: 20px; white-space: pre; }
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <link rel="manifest" href="manifest.json" />
 </head>
 
 <body>
   <h1>Office 365 Login (Entra ID)</h1>
-
   <button onclick="location.href='/api/auth/login'">Login</button>
   <button onclick="location.href='/api/auth/logout'">Logout</button>
 
   <div id="info">Not loaded</div>
 
   <script>
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js");
+    }
+
+    // window.addEventListener("DOMContentLoaded", () => {
+    //   ensurePWAUsage();
+    // });
     async function loadProfile() {
       try {
         const res = await fetch("/api/profile/me");
@@ -47,6 +56,152 @@
     }
     sendNfc();
     loadProfile();
+
+    window.addEventListener("beforeinstallprompt", (e) => {
+      console.log(">>> beforeinstallprompt fired!");
+      e.preventDefault();
+      installPrompt = e;
+
+      // Enable the Install button ONLY now
+      installBtn.classList.remove("hidden");
+    });
+
+    function ensurePWAUsage() {
+  console.log("=== ensurePWAUsage() START ===");
+
+  let installPrompt = null;
+
+  // ------------------------------
+  //   DETECT INSTALLED STATE
+  // ------------------------------
+  const isInstalled = () =>
+    window.matchMedia("(display-mode: standalone)").matches ||
+    window.navigator.standalone === true ||
+    document.referrer.includes("android-app://");
+
+  const isIOS =
+    /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+  const isSafari = /^((?!chrome|crios|fxios|edg|opr).)*safari/i.test(
+    navigator.userAgent
+  );
+
+  console.log("User Agent:", navigator.userAgent);
+  console.log("isInstalled:", isInstalled());
+  console.log("isIOS:", isIOS);
+  console.log("isSafari:", isSafari);
+
+  // ------------------------------------------------------
+  //   ANDROID/DESKTOP MODAL (always show if not installed)
+  // ------------------------------------------------------
+  const installModal = document.createElement("div");
+  installModal.id = "pwa-install-modal";
+  installModal.className =
+    "hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-[9999] flex items-center justify-center p-4";
+
+  installModal.innerHTML = `
+    <div class="bg-gray-900 text-white rounded-2xl shadow-xl max-w-md w-full p-8 text-center space-y-6">
+      <h2 class="text-2xl font-bold">Installer l’application</h2>
+      <p class="text-gray-300">Ajoutez “SAC” pour un accès simplifié.</p>
+
+      <button id="pwa-install-btn"
+        class="w-full py-3 rounded-xl bg-green-600 hover:bg-green-700 text-white font-semibold shadow hidden">
+        Installer
+      </button>
+
+      <button id="pwa-install-close"
+        class="w-full py-2 text-gray-400 hover:text-gray-200 text-sm">
+        Fermer
+      </button>
+    </div>
+  `;
+  document.body.appendChild(installModal);
+
+  const installBtn = installModal.querySelector("#pwa-install-btn");
+  const installClose = installModal.querySelector("#pwa-install-close");
+
+  // ------------------------------------------------------
+  //   iOS MODAL
+  // ------------------------------------------------------
+  const iosModal = document.createElement("div");
+  iosModal.id = "pwa-ios-modal";
+  iosModal.className =
+    "hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-[9999] flex items-center justify-center p-4";
+
+  iosModal.innerHTML = `
+    <div class="bg-gray-900 text-white rounded-2xl shadow-xl max-w-md w-full p-8 text-center space-y-6">
+      <h2 class="text-2xl font-bold">Installer sur iPhone / iPad</h2>
+
+      <p class="text-gray-300">Pour installer l’application :</p>
+      <ul class="text-gray-300 space-y-2 text-sm">
+        <li>• Appuyez sur <b>Partager</b> en bas de l’écran</li>
+        <li>• Sélectionnez <b>“Ajouter à l’écran d’accueil”</b></li>
+      </ul>
+
+      <img src="https://www.cdc.gov/niosh/media/images/2024/10/pwa_ios.png"
+           class="mx-auto w-40 opacity-90 rounded-lg">
+
+      <button id="pwa-ios-close"
+        class="w-full py-2 text-gray-400 hover:text-gray-200 text-sm">
+        Fermer
+      </button>
+    </div>
+  `;
+  document.body.appendChild(iosModal);
+
+  const iosClose = iosModal.querySelector("#pwa-ios-close");
+
+  // ------------------------------------------------------
+  //   BEFOREINSTALLPROMPT (Chrome/Edge only)
+  // ------------------------------------------------------
+  window.addEventListener("beforeinstallprompt", (e) => {
+    console.log(">>> beforeinstallprompt fired!");
+    e.preventDefault();
+    installPrompt = e;
+
+    // Enable the Install button ONLY now
+    installBtn.classList.remove("hidden");
+  });
+
+  installBtn.addEventListener("click", async () => {
+    if (!installPrompt) {
+      console.log("Cannot install: installPrompt is null.");
+      return;
+    }
+
+    const result = await installPrompt.prompt();
+    console.log("Install result:", result);
+    installPrompt = null;
+  });
+
+  installClose.addEventListener("click", () => {
+    installModal.classList.add("hidden");
+  });
+
+  // ------------------------------------------------------
+  //   ALWAYS SHOW POPUP IF NOT INSTALLED
+  // ------------------------------------------------------
+  if (!isInstalled()) {
+    if (isIOS && isSafari) {
+      console.log("Showing iOS popup");
+      iosModal.classList.remove("hidden");
+    } else {
+      console.log("Showing Android/Desktop popup (even without beforeinstallprompt)");
+      installModal.classList.remove("hidden");
+    }
+  }
+
+  iosClose.addEventListener("click", () => {
+    iosModal.classList.add("hidden");
+  });
+
+  console.log("=== ensurePWAUsage() END ===");
+}
+
+
+
+
   </script>
 </body>
 </html>

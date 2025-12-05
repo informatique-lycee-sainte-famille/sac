@@ -15,7 +15,10 @@ const DATA_URLS = {
     ELEVES_ALL: '/messagerie/contacts/eleves.awp',
     PROFESSEURS: '/messagerie/contacts/professeurs.awp',
     SALLES: '/salles.awp',
-    EDT: '/C/:id/emploidutemps.awp',
+    EDT_CLASSE: '/C/:id/emploidutemps.awp',
+    EDT_SALLE: '/S/:id/emploidutemps.awp',
+    EDT_PROFESSEUR: '/P/:id/emploidutemps.awp',
+    COURS: '/cours/:id/detailsCours.awp',
     MESSAGES: '/enseignants/:id/messages.awp?force=true&typeRecuperation=received&idClasseur=0&orderBy=date&order=desc&query=&onlyRead=&page=0&itemsPerPage=100&getAll=0',
   },
   API: {

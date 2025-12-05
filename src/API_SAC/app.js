@@ -26,7 +26,8 @@ app.use("/api/profile", o365ProfileRoutes);
 app.use("/api/nfc", nfcRoutes);
 
 // Serve static files from the React frontend app
-app.use(express.static(path.join(__dirname, "../front/public")));
+app.use(express.static(path.join(__dirname, "../front/public"),
+  { extensions: ['html', 'json', 'png', 'svg', 'js', 'css'], dotfiles: 'allow' }));
 
 const server = app.listen(port, () => {
   console.log(`SAC server is running on http://localhost:${port}`);
