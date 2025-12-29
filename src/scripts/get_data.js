@@ -338,6 +338,7 @@ async function getDataByType(type, args = {}) {
     let dateParams;
     try {
       dateParams = computeEdtDateRange(args.date || 'today');
+      console.log(`dateParams: ${JSON.stringify(dateParams)}`);
     } catch (e) {
       throw e;
     }

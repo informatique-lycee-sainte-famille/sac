@@ -11,8 +11,9 @@ router.post("/scan", async (req, res) => {
     case "eleve":
       // Handle student NFC token
       console.log("Processing NFC token for student");
-      const salleId = await eleveScan(req, res);
-      console.log(`Salle ID for student: ${salleId}`);
+      const response = await eleveScan(req, res);
+      console.log(`Salle ID for student: ${JSON.stringify(response)}`);
+      res.status(response.status).json({ message: response.text });
       break;
     case "personnel":
       // Handle staff NFC token

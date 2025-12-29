@@ -1,0 +1,170 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  student
+  teacher
+  staff
+}
+
+enum AttendanceStatus {
+  present
+  late
+  absent
+  excused
+}
+
+model User {
+  id         Int      @id @default(autoincrement())
+  externalId String?  @unique
+  role       UserRole
+  email      String?  @unique
+  firstName  String?
+  lastName   String?
+  createdAt  DateTime @default(now())
+
+  student       Student?
+  taughtClasses ClassTeacher[]
+  sessions      CourseSession[]    @relation("TeacherSessions")
+  attendance    AttendanceRecord[]
+  nfcScans      NfcScan[]
+}
+
+model Institution {
+  id        Int      @id @default(autoincrement())
+  code      String   @unique
+  name      String
+  rne       String?  @unique
+  degree    Int?
+  createdAt DateTime @default(now())
+
+  settings  InstitutionSettings?
+  buildings Building[]
+  classes   Class[]
+}
+
+model InstitutionSettings {
+  institutionId         Int      @id
+  visioEnabled          Boolean  @default(false)
+  attendanceViaSchedule Boolean  @default(true)
+  attendanceViaTimegrid Boolean  @default(false)
+  createdAt             DateTime @default(now())
+
+  institution Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+}
+
+model Building {
+  id            Int    @id @default(autoincrement())
+  institutionId Int
+  name          String
+
+  institution Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  rooms       Room[]
+}
+
+model Room {
+  id         Int     @id @default(autoincrement())
+  buildingId Int
+  code       String  @unique
+  name       String?
+  nfcUid     String  @unique
+  reservable Boolean @default(true)
+
+  building Building        @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  sessions CourseSession[]
+}
+
+model Class {
+  id            Int      @id @default(autoincrement())
+  institutionId Int
+  code          String
+  name          String
+  createdAt     DateTime @default(now())
+
+  institution Institution     @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  groups      Group[]
+  students    Student[]
+  teachers    ClassTeacher[]
+  sessions    CourseSession[]
+
+  @@unique([institutionId, code])
+}
+
+model Group {
+  id      Int     @id @default(autoincrement())
+  classId Int
+  code    String
+  name    String?
+
+  class    Class     @relation(fields: [classId], references: [id], onDelete: Cascade)
+  students Student[]
+
+  @@unique([classId, code])
+}
+
+model Student {
+  userId    Int       @id
+  classId   Int
+  groupId   Int?
+  badgeUid  String?   @unique
+  entryDate DateTime?
+  exitDate  DateTime?
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  class Class  @relation(fields: [classId], references: [id])
+  group Group? @relation(fields: [groupId], references: [id])
+}
+
+model ClassTeacher {
+  classId       Int
+  userId        Int
+  isMainTeacher Boolean @default(false)
+
+  class Class @relation(fields: [classId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([classId, userId])
+}
+
+model CourseSession {
+  id        Int      @id @default(autoincrement())
+  classId   Int
+  roomId    Int
+  teacherId Int
+  startTime DateTime
+  endTime   DateTime
+
+  class      Class              @relation(fields: [classId], references: [id])
+  room       Room               @relation(fields: [roomId], references: [id])
+  teacher    User               @relation("TeacherSessions", fields: [teacherId], references: [id])
+  attendance AttendanceRecord[]
+
+  @@index([startTime, endTime])
+}
+
+model AttendanceRecord {
+  sessionId Int
+  studentId Int
+  status    AttendanceStatus
+  scannedAt DateTime?
+
+  session CourseSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  student User          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@id([sessionId, studentId])
+}
+
+model NfcScan {
+  id        Int      @id @default(autoincrement())
+  nfcUid    String
+  userId    Int?
+  scannedAt DateTime @default(now())
+  ipAddress String?
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
