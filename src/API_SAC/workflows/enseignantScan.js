@@ -1,3 +1,4 @@
+// src/API_SAC/workflows/enseignantScan.js
 const { getDataByType } = require('../../scripts/get_data.js');
 
 async function enseignantScan(req, res) {

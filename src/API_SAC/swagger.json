@@ -1,0 +1,250 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "SAC – Saintonge Access Control API",
+    "description": "API de gestion de présence par NFC intégrée à Office365 / Entra ID",
+    "version": "2.0.0"
+  },
+  "host": "localhost:3000",
+  "basePath": "/api",
+  "schemes": ["http"],
+  "consumes": ["application/json"],
+  "produces": ["application/json"],
+
+  "securityDefinitions": {
+    "oauth2": {
+      "type": "oauth2",
+      "flow": "implicit",
+      "authorizationUrl": "/api/auth/login",
+      "scopes": {
+        "user": "Utilisateur authentifié via Office365"
+      }
+    }
+  },
+
+  "paths": {
+    "/test": {
+      "get": {
+        "summary": "Healthcheck API",
+        "operationId": "testApi",
+        "responses": {
+          "200": {
+            "description": "API is running",
+            "schema": { "$ref": "#/definitions/MessageResponse" }
+          }
+        },
+        "tags": ["System"]
+      }
+    },
+
+    "/auth/login": {
+      "get": {
+        "summary": "Office365 login redirect",
+        "operationId": "loginO365",
+        "responses": {
+          "302": { "description": "Redirect to Microsoft login page" }
+        },
+        "tags": ["Auth"]
+      }
+    },
+
+    "/auth/redirect": {
+      "get": {
+        "summary": "Office365 OAuth callback",
+        "operationId": "redirectO365",
+        "responses": {
+          "302": { "description": "Session created, redirect to frontend" },
+          "500": { "description": "Login failed" }
+        },
+        "tags": ["Auth"]
+      }
+    },
+
+    "/auth/logout": {
+      "get": {
+        "summary": "Logout current user",
+        "operationId": "logout",
+        "responses": {
+          "302": { "description": "Session destroyed" }
+        },
+        "tags": ["Auth"]
+      }
+    },
+
+    "/profile/me": {
+      "get": {
+        "summary": "Get current user profile",
+        "operationId": "getProfile",
+        "security": [{ "oauth2": ["user"] }],
+        "responses": {
+          "200": {
+            "description": "User profile",
+            "schema": { "$ref": "#/definitions/UserProfile" }
+          },
+          "401": {
+            "description": "Not logged in"
+          }
+        },
+        "tags": ["Profile"]
+      }
+    },
+
+    "/nfc/scan": {
+      "post": {
+        "summary": "Scan NFC badge",
+        "description": "Validates attendance depending on user role (student / teacher / staff)",
+        "operationId": "scanNfc",
+        "security": [{ "oauth2": ["user"] }],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": { "$ref": "#/definitions/NfcScanRequest" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scan accepted",
+            "schema": { "$ref": "#/definitions/MessageResponse" }
+          },
+          "403": {
+            "description": "Scan refused"
+          },
+          "400": {
+            "description": "Invalid request"
+          }
+        },
+        "tags": ["NFC"]
+      }
+    },
+
+    "/attendance/session/{sessionId}": {
+      "get": {
+        "summary": "Get attendance list for a course session",
+        "operationId": "getAttendanceForSession",
+        "x-status": "planned",
+        "security": [{ "oauth2": ["user"] }],
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Attendance list",
+            "schema": {
+              "type": "array",
+              "items": { "$ref": "#/definitions/AttendanceRecord" }
+            }
+          }
+        },
+        "tags": ["Attendance"]
+      }
+    },
+
+    "/attendance/student/{studentId}": {
+      "get": {
+        "summary": "Get attendance history for a student",
+        "operationId": "getAttendanceForStudent",
+        "x-status": "planned",
+        "security": [{ "oauth2": ["user"] }],
+        "parameters": [
+          {
+            "name": "studentId",
+            "in": "path",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Attendance history",
+            "schema": {
+              "type": "array",
+              "items": { "$ref": "#/definitions/AttendanceRecord" }
+            }
+          }
+        },
+        "tags": ["Attendance"]
+      }
+    },
+
+    "/admin/stats/attendance": {
+      "get": {
+        "summary": "Global attendance statistics",
+        "operationId": "getAttendanceStats",
+        "x-status": "planned",
+        "responses": {
+          "200": {
+            "description": "Attendance statistics",
+            "schema": { "type": "object" }
+          }
+        },
+        "tags": ["Admin"]
+      }
+    }
+  },
+
+  "definitions": {
+    "MessageResponse": {
+      "type": "object",
+      "properties": {
+        "message": { "type": "string" }
+      }
+    },
+
+    "NfcScanRequest": {
+      "type": "object",
+      "required": ["nfc_token"],
+      "properties": {
+        "nfc_token": {
+          "type": "string",
+          "description": "UID NFC de la salle ou du badge"
+        }
+      }
+    },
+
+    "UserProfile": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "email": { "type": "string" },
+        "jobTitle": { "type": "string" },
+        "displayName": { "type": "string" },
+        "edProfile": {
+          "type": "object",
+          "description": "Profil issu d'EcoleDirecte (si applicable)"
+        }
+      }
+    },
+
+    "AttendanceRecord": {
+      "type": "object",
+      "properties": {
+        "sessionId": { "type": "integer" },
+        "studentId": { "type": "integer" },
+        "status": {
+          "type": "string",
+          "enum": ["present", "late", "absent", "excused"]
+        },
+        "scannedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    }
+  },
+
+  "tags": [
+    { "name": "System", "description": "System & health endpoints" },
+    { "name": "Auth", "description": "Office365 authentication" },
+    { "name": "Profile", "description": "User profile" },
+    { "name": "NFC", "description": "NFC attendance validation" },
+    { "name": "Attendance", "description": "Attendance data" },
+    { "name": "Admin", "description": "Administration & statistics" }
+  ]
+}
