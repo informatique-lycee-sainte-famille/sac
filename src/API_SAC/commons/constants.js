@@ -14,6 +14,7 @@ const DATA_URLS = {
     ELEVES: '/classes/:id/eleves.awp?recupAll=1',
     ELEVES_ALL: '/messagerie/contacts/eleves.awp',
     PROFESSEURS: '/messagerie/contacts/professeurs.awp',
+    PERSONNELS: '/messagerie/contacts/personnels.awp',
     SALLES: '/salles.awp',
     EDT_CLASSE: '/C/:id/emploidutemps.awp',
     EDT_SALLE: '/S/:id/emploidutemps.awp',

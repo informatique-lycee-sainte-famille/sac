@@ -251,6 +251,27 @@ async function getDataByType(type, args = {}) {
   }
 
   // -------------------------------------------------------------------------
+  // PERSONNELS (custom fetching)
+  if (dataType === 'PERSONNELS') {
+    const url = await buildUrl('PERSONNELS', args);
+    const res = await fetchData(url, {});
+    if (!(res?.code === 200 && Array.isArray(res.data?.contacts))) {
+      throw new Error('Aucun personnel trouvé.');
+    }
+    let personnels = res.data.contacts;
+    if (args.search) {
+      const keyword = args.search.toLowerCase();
+      personnels = personnels.filter(
+        p =>
+          p.nom?.toLowerCase().includes(keyword) ||
+          p.prenom?.toLowerCase().includes(keyword) ||
+          (p.email && p.email.toLowerCase().includes(keyword)),
+      );
+    }
+    return personnels;
+  }
+
+  // -------------------------------------------------------------------------
   // EDT_CLASSE (custom fetching, with date range helper)
   // -------------------------------------------------------------------------
   if (dataType === 'EDT_CLASSE') {

@@ -44,6 +44,7 @@ const similarity = (a, b) => {
 function mapRoleToDataType(role) {
   const r = role?.toUpperCase();
   if (r === 'ELEVE') return 'ELEVES_ALL';
+  if( r === 'PERSONNEL') return 'PERSONNELS';
   if (r === 'PROFESSEUR' || r === 'FORMATEUR') {
     return 'PROFESSEURS';
   }
@@ -54,7 +55,7 @@ function mapRoleToDataType(role) {
  * Find the best matching user in EcoleDirecte for a given Office 365 account.
  *
  * @param {Object} officeAccount - AAD / Office365 user object
- * @param {String} role          - "ELEVE" | "PROFESSEUR" | "FORMATEUR"
+ * @param {String} role          - "ELEVE" | "PROFESSEUR" | "FORMATEUR" | "PERSONNEL"
  * @param {Object} [options]     - Extra filters passed to getDataByType (e.g. { classe: 142 })
  *
  * @returns {Promise<null|{ match_score:number, ED:object }>}
@@ -112,7 +113,7 @@ async function returnEDAccount(officeAccount, role = 'ELEVE', options = {}) {
 
   if (!bestMatch || bestScore < MATCH_THRESHOLD) return null;
 
-  // 4) Normalize ED output (fields differ slightly between ELEVES / PROFESSEURS)
+  // 4) Normalize ED output (fields differ slightly between ELEVES / PROFESSEURS / PERSONNELS)
   const result = {
     match_score: bestScore,
     ED: {

@@ -31,7 +31,7 @@ router.get("/redirect", async (req, res) => {
       },
     }).then(res => res.json());
 
-    if(userInfo.jobTitle && userInfo.jobTitle !== "PERSONNEL") {
+    if(userInfo.jobTitle) {
         console.log(`User is a ${userInfo.jobTitle}`);
         console.log("User info:", userInfo);
         const edProfile = await returnEDAccount(userInfo, userInfo.jobTitle.toLowerCase());
