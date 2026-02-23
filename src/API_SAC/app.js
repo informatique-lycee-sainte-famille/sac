@@ -19,7 +19,7 @@ const app = express();
 const port = process.env.PORT || 3000;
 const env = process.env.ENV || 'dev';
 const allowedPaths = ['/api/auth', '/api/documentation'];
-const LAN_SUBNET = ipaddr.parseCIDR("10.29.0.0/16"); 
+const LAN_SUBNET = ipaddr.parseCIDR(process.env.LAN_SUBNET); 
 
 app.set('trust proxy', true);
 app.use(bodyParser.json());
@@ -29,15 +29,10 @@ app.use(session(sessionOptions));
 app.use((req, res, next) => {
     try {
         const clientIp = req.ip;
-        console.log(JSON.stringify(req.session, null, 2));
         const jobTitle = req.session?.userInfo?.jobTitle.toUpperCase();
-
         if (!clientIp) return next();
-
         const parsedIp = ipaddr.parse(clientIp);
-
         const isInLan = parsedIp.match(LAN_SUBNET);
-
         console.log(`Incoming request from IP: ${clientIp}, Job Title: ${jobTitle}, User: ${req.session?.userInfo?.displayName || 'Unknown'}, Path: ${req.path}, Is in LAN: ${isInLan}`);
 
         // Only block ELEVE outside LAN
