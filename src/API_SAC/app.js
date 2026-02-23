@@ -26,7 +26,8 @@ const LAN_SUBNET = ipaddr.parseCIDR("10.29.0.0/16");
 app.use((req, res, next) => {
     try {
         const clientIp = req.ip;
-        const jobTitle = req.session?.userInfo.jobTitle;
+        console.log(JSON.stringify(req, null, 2));
+        const jobTitle = req.session.userInfo.jobTitle.toUpperCase();
 
         if (!clientIp) return next();
 
