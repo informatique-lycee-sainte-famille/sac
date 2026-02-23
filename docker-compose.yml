@@ -21,6 +21,8 @@ services:
     image: ghcr.io/informatique-lycee-sainte-famille/sac/server-app:latest
     container_name: sac-server-app
     restart: unless-stopped
+    ports:
+      - "3000:3000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -38,6 +40,7 @@ services:
       SESSION_SECRET: <votre_cle_de_session>
       EXTERNAL_DOMAIN: https://<votre_domaine_externe>
       DATABASE_URL: "postgresql://sac_user:sac_password@localhost:5432/sac_db"
+      LAN_SUBNET: <votre_sous_reseau_lan format CIDR>
 
 volumes:
   sac_pgdata:
