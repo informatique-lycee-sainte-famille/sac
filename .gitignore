@@ -140,10 +140,7 @@ vite.config.ts.timestamp-*
 
 
 #Testing files
-testing/ecoledirecte.json
-testing/office_users.csv
-testing/office_matched.json
-testing/unmatched_office.json
+testing/
 
 sessions/
 src/scripts/eleves.json
