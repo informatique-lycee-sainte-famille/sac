@@ -3,24 +3,41 @@ services:
     image: postgres:16
     container_name: sac-postgres
     restart: unless-stopped
-
     environment:
       POSTGRES_DB: sac_db
       POSTGRES_USER: sac_user
       POSTGRES_PASSWORD: sac_password
-
     volumes:
       - sac_pgdata:/var/lib/postgresql/data
-
     ports:
       - "5432:5432"
-
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U sac_user -d sac_db"]
       interval: 5s
       timeout: 5s
       retries: 5
 
+  server-app:
+    image: ghcr.io/informatique-lycee-sainte-famille/sac/server-app:latest
+    container_name: sac-server-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ENV: dev
+      ECOLEDIRECTE_API_BASE_URL: https://api.ecoledirecte.com/v3
+      ECOLEDIRECTE_APIP_BASE_URL: https://apip.ecoledirecte.com/v3
+      ECOLEDIRECTE_IDENTIFIANT: <votre_identifiant>
+      ECOLEDIRECTE_MDP: <votre_mot_de_passe>
+      ECOLEDIRECTE_API_VERSION: 4.89.3
+      AZURE_CLIENT_ID: <votre_client_id>
+      AZURE_TENANT_ID: <votre_tenant_id>
+      AZURE_CLIENT_SECRET: <votre_client_secret>
+      AZURE_REDIRECT_URI: http://localhost:3000/api/auth/redirect
+      SESSION_SECRET: <votre_cle_de_session>
+      EXTERNAL_DOMAIN: https://<votre_domaine_externe>
+      DATABASE_URL: "postgresql://sac_user:sac_password@localhost:5432/sac_db"
+
 volumes:
   sac_pgdata:
-    driver: local
