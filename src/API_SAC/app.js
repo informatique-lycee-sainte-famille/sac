@@ -30,7 +30,7 @@ app.use((req, res, next) => {
     try {
         const clientIp = req.ip;
         console.log(JSON.stringify(req.session, null, 2));
-        const jobTitle = req.session.userInfo.jobTitle.toUpperCase();
+        const jobTitle = req.session?.userInfo?.jobTitle.toUpperCase();
 
         if (!clientIp) return next();
 
