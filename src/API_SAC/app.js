@@ -16,11 +16,14 @@ const o365ProfileRoutes = require("./routes/o365Profile");
 const nfcRoutes = require("./routes/nfc");
 
 const app = express();
-app.set('trust proxy', true);
 const port = process.env.PORT || 3000;
 const env = process.env.ENV || 'dev';
 const allowedPaths = ['/api/auth', '/api/documentation'];
 const LAN_SUBNET = ipaddr.parseCIDR("10.29.0.0/16"); 
+
+app.set('trust proxy', true);
+app.use(bodyParser.json());
+app.use(session(sessionOptions));
 
 // Global access filter middleware
 app.use((req, res, next) => {
@@ -73,9 +76,6 @@ try {
     console.error("Erreur lors de la configuration de Swagger UI:", error.message);
 }
 //// DOCS ROUTE ////
-
-app.use(bodyParser.json());
-app.use(session(sessionOptions));
 
 // mount routes
 
