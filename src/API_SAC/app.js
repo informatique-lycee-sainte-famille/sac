@@ -6,6 +6,7 @@ const bodyParser = require("body-parser");
 const path = require("path");
 const session = require("express-session");
 const swaggerUi = require('swagger-ui-express');
+const ipaddr = require('ipaddr.js');
 const swaggerDocument = require('./swagger.json');
 const { sessionOptions } = require("./commons/sessionConfig");
 
@@ -15,8 +16,41 @@ const o365ProfileRoutes = require("./routes/o365Profile");
 const nfcRoutes = require("./routes/nfc");
 
 const app = express();
+app.set('trust proxy', true);
 const port = process.env.PORT || 3000;
 const env = process.env.ENV || 'dev';
+const allowedPaths = ['/api/auth', '/api/documentation'];
+const LAN_SUBNET = ipaddr.parseCIDR("10.29.0.0/16"); 
+
+// Global access filter middleware
+app.use((req, res, next) => {
+    try {
+        const clientIp = req.ip;
+        const jobTitle = req.session?.userInfo.jobTitle;
+
+        if (!clientIp) return next();
+
+        const parsedIp = ipaddr.parse(clientIp);
+
+        const isInLan = parsedIp.match(LAN_SUBNET);
+
+        console.log(`Incoming request from IP: ${clientIp}, Job Title: ${jobTitle}, User: ${req.session?.userInfo?.displayName || 'Unknown'}, Path: ${req.path}, Is in LAN: ${isInLan}`);
+
+        // Only block ELEVE outside LAN
+        if (jobTitle === "ELEVE" && !isInLan) {
+            console.warn(`Blocked ELEVE outside LAN: ${clientIp}`);
+
+            return res
+                .status(403)
+                .sendFile(path.join(__dirname, "../front/public/errors/403.html"));
+        }
+
+        next();
+    } catch (err) {
+        console.error("IP filter error:", err.message);
+        return res.status(500).send("Internal Server Error");
+    }
+});
 
 // Set the correct host based on the environment
 try {
