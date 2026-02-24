@@ -1,0 +1,9 @@
+.env
+
+/generated/prisma
+Documentation/
+testing/
+node_modules/
+sessions/
+.github/
+.git/
