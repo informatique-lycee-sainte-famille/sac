@@ -14,6 +14,7 @@ const testRoutes = require("./routes/test");
 const o365AuthRoutes = require("./routes/o365Auth");
 const o365ProfileRoutes = require("./routes/o365Profile");
 const nfcRoutes = require("./routes/nfc");
+const edRoutes = require("./routes/ed");
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -78,6 +79,7 @@ app.use("/api", testRoutes);
 app.use("/api/auth", o365AuthRoutes);
 app.use("/api/profile", o365ProfileRoutes);
 app.use("/api/nfc", nfcRoutes);
+app.use("/api/ed", edRoutes);
 
 // Serve static files from the React frontend app
 app.use(express.static(path.join(__dirname, "../front/public"),
