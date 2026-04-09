@@ -42,7 +42,7 @@ function parseArgs() {
   return args;
 }
 
-async function buildUrl(type, params) {
+async function buildUrl(type, params = {}, options = {}) {
   const upper = type.toUpperCase();
   let pathDef = DATA_URLS.APIP[upper] || DATA_URLS.API[upper];
   if (!pathDef) throw new Error(`Type de donnée inconnu : ${type}`);
@@ -59,9 +59,18 @@ async function buildUrl(type, params) {
     pathDef = pathDef.replace(":id", id);
   }
 
+  if (pathDef.includes(":horaire")) {
+    if (!params.horaire) {
+      throw new Error("Paramètre horaire manquant pour APPEL.");
+    }
+    pathDef = pathDef.replace(":horaire", params.horaire);
+  }
+
   const base = DATA_URLS.API[upper] ? BASE_URLS.API : BASE_URLS.APIP;
   const separator = pathDef.includes("?") ? "&" : "?";
-  return `${base}${pathDef}${separator}verbe=get&v=${API_VERSION}`;
+  const verbe = options.verbe || "get";
+  console.log("verbe utilisé pour l'URL :", options);
+  return `${base}${pathDef}${separator}verbe=${verbe}&v=${API_VERSION}`;
 }
 
 function extractTokenFromOutput(output) {

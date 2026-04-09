@@ -3,7 +3,7 @@ require('dotenv').config({ path: require('path').resolve(__dirname, '../../.env'
 
 const { ECOLEDIRECTE_APIP_BASE_URL, ECOLEDIRECTE_API_BASE_URL, ECOLEDIRECTE_API_VERSION } = process.env;
 
-const API_VERSION = ECOLEDIRECTE_API_VERSION || '4.87.0';
+const API_VERSION = ECOLEDIRECTE_API_VERSION || '4.97.2';
 
 const DATA_URLS = {
   APIP: {
@@ -21,6 +21,7 @@ const DATA_URLS = {
     EDT_PROFESSEUR: '/P/:id/emploidutemps.awp',
     COURS: '/cours/:id/detailsCours.awp',
     MESSAGES: '/enseignants/:id/messages.awp?force=true&typeRecuperation=received&idClasseur=0&orderBy=date&order=desc&query=&onlyRead=&page=0&itemsPerPage=100&getAll=0',
+    APPEL: '/classes/:id/appel/horaires/:horaire.awp',
   },
   API: {
     LOGIN: '/login.awp',

@@ -7,6 +7,8 @@ const {
   outputJSON,
 } = require('../API_SAC/commons/helpers');
 
+const crypto = require('crypto');
+
 /**
  * ---------------------------------------------------------------------------
  * Helper: compute date range for EDT_CLASSE
@@ -503,6 +505,145 @@ async function getDataByType(type, args = {}) {
     }
 
     return cours;
+  }
+
+  // -------------------------------------------------------------------------
+  // APPEL (POST attendance with full eleve objects + idempotency)
+  // -------------------------------------------------------------------------
+  if (dataType === 'APPEL') {
+    if (!args.classe) {
+      throw new Error('Paramètre --classe requis pour APPEL.');
+    }
+
+    if (!args.horaire) {
+      throw new Error('Paramètre --horaire requis (ex: 13:00-14:00).');
+    }
+
+    // If eleves passed as JSON string (CLI)
+    if (typeof args.eleves === 'string') {
+      try {
+        args.eleves = JSON.parse(args.eleves);
+      } catch {
+        throw new Error('Format JSON invalide pour --eleves');
+      }
+    }
+
+    if (!Array.isArray(args.eleves) || args.eleves.length === 0) {
+      throw new Error(
+        'Paramètre --eleves requis (array d\'objets { id, isAbsent }).'
+      );
+    }
+
+    // ---------------------------------------------------------------------
+    // Fetch full class student list
+    // ---------------------------------------------------------------------
+    const elevesUrl = await buildUrl('ELEVES', { classe: args.classe });
+    const elevesRes = await fetchData(elevesUrl);
+
+    if (!(elevesRes?.code === 200 && Array.isArray(elevesRes.data?.eleves))) {
+      throw new Error('Impossible de récupérer les élèves de la classe.');
+    }
+
+    const classEleves = elevesRes.data.eleves;
+
+    // ---------------------------------------------------------------------
+    // Build full payload with full objects
+    // ---------------------------------------------------------------------
+    const normalizedInput = args.eleves
+      .filter(e => e && e.id !== undefined)
+      .map(e => ({
+        id: Number(e.id),
+        isAbsent: Boolean(e.isAbsent),
+      }));
+
+    const fullElevesPayload = [];
+
+    for (const inputEleve of normalizedInput) {
+      const fullEleve = classEleves.find(
+        e => e.id.toString() === inputEleve.id.toString()
+      );
+
+      if (!fullEleve) {
+        console.warn(
+          `Élève ID ${inputEleve.id} non trouvé dans la classe ${args.classe}`
+        );
+        continue;
+      }
+
+      fullElevesPayload.push({
+        ...fullEleve,
+        isAbsent: inputEleve.isAbsent,
+      });
+    }
+
+    if (!fullElevesPayload.length) {
+      throw new Error('Aucun élève valide à envoyer.');
+    }
+
+    // Sort for deterministic hashing
+    fullElevesPayload.sort((a, b) => a.id - b.id);
+
+    // ---------------------------------------------------------------------
+    // Idempotency protection
+    // ---------------------------------------------------------------------
+    const today = new Date().toISOString().slice(0, 10);
+    const appelKey = `${args.classe}_${args.horaire}_${today}`;
+
+    const payloadHash = crypto
+      .createHash('sha256')
+      .update(JSON.stringify(fullElevesPayload))
+      .digest('hex');
+
+    if (!global.__SENT_APPELS__) {
+      global.__SENT_APPELS__ = new Map();
+    }
+
+    const existingHash = global.__SENT_APPELS__.get(appelKey);
+
+    if (existingHash && existingHash === payloadHash) {
+      return {
+        skipped: true,
+        message: 'Appel déjà envoyé avec le même contenu.',
+        classe: args.classe,
+        horaire: args.horaire,
+        date: today,
+      };
+    }
+
+    // ---------------------------------------------------------------------
+    // Send to ED
+    // ---------------------------------------------------------------------
+    const url = await buildUrl(
+      "APPEL",
+      {
+        id: args.classe,
+        horaire: args.horaire,
+      },
+      { verbe: "post" }
+    );
+
+    const body = {
+      eleves: fullElevesPayload,
+    };
+
+    const response = await fetchData(url, body);
+
+    if (response?.code !== 200) {
+      console.log(response);
+      throw new Error('Erreur lors de l\'envoi de l\'appel.');
+    }
+
+    // Store successful hash
+    global.__SENT_APPELS__.set(appelKey, payloadHash);
+
+    return {
+      success: true,
+      classe: args.classe,
+      horaire: args.horaire,
+      date: today,
+      count: fullElevesPayload.length,
+      response: response.data || response,
+    };
   }
 
 
