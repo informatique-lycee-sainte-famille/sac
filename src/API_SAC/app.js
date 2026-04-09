@@ -29,16 +29,39 @@ app.use(session(sessionOptions));
 // Global access filter middleware
 app.use((req, res, next) => {
     try {
-        const clientIp = req.ip;
-        const jobTitle = req.session?.userInfo?.jobTitle.toUpperCase();
-        if (!clientIp) return next();
-        const parsedIp = ipaddr.parse(clientIp);
-        const isInLan = parsedIp.match(LAN_SUBNET);
-        console.log(`Incoming request from IP: ${clientIp}, Job Title: ${jobTitle}, User: ${req.session?.userInfo?.displayName || 'Unknown'}, Path: ${req.path}, Is in LAN: ${isInLan}`);
+        let clientIp = req.ip;
 
-        // Only block ELEVE outside LAN
+        // console.log(`Received request from IP: ${clientIp} for path: ${req.path}`);
+
+        const jobTitle = req.session?.userInfo?.jobTitle?.toUpperCase();
+
+        if (env === 'dev' && (clientIp === '::1' || clientIp === '127.0.0.1')) {
+            return next();
+        }
+
+        if (!clientIp || !jobTitle) return next();
+
+        let parsedIp = ipaddr.parse(clientIp);
+
+        // Convert IPv4-mapped IPv6 (::ffff:10.29.x.x) to IPv4
+        if (parsedIp.kind() === 'ipv6' && parsedIp.isIPv4MappedAddress()) {
+            parsedIp = parsedIp.toIPv4Address();
+        }
+
+        // If still IPv6 (like ::1), skip LAN check in dev
+        if (parsedIp.kind() !== LAN_SUBNET[0].kind()) {
+            console.log("IP version mismatch, skipping LAN check");
+            return next();
+        }
+
+        const isInLan = parsedIp.match(LAN_SUBNET);
+
+        console.log(
+            `IP: ${parsedIp.toString()} | Job: ${jobTitle} | LAN: ${isInLan}`
+        );
+
         if (jobTitle === "ELEVE" && !isInLan) {
-            console.warn(`Blocked ELEVE outside LAN: ${clientIp}`);
+            console.warn(`Blocked ELEVE outside LAN: ${parsedIp.toString()}`);
 
             return res
                 .status(403)
