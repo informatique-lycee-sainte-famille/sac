@@ -1,4 +1,4 @@
-fetch("https://apip.ecoledirecte.com/v3/classes/142/appel/horaires/11:00-15:00.awp?verbe=post&v=4.97.2", {
+fetch("https://apip.ecoledirecte.com/v3/classes/142/appel/horaires/11:00-15:00.awp?verbe=post&v=4.98.0", {
   method: "POST",
   headers: {
     "accept": "application/json, text/plain, */*",
