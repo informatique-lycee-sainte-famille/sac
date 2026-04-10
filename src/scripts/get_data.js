@@ -535,19 +535,7 @@ async function getDataByType(type, args = {}) {
     }
 
     // ---------------------------------------------------------------------
-    // Fetch full class student list
-    // ---------------------------------------------------------------------
-    const elevesUrl = await buildUrl('ELEVES', { classe: args.classe });
-    const elevesRes = await fetchData(elevesUrl);
-
-    if (!(elevesRes?.code === 200 && Array.isArray(elevesRes.data?.eleves))) {
-      throw new Error('Impossible de récupérer les élèves de la classe.');
-    }
-
-    const classEleves = elevesRes.data.eleves;
-
-    // ---------------------------------------------------------------------
-    // Build full payload with full objects
+    // Build payload
     // ---------------------------------------------------------------------
     const normalizedInput = args.eleves
       .filter(e => e && e.id !== undefined)
@@ -556,32 +544,12 @@ async function getDataByType(type, args = {}) {
         isAbsent: Boolean(e.isAbsent),
       }));
 
-    const fullElevesPayload = [];
-
-    for (const inputEleve of normalizedInput) {
-      const fullEleve = classEleves.find(
-        e => e.id.toString() === inputEleve.id.toString()
-      );
-
-      if (!fullEleve) {
-        console.warn(
-          `Élève ID ${inputEleve.id} non trouvé dans la classe ${args.classe}`
-        );
-        continue;
-      }
-
-      fullElevesPayload.push({
-        ...fullEleve,
-        isAbsent: inputEleve.isAbsent,
-      });
-    }
-
-    if (!fullElevesPayload.length) {
+    if (!normalizedInput.length) {
       throw new Error('Aucun élève valide à envoyer.');
     }
 
     // Sort for deterministic hashing
-    fullElevesPayload.sort((a, b) => a.id - b.id);
+    normalizedInput.sort((a, b) => a.id - b.id);
 
     // ---------------------------------------------------------------------
     // Idempotency protection
@@ -591,7 +559,7 @@ async function getDataByType(type, args = {}) {
 
     const payloadHash = crypto
       .createHash('sha256')
-      .update(JSON.stringify(fullElevesPayload))
+      .update(JSON.stringify(normalizedInput))
       .digest('hex');
 
     if (!global.__SENT_APPELS__) {
@@ -623,7 +591,7 @@ async function getDataByType(type, args = {}) {
     );
 
     const body = {
-      eleves: fullElevesPayload,
+      eleves: normalizedInput,
     };
 
     const response = await fetchData(url, body);
@@ -641,7 +609,7 @@ async function getDataByType(type, args = {}) {
       classe: args.classe,
       horaire: args.horaire,
       date: today,
-      count: fullElevesPayload.length,
+      count: normalizedInput.length,
       response: response.data || response,
     };
   }
