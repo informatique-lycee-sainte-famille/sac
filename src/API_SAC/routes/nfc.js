@@ -1,36 +1,94 @@
 // src/API_SAC/routes/nfc.js
 const express = require("express");
-const { eleveScan } = require('../workflows/eleveScan.js');
-const { enseignantScan } = require('../workflows/enseignantScan.js');
+const { prisma } = require("../commons/prisma");
+const { eleveScan } = require("../workflows/eleveScan.js");
+const { enseignantScan } = require("../workflows/enseignantScan.js");
+
 const router = express.Router();
 
 router.post("/scan", async (req, res) => {
-  const { nfc_token } = req.body;
-  const userType = req.session.userInfo.jobTitle.toLowerCase();
-  switch (userType) {
-    case "eleve":
-      // Handle student NFC token
-      console.log("Processing NFC token for student");
-      const response = await eleveScan(req, res);
-      console.log(`Salle ID for student: ${JSON.stringify(response)}`);
-      res.status(response.status).json({ message: response.text });
-      break;
-    case "personnel":
-      // Handle staff NFC token
-      console.log("Processing NFC token for staff");
-      break;
-    case "enseignant":
-    case "formateur":
-      // Handle teacher NFC token
-      console.log("Processing NFC token for teacher");
-      const teacherSalleId = await enseignantScan(req, res);
-      // console.log(`Salle ID for teacher: ${JSON.stringify(teacherSalleId)}`);
-      break;
-    default:
-      break;
+  try {
+    const { nfc_token } = req.body;
+
+    if (!nfc_token) {
+      return res.status(400).json({ error: "nfc_token manquant" });
+    }
+
+    const user = req.session.userInfo;
+    const userId = req.session.userId || null;
+    const userType = user?.jobTitle?.toLowerCase();
+
+    console.log(`📡 Scan NFC reçu: ${nfc_token}`);
+
+    // 🔍 1. Trouver la salle associée au NFC
+    const room = await prisma.room.findUnique({
+      where: { nfcUid: nfc_token }
+    });
+
+    if (!room) {
+      console.warn("❌ Salle inconnue pour ce NFC");
+      return res.status(404).json({ error: "Salle inconnue" });
+    }
+
+    console.log(`🏫 Salle détectée: ${room.code}`);
+
+    // 📝 2. Log du scan NFC
+    await prisma.nfcScan.create({
+      data: {
+        nfcUid: nfc_token,
+        userId: userId,
+        ipAddress: req.ip,
+        UserAgent: req.headers["user-agent"],
+        DeviceId: req.headers["x-device-id"] || null
+      }
+    });
+
+    // 🎯 3. Logique métier selon rôle
+    switch (userType) {
+      case "eleve":
+        console.log("👨‍🎓 Traitement élève");
+
+        const eleveResponse = await eleveScan(req, res, { room });
+
+        return res
+          .status(eleveResponse.status)
+          .json({ message: eleveResponse.text });
+
+      case "personnel":
+        console.log("🧑‍💼 Traitement staff");
+
+        // Exemple : juste confirmer scan
+        return res.json({
+          message: "Scan staff enregistré",
+          room: room.code
+        });
+
+      case "enseignant":
+      case "formateur":
+        console.log("👨‍🏫 Traitement enseignant");
+
+        const teacherResponse = await enseignantScan(req, res, { room });
+
+        return res.json({
+          message: "Scan enseignant OK",
+          room: room.code
+        });
+
+      default:
+        console.warn("❌ Type utilisateur inconnu");
+
+        return res.status(403).json({
+          error: "Type utilisateur non autorisé"
+        });
+    }
+
+  } catch (err) {
+    console.error("💥 Erreur NFC:", err);
+
+    return res.status(500).json({
+      error: "Erreur serveur NFC"
+    });
   }
-  // Here you can add logic to handle the NFC token, e.g., save it to a database or process it
-  console.log(`Received NFC token: ${nfc_token} from user: ${req.session.edProfile ? req.session.edProfile.ED.nom : 'unknown'}`);
-  // res.json({ message: "NFC token received", nfc_token });
 });
+
 module.exports = router;

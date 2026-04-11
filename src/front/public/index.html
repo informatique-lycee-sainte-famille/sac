@@ -15,8 +15,8 @@
 
 <body>
   <h1>Office 365 Login (Entra ID)</h1>
-  <button onclick="location.href='/api/auth/login'">Login</button>
-  <button onclick="location.href='/api/auth/logout'">Logout</button>
+  <button onclick="location.href='/api/o365/login'">Login</button>
+  <button onclick="location.href='/api/o365/logout'">Logout</button>
 
   <div id="info">Not loaded</div>
 
@@ -30,7 +30,7 @@
     // });
     async function loadProfile() {
       try {
-        const res = await fetch("/api/profile/me");
+        const res = await fetch("/api/o365/me");
         if (!res.ok) throw new Error("Not logged in");
         const data = await res.json();
         document.getElementById("info").innerText = JSON.stringify(data, null, 2);

@@ -1,5 +1,5 @@
 // scripts/check_token_lifetime.js
-require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
+require("../API_SAC/commons/env");
 
 const TOKEN = process.env.ECOLEDIRECTE_USER_TOKEN;
 const ECOLEDIRECTE_APIP_BASE_URL = process.env.ECOLEDIRECTE_APIP_BASE_URL;

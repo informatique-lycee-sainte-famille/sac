@@ -1,5 +1,6 @@
 generator client {
   provider = "prisma-client-js"
+  output   = "../generated/prisma"
 }
 
 datasource db {
@@ -51,8 +52,6 @@ model Institution {
 model InstitutionSettings {
   institutionId         Int      @id
   visioEnabled          Boolean  @default(false)
-  attendanceViaSchedule Boolean  @default(true)
-  attendanceViaTimegrid Boolean  @default(false)
   createdAt             DateTime @default(now())
 
   institution Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
@@ -87,7 +86,6 @@ model Class {
   createdAt     DateTime @default(now())
 
   institution Institution     @relation(fields: [institutionId], references: [id], onDelete: Cascade)
-  groups      Group[]
   students    Student[]
   teachers    ClassTeacher[]
   sessions    CourseSession[]
@@ -95,29 +93,14 @@ model Class {
   @@unique([institutionId, code])
 }
 
-model Group {
-  id      Int     @id @default(autoincrement())
-  classId Int
-  code    String
-  name    String?
-
-  class    Class     @relation(fields: [classId], references: [id], onDelete: Cascade)
-  students Student[]
-
-  @@unique([classId, code])
-}
-
 model Student {
   userId    Int       @id
   classId   Int
-  groupId   Int?
-  badgeUid  String?   @unique
   entryDate DateTime?
   exitDate  DateTime?
 
   user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   class Class  @relation(fields: [classId], references: [id])
-  group Group? @relation(fields: [groupId], references: [id])
 }
 
 model ClassTeacher {
@@ -165,6 +148,8 @@ model NfcScan {
   userId    Int?
   scannedAt DateTime @default(now())
   ipAddress String?
+  UserAgent String?
+  DeviceId String?
 
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 }

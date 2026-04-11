@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // scripts/login.js
-require("dotenv").config({ path: require("path").resolve(__dirname, "../.env") });
+require("../API_SAC/commons/env");
 const fs = require("fs");
 const path = require("path");
 

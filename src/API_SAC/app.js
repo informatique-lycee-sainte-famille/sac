@@ -1,6 +1,6 @@
 //app.js
 
-require("dotenv").config();
+require("./commons/env");
 const express = require("express");
 const bodyParser = require("body-parser");
 const path = require("path");
@@ -10,16 +10,19 @@ const ipaddr = require('ipaddr.js');
 const swaggerDocument = require('./swagger.json');
 const { sessionOptions } = require("./commons/sessionConfig");
 
-const testRoutes = require("./routes/test");
-const o365AuthRoutes = require("./routes/o365Auth");
-const o365ProfileRoutes = require("./routes/o365Profile");
+const adminRoutes = require("./routes/admin");
+const attendanceRoutes = require("./routes/attendance");
+const classesRoutes = require("./routes/classes");
 const nfcRoutes = require("./routes/nfc");
-const edRoutes = require("./routes/ed");
+const o365Routes = require("./routes/o365");
+const sessionsRoutes = require("./routes/sessions");
+const systemRoutes = require("./routes/system");
+const userRoutes = require("./routes/user");
 
 const app = express();
 const port = process.env.PORT || 3000;
 const env = process.env.ENV || 'dev';
-const allowedPaths = ['/api/auth', '/api/documentation'];
+const allowedPaths = ['/api/o365', '/api/documentation'];
 const LAN_SUBNET = ipaddr.parseCIDR(process.env.LAN_SUBNET); 
 
 app.set('trust proxy', true);
@@ -98,11 +101,14 @@ try {
 
 // mount routes
 
-app.use("/api", testRoutes);
-app.use("/api/auth", o365AuthRoutes);
-app.use("/api/profile", o365ProfileRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/attendance", attendanceRoutes);
+app.use("/api/classes", classesRoutes);
 app.use("/api/nfc", nfcRoutes);
-app.use("/api/ed", edRoutes);
+app.use("/api/o365", o365Routes);
+app.use("/api/sessions", sessionsRoutes);
+app.use("/api/system", systemRoutes);
+app.use("/api/user", userRoutes);
 
 // Serve static files from the React frontend app
 app.use(express.static(path.join(__dirname, "../front/public"),
