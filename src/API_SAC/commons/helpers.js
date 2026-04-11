@@ -1,8 +1,5 @@
 const { DATA_URLS, BASE_URLS, API_VERSION } = require("./constants");
-require("dotenv").config({
-  path: require("path").resolve(__dirname, "../../src/.env"),
-  quiet: true,
-});
+require("./env");
 
 const fs = require("fs");
 const path = require("path");
@@ -69,7 +66,6 @@ async function buildUrl(type, params = {}, options = {}) {
   const base = DATA_URLS.API[upper] ? BASE_URLS.API : BASE_URLS.APIP;
   const separator = pathDef.includes("?") ? "&" : "?";
   const verbe = options.verbe || "get";
-  console.log("verbe utilisé pour l'URL :", options);
   return `${base}${pathDef}${separator}verbe=${verbe}&v=${API_VERSION}`;
 }
 

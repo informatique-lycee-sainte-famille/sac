@@ -1,6 +1,5 @@
 // commons/constants.js
-require('dotenv').config({ path: require('path').resolve(__dirname, '../../.env'), quiet: true });
-
+require("./env");
 const { ECOLEDIRECTE_APIP_BASE_URL, ECOLEDIRECTE_API_BASE_URL, ECOLEDIRECTE_API_VERSION } = process.env;
 
 const API_VERSION = ECOLEDIRECTE_API_VERSION || '4.98.0';

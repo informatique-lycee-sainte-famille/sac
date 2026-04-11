@@ -1,8 +1,8 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "SAC – Saintonge Access Control API",
-    "description": "API de gestion de présence par NFC intégrée à Office365 / Entra ID",
+    "title": "SAC – API Gestion Présences NFC",
+    "description": "API REST pour la gestion des présences via NFC (élèves, professeurs, administration)",
     "version": "2.0.0"
   },
   "host": "localhost:3000",
@@ -15,21 +15,20 @@
     "oauth2": {
       "type": "oauth2",
       "flow": "implicit",
-      "authorizationUrl": "/api/auth/login",
+      "authorizationUrl": "/api/o365/login",
       "scopes": {
-        "user": "Utilisateur authentifié via Office365"
+        "user": "Utilisateur authentifié"
       }
     }
   },
 
   "paths": {
-    "/test": {
+    "/system/test": {
       "get": {
-        "summary": "Healthcheck API",
-        "operationId": "testApi",
+        "summary": "Healthcheck",
         "responses": {
           "200": {
-            "description": "API is running",
+            "description": "API OK",
             "schema": { "$ref": "#/definitions/MessageResponse" }
           }
         },
@@ -37,63 +36,60 @@
       }
     },
 
-    "/auth/login": {
+    "/o365/me": {
       "get": {
-        "summary": "Office365 login redirect",
-        "operationId": "loginO365",
-        "responses": {
-          "302": { "description": "Redirect to Microsoft login page" }
-        },
-        "tags": ["Auth"]
-      }
-    },
-
-    "/auth/redirect": {
-      "get": {
-        "summary": "Office365 OAuth callback",
-        "operationId": "redirectO365",
-        "responses": {
-          "302": { "description": "Session created, redirect to frontend" },
-          "500": { "description": "Login failed" }
-        },
-        "tags": ["Auth"]
-      }
-    },
-
-    "/auth/logout": {
-      "get": {
-        "summary": "Logout current user",
-        "operationId": "logout",
-        "responses": {
-          "302": { "description": "Session destroyed" }
-        },
-        "tags": ["Auth"]
-      }
-    },
-
-    "/profile/me": {
-      "get": {
-        "summary": "Get current user profile",
-        "operationId": "getProfile",
+        "summary": "Profil utilisateur connecté",
         "security": [{ "oauth2": ["user"] }],
         "responses": {
           "200": {
-            "description": "User profile",
-            "schema": { "$ref": "#/definitions/UserProfile" }
-          },
-          "401": {
-            "description": "Not logged in"
+            "schema": { "$ref": "#/definitions/User" }
           }
         },
-        "tags": ["Profile"]
+        "tags": ["User"]
+      }
+    },
+
+    "/sessions/today": {
+      "get": {
+        "summary": "Sessions du jour pour l'utilisateur",
+        "security": [{ "oauth2": ["user"] }],
+        "responses": {
+          "200": {
+            "schema": {
+              "type": "array",
+              "items": { "$ref": "#/definitions/CourseSession" }
+            }
+          }
+        },
+        "tags": ["Sessions"]
+      }
+    },
+
+    "/sessions/{sessionId}": {
+      "get": {
+        "summary": "Détail d'une session",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "security": [{ "oauth2": ["user"] }],
+        "responses": {
+          "200": {
+            "schema": { "$ref": "#/definitions/CourseSession" }
+          }
+        },
+        "tags": ["Sessions"]
       }
     },
 
     "/nfc/scan": {
       "post": {
-        "summary": "Scan NFC badge",
-        "description": "Validates attendance depending on user role (student / teacher / staff)",
-        "operationId": "scanNfc",
+        "summary": "Scanner NFC (élève ou prof)",
+        "description": "Valide la présence automatiquement selon la session en cours",
         "security": [{ "oauth2": ["user"] }],
         "parameters": [
           {
@@ -105,15 +101,9 @@
         ],
         "responses": {
           "200": {
-            "description": "Scan accepted",
-            "schema": { "$ref": "#/definitions/MessageResponse" }
+            "schema": { "$ref": "#/definitions/ScanResponse" }
           },
-          "403": {
-            "description": "Scan refused"
-          },
-          "400": {
-            "description": "Invalid request"
-          }
+          "403": { "description": "Refusé" }
         },
         "tags": ["NFC"]
       }
@@ -121,9 +111,7 @@
 
     "/attendance/session/{sessionId}": {
       "get": {
-        "summary": "Get attendance list for a course session",
-        "operationId": "getAttendanceForSession",
-        "x-status": "planned",
+        "summary": "Liste des présences (prof)",
         "security": [{ "oauth2": ["user"] }],
         "parameters": [
           {
@@ -135,7 +123,6 @@
         ],
         "responses": {
           "200": {
-            "description": "Attendance list",
             "schema": {
               "type": "array",
               "items": { "$ref": "#/definitions/AttendanceRecord" }
@@ -146,43 +133,348 @@
       }
     },
 
-    "/attendance/student/{studentId}": {
-      "get": {
-        "summary": "Get attendance history for a student",
-        "operationId": "getAttendanceForStudent",
-        "x-status": "planned",
+    "/attendance/session/{sessionId}/validate": {
+      "post": {
+        "summary": "Validation manuelle des présences (prof)",
+        "description": "Permet au prof de corriger les absences",
         "security": [{ "oauth2": ["user"] }],
         "parameters": [
           {
-            "name": "studentId",
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "in": "body",
+            "name": "body",
+            "schema": {
+              "type": "array",
+              "items": { "$ref": "#/definitions/AttendanceUpdate" }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "schema": { "$ref": "#/definitions/MessageResponse" }
+          }
+        },
+        "tags": ["Attendance"]
+      }
+    },
+
+    "/attendance/me": {
+      "get": {
+        "summary": "Historique personnel",
+        "security": [{ "oauth2": ["user"] }],
+        "responses": {
+          "200": {
+            "schema": {
+              "type": "array",
+              "items": { "$ref": "#/definitions/AttendanceRecord" }
+            }
+          }
+        },
+        "tags": ["Attendance"]
+      }
+    },
+
+    "/classes/me": {
+      "get": {
+        "summary": "Classe de l'élève ou classes du prof",
+        "security": [{ "oauth2": ["user"] }],
+        "responses": {
+          "200": {
+            "schema": {
+              "type": "array",
+              "items": { "$ref": "#/definitions/Class" }
+            }
+          }
+        },
+        "tags": ["Classes"]
+      }
+    },
+
+    "/admin/stats": {
+      "get": {
+        "summary": "Statistiques globales",
+        "security": [{ "oauth2": ["user"] }],
+        "responses": {
+          "200": {
+            "schema": { "$ref": "#/definitions/Stats" }
+          }
+        },
+        "tags": ["Admin"]
+      }
+    },
+
+    "/admin/users": {
+      "get": {
+        "summary": "Lister les utilisateurs",
+        "security": [{ "oauth2": ["user"] }],
+        "parameters": [
+          {
+            "name": "role",
+            "in": "query",
+            "type": "string",
+            "enum": ["student", "teacher", "staff"]
+          }
+        ],
+        "responses": {
+          "200": {
+            "schema": {
+              "type": "array",
+              "items": { "$ref": "#/definitions/User" }
+            }
+          }
+        },
+        "tags": ["Admin"]
+      }
+    },
+
+    "/admin/users/{userId}/role": {
+      "patch": {
+        "summary": "Modifier le rôle d’un utilisateur",
+        "security": [{ "oauth2": ["user"] }],
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "in": "body",
+            "name": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "role": {
+                  "type": "string",
+                  "enum": ["student", "teacher", "staff"]
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": { "$ref": "#/definitions/MessageResponse" }
+        },
+        "tags": ["Admin"]
+      }
+    },
+
+    "/admin/sessions": {
+      "post": {
+        "summary": "Créer une session de cours",
+        "security": [{ "oauth2": ["user"] }],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "schema": { "$ref": "#/definitions/CourseSession" }
+          }
+        ],
+        "responses": {
+          "200": { "$ref": "#/definitions/CourseSession" }
+        },
+        "tags": ["Admin"]
+      }
+    },
+
+    "/admin/sessions/{sessionId}": {
+      "patch": {
+        "summary": "Modifier une session (heure, salle, prof)",
+        "security": [{ "oauth2": ["user"] }],
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "in": "body",
+            "name": "body",
+            "schema": { "$ref": "#/definitions/CourseSession" }
+          }
+        ],
+        "responses": {
+          "200": { "$ref": "#/definitions/CourseSession" }
+        },
+        "tags": ["Admin"]
+      },
+
+      "delete": {
+        "summary": "Supprimer une session",
+        "security": [{ "oauth2": ["user"] }],
+        "parameters": [
+          {
+            "name": "sessionId",
             "in": "path",
             "required": true,
             "type": "integer"
           }
         ],
         "responses": {
-          "200": {
-            "description": "Attendance history",
-            "schema": {
-              "type": "array",
-              "items": { "$ref": "#/definitions/AttendanceRecord" }
-            }
-          }
+          "200": { "$ref": "#/definitions/MessageResponse" }
         },
-        "tags": ["Attendance"]
+        "tags": ["Admin"]
       }
     },
 
-    "/admin/stats/attendance": {
+    "/admin/attendance/override": {
+      "post": {
+        "summary": "Forcer une présence (correction manuelle)",
+        "description": "Corrige une erreur de scan ou ajoute une présence manquante",
+        "security": [{ "oauth2": ["user"] }],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "schema": {
+              "type": "object",
+              "required": ["sessionId", "studentId", "status"],
+              "properties": {
+                "sessionId": { "type": "integer" },
+                "studentId": { "type": "integer" },
+                "status": {
+                  "type": "string",
+                  "enum": ["present", "late", "absent", "excused"]
+                },
+                "reason": { "type": "string" }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": { "$ref": "#/definitions/MessageResponse" }
+        },
+        "tags": ["Admin"]
+      }
+    },
+
+    "/admin/attendance/reset/{sessionId}": {
+      "post": {
+        "summary": "Réinitialiser toutes les présences d'une session",
+        "security": [{ "oauth2": ["user"] }],
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": { "$ref": "#/definitions/MessageResponse" }
+        },
+        "tags": ["Admin"]
+      }
+    },
+
+    "/admin/nfc/logs": {
       "get": {
-        "summary": "Global attendance statistics",
-        "operationId": "getAttendanceStats",
-        "x-status": "planned",
+        "summary": "Logs des scans NFC",
+        "security": [{ "oauth2": ["user"] }],
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "query",
+            "type": "integer"
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "type": "string",
+            "format": "date-time"
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Attendance statistics",
-            "schema": { "type": "object" }
+            "schema": {
+              "type": "array",
+              "items": { "$ref": "#/definitions/NfcScan" }
+            }
           }
+        },
+        "tags": ["Admin"]
+      }
+    },
+
+    "/admin/nfc/reassign": {
+      "post": {
+        "summary": "Associer un badge NFC à un utilisateur",
+        "security": [{ "oauth2": ["user"] }],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "nfcUid": { "type": "string" },
+                "userId": { "type": "integer" }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": { "$ref": "#/definitions/MessageResponse" }
+        },
+        "tags": ["Admin"]
+      }
+    },
+
+    "/admin/classes/{classId}/students": {
+      "post": {
+        "summary": "Ajouter un élève à une classe",
+        "security": [{ "oauth2": ["user"] }],
+        "parameters": [
+          {
+            "name": "classId",
+            "in": "path",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "in": "body",
+            "name": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "userId": { "type": "integer" }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": { "$ref": "#/definitions/MessageResponse" }
+        },
+        "tags": ["Admin"]
+      }
+    },
+
+    "/admin/classes/{classId}/students/{userId}": {
+      "delete": {
+        "summary": "Retirer un élève d’une classe",
+        "security": [{ "oauth2": ["user"] }],
+        "parameters": [
+          {
+            "name": "classId",
+            "in": "path",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "type": "integer"
+          }
+        ],
+        "responses": {
+          "200": { "$ref": "#/definitions/MessageResponse" }
         },
         "tags": ["Admin"]
       }
@@ -197,27 +489,43 @@
       }
     },
 
-    "NfcScanRequest": {
+    "User": {
       "type": "object",
-      "required": ["nfc_token"],
       "properties": {
-        "nfc_token": {
+        "id": { "type": "integer" },
+        "email": { "type": "string" },
+        "firstName": { "type": "string" },
+        "lastName": { "type": "string" },
+        "role": {
           "type": "string",
-          "description": "UID NFC de la salle ou du badge"
+          "enum": ["student", "teacher", "staff"]
         }
       }
     },
 
-    "UserProfile": {
+    "Class": {
       "type": "object",
       "properties": {
-        "id": { "type": "string" },
-        "email": { "type": "string" },
-        "jobTitle": { "type": "string" },
-        "displayName": { "type": "string" },
-        "edProfile": {
-          "type": "object",
-          "description": "Profil issu d'EcoleDirecte (si applicable)"
+        "id": { "type": "integer" },
+        "code": { "type": "string" },
+        "name": { "type": "string" }
+      }
+    },
+
+    "CourseSession": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "integer" },
+        "classId": { "type": "integer" },
+        "roomId": { "type": "integer" },
+        "teacherId": { "type": "integer" },
+        "startTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "endTime": {
+          "type": "string",
+          "format": "date-time"
         }
       }
     },
@@ -236,15 +544,71 @@
           "format": "date-time"
         }
       }
+    },
+
+    "AttendanceUpdate": {
+      "type": "object",
+      "properties": {
+        "studentId": { "type": "integer" },
+        "status": {
+          "type": "string",
+          "enum": ["present", "late", "absent", "excused"]
+        }
+      }
+    },
+
+    "NfcScan": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "integer" },
+        "nfcUid": { "type": "string" },
+        "userId": { "type": "integer" },
+        "scannedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "ipAddress": { "type": "string" }
+      }
+    },
+
+    "NfcScanRequest": {
+      "type": "object",
+      "required": ["nfcUid"],
+      "properties": {
+        "nfcUid": {
+          "type": "string",
+          "description": "UID NFC (salle)"
+        }
+      }
+    },
+
+    "ScanResponse": {
+      "type": "object",
+      "properties": {
+        "status": { "type": "string" },
+        "sessionId": { "type": "integer" },
+        "message": { "type": "string" }
+      }
+    },
+
+    "Stats": {
+      "type": "object",
+      "properties": {
+        "totalStudents": { "type": "integer" },
+        "present": { "type": "integer" },
+        "absent": { "type": "integer" },
+        "late": { "type": "integer" }
+      }
     }
   },
 
   "tags": [
-    { "name": "System", "description": "System & health endpoints" },
-    { "name": "Auth", "description": "Office365 authentication" },
-    { "name": "Profile", "description": "User profile" },
-    { "name": "NFC", "description": "NFC attendance validation" },
-    { "name": "Attendance", "description": "Attendance data" },
-    { "name": "Admin", "description": "Administration & statistics" }
+    { "name": "System" },
+    { "name": "User" },
+    { "name": "Sessions" },
+    { "name": "NFC" },
+    { "name": "Attendance" },
+    { "name": "Classes" },
+    { "name": "Admin" }
   ]
 }

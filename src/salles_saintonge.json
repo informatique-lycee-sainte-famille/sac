@@ -1,0 +1,578 @@
+[
+  {
+    "id": 82,
+    "code": "-VISIO-",
+    "libelle": " Visioconférence en Distanciel",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 32,
+    "code": "101",
+    "libelle": "101",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 26,
+    "code": "105HG",
+    "libelle": "105 (HG)",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 15,
+    "code": "106",
+    "libelle": "106",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 55,
+    "code": "110",
+    "libelle": "110",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 50,
+    "code": "111",
+    "libelle": "111",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 36,
+    "code": "120",
+    "libelle": "120",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 27,
+    "code": "122",
+    "libelle": "122",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 13,
+    "code": "123",
+    "libelle": "123",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 22,
+    "code": "124",
+    "libelle": "124",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 8,
+    "code": "126",
+    "libelle": "126",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 76,
+    "code": "127",
+    "libelle": "127",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 2,
+    "code": "128",
+    "libelle": "128",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 6,
+    "code": "131ITEC",
+    "libelle": "131 (ITEC)",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 75,
+    "code": "132",
+    "libelle": "132",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 10,
+    "code": "132TC",
+    "libelle": "132 (TC)",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 9,
+    "code": "133EE",
+    "libelle": "133 (EE)",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 40,
+    "code": "134AC",
+    "libelle": "134(AC)",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 5,
+    "code": "135SIN",
+    "libelle": "135 (SIN)",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 78,
+    "code": "1ERCC",
+    "libelle": "<1ERCC>",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 108,
+    "code": "1ERCC131ITEC",
+    "libelle": "<1ERCC>131 (ITEC)",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 106,
+    "code": "1ERCC133EE",
+    "libelle": "<1ERCC>133 (EE)",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 97,
+    "code": "1ERCC134AC",
+    "libelle": "<1ERCC>134 (AC)",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 102,
+    "code": "1ERCC135SIN",
+    "libelle": "<1ERCC>135 (SIN)",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 43,
+    "code": "200AA",
+    "libelle": "200 (AA)",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 30,
+    "code": "201",
+    "libelle": "201",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 25,
+    "code": "202",
+    "libelle": "202",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 63,
+    "code": "202AA",
+    "libelle": "202 (AA)",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 54,
+    "code": "203I",
+    "libelle": "203 (I)",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 74,
+    "code": "203INFO",
+    "libelle": "203 INFORMATIQUE",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 35,
+    "code": "204",
+    "libelle": "204",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 24,
+    "code": "205L",
+    "libelle": "205 (L)",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 14,
+    "code": "206",
+    "libelle": "206",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 18,
+    "code": "207IB",
+    "libelle": "207 (IB)",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 41,
+    "code": "208",
+    "libelle": "208",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 29,
+    "code": "220",
+    "libelle": "220",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 20,
+    "code": "221L",
+    "libelle": "221 (L)",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 38,
+    "code": "223",
+    "libelle": "223",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 71,
+    "code": "225",
+    "libelle": "225",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 23,
+    "code": "232L",
+    "libelle": "232 (L)",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 48,
+    "code": "233",
+    "libelle": "233",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 51,
+    "code": "233AA",
+    "libelle": "233 (AA)",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 44,
+    "code": "234",
+    "libelle": "234",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 49,
+    "code": "235",
+    "libelle": "235",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 57,
+    "code": "32",
+    "libelle": "32",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 53,
+    "code": "AMPHI",
+    "libelle": "Amphi",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 105,
+    "code": "BANALISEES120",
+    "libelle": "<BANALISEES>120",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 96,
+    "code": "BANALISEES202AA",
+    "libelle": "<BANALISEES>202 (AA)",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 99,
+    "code": "BANALISEES2043PM",
+    "libelle": "<BANALISEES>204 (3PM)",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 104,
+    "code": "BANALISEES208",
+    "libelle": "<BANALISEES>208",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 81,
+    "code": "CDI",
+    "libelle": "CDI",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 114,
+    "code": "EPS1",
+    "libelle": "EPS1",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 110,
+    "code": "EPS2",
+    "libelle": "EPS2",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 93,
+    "code": "FABLAB",
+    "libelle": "<FABLAB>",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 109,
+    "code": "FABLAB132AC",
+    "libelle": "<FABLAB>132 AC",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 66,
+    "code": "FABLAB132ITEC",
+    "libelle": "<FABLAB>132 ITEC",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 87,
+    "code": "IBATIB207IB",
+    "libelle": "<Info BAT (IB)>207 (IB)",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 85,
+    "code": "IBATIB220IB",
+    "libelle": "<Info BAT (IB)>220 (IB)",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 88,
+    "code": "IBATIB233IB",
+    "libelle": "<Info BAT (IB)>233 (IB)",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 73,
+    "code": "INFOCDI",
+    "libelle": "INFORMATIQUE CDI",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 45,
+    "code": "LT",
+    "libelle": "LaboTopo",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 47,
+    "code": "LT1",
+    "libelle": "LaboTisec1",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 19,
+    "code": "LT2",
+    "libelle": "LaboTisec2",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 42,
+    "code": "LT3",
+    "libelle": "LaboTisec3",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 16,
+    "code": "MADO",
+    "libelle": "Mado",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 52,
+    "code": "MARGAU",
+    "libelle": "Margau",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 21,
+    "code": "P26",
+    "libelle": "P26",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 17,
+    "code": "P27",
+    "libelle": "P27",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 7,
+    "code": "P28",
+    "libelle": "P28",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 33,
+    "code": "S1",
+    "libelle": "S1",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 39,
+    "code": "S2",
+    "libelle": "S2",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  },
+  {
+    "id": 67,
+    "code": "VS",
+    "libelle": "VISIO DISTANCIEL",
+    "localisation": "",
+    "idLocalisation": "",
+    "isReservable": false
+  }
+]
