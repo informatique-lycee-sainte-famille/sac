@@ -11,6 +11,7 @@ enum UserRole {
   student
   teacher
   staff
+  admin
 }
 
 enum AttendanceStatus {
@@ -152,4 +153,14 @@ model NfcScan {
   DeviceId String?
 
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+model BrowserSession {
+  id        String   @id @default(uuid())
+  sid       String   @unique
+  data      Json
+  expiresAt DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

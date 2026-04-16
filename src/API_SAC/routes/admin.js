@@ -1,5 +1,7 @@
 const express = require("express");
 const { prisma } = require("../commons/prisma");
+const require_access = require("../middlewares/require_access");
+const { ROLES } = require("../commons/constants");
 const router = express.Router();
 
 // USERS
@@ -83,6 +85,12 @@ router.get("/nfc/logs", async (req, res) => {
   });
 
   res.json(logs);
+});
+
+// INSTITUTION INFO
+router.get("/institution", require_access({ role: ROLES.STUDENT }), async (req, res) => {
+  const institution = await prisma.institution.findFirst();
+  res.json(institution);
 });
 
 module.exports = router;
