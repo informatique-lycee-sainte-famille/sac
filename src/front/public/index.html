@@ -15,9 +15,9 @@
 
 <body>
   <h1>Office 365 Login (Entra ID)</h1>
-  <button onclick="location.href='/api/o365/login'">Login</button>
-  <button onclick="location.href='/api/o365/logout'">Logout</button>
-
+  <button onclick="location.href='/api/o365/login'" id="login-btn">Login</button>
+  <button onclick="location.href='/api/o365/logout'" id="logout-btn">Logout</button>
+  <img src="" alt="Avatar" id="avatar" style="width: 50px; height: 50px; border-radius: 50%; display: none;" />
   <div id="info">Not loaded</div>
 
   <script>
@@ -34,8 +34,13 @@
         if (!res.ok) throw new Error("Not logged in");
         const data = await res.json();
         document.getElementById("info").innerText = JSON.stringify(data, null, 2);
+        document.getElementById("logout-btn").style.display = "block";
+        document.getElementById("login-btn").style.display = "none";
+        document.getElementById("avatar").src = data.avatar;
+        document.getElementById("avatar").style.display = "block";
       } catch {
         document.getElementById("info").innerText = "Not logged in";
+        document.getElementById("logout-btn").style.display = "none";
       }
     }
     async function sendNfc() {

@@ -88,7 +88,7 @@ router.get("/nfc/logs", async (req, res) => {
 });
 
 // INSTITUTION INFO
-router.get("/institution", require_access({ minRole: ROLES.STUDENT }), async (req, res) => {
+router.get("/institution", require_access({ minRole: ROLES.ADMIN }), async (req, res) => {
   const institution = await prisma.institution.findFirst();
   res.json(institution);
 });

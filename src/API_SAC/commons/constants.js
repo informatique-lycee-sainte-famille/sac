@@ -49,4 +49,48 @@ const ROLE_PRIORITY = {
   [ROLES.ADMIN]: 4,
 };
 
-module.exports = { DATA_URLS, BASE_URLS, API_VERSION, API_VERSION_PARAM, ROLES, ROLE_PRIORITY };
+// 🔑 Azure Groups → App Roles
+const GROUP_TO_ROLE = {
+  SAC_ELEVES: ROLES.STUDENT,
+  SAC_PROFESSEURS: ROLES.TEACHER,
+  SAC_FORMATEURS: ROLES.TEACHER,
+  SAC_PERSONNELS: ROLES.STAFF,
+  SAC_ADMINS: ROLES.ADMIN,
+};
+
+// 🔑 MAIN FUNCTION (used everywhere)
+function getHighestRoleFromGroups(groups) {
+  if (!groups || groups.length === 0) return ROLES.STUDENT;
+
+  let highestRole = ROLES.STUDENT;
+
+  for (const group of groups) {
+    const role = GROUP_TO_ROLE[group.name];
+
+    if (!role) continue;
+
+    if (ROLE_PRIORITY[role] > ROLE_PRIORITY[highestRole]) {
+      highestRole = role;
+    }
+  }
+
+  return highestRole;
+}
+
+// 🔑 Prisma mapping (only for DB)
+function mapToPrismaRole(role) {
+  switch (role) {
+    case ROLES.ADMIN:
+      return "admin";
+    case ROLES.STAFF:
+      return "staff";
+    case ROLES.TEACHER:
+      return "teacher";
+    case ROLES.STUDENT:
+    default:
+      return "student";
+  }
+}
+
+
+module.exports = { DATA_URLS, BASE_URLS, API_VERSION, API_VERSION_PARAM, ROLES, ROLE_PRIORITY, GROUP_TO_ROLE, getHighestRoleFromGroups, mapToPrismaRole };
