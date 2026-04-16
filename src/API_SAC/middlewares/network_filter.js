@@ -10,7 +10,7 @@ module.exports = function ipFilter({ env, LAN_SUBNET }) {
 
       // Allow localhost in dev
       if (env === "dev" && (clientIp === "::1" || clientIp === "127.0.0.1")) {
-        console.log("Allowing localhost access in dev mode");
+        // console.log("Allowing localhost access in dev mode");
         return next();
       }
 

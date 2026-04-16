@@ -15,6 +15,7 @@ const { sessionOptions } = require("./commons/sessionConfig");
 const adminRoutes = require("./routes/admin");
 const attendanceRoutes = require("./routes/attendance");
 const classesRoutes = require("./routes/classes");
+const documentationRoutes = require("./routes/documentation");
 const nfcRoutes = require("./routes/nfc");
 const o365Routes = require("./routes/o365");
 const sessionsRoutes = require("./routes/sessions");
@@ -50,27 +51,6 @@ app.use(
   })
 );
 
-// Set the correct host based on the environment
-try {
-    if (env === 'dev') {
-        swaggerDocument.host = `localhost:${port}`;
-        swaggerDocument.schemes = ['http'];
-    } else if (env === 'prod') {
-        swaggerDocument.host = process.env.EXTERNAL_DOMAIN.split('://')[1];
-        swaggerDocument.schemes = [process.env.EXTERNAL_DOMAIN.split('://')[0]];
-    }
-} catch (error) {
-    console.error("Erreur lors de la configuration de Swagger:", error.message);
-}
-
-//// DOCS ROUTE ////
-try {
-    app.use('/api/documentation', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
-} catch (error) {
-    console.error("Erreur lors de la configuration de Swagger UI:", error.message);
-}
-//// DOCS ROUTE ////
-
 // mount routes
 app.use("/api/admin", adminRoutes);
 app.use("/api/attendance", attendanceRoutes);
@@ -80,6 +60,14 @@ app.use("/api/nfc", nfcRoutes);
 app.use("/api/sessions", sessionsRoutes);
 app.use("/api/system", systemRoutes);
 app.use("/api/user", userRoutes);
+app.use(
+  "/api/documentation",
+  documentationRoutes({
+    swaggerDocument,
+    env,
+    port,
+  })
+);
 
 
 // 🧹 Cleanup expired sessions every hour

@@ -3,13 +3,13 @@ const { ROLE_PRIORITY } = require("../commons/constants");
 module.exports = function require_access({ role, minRole } = {}) {
   return (req, res, next) => {
     try {
-      const user = req.session?.userInfo;
+      const user = req.session?.user;
 
       if (!user) {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
-      const userRole = user.jobTitle?.toUpperCase();
+      const userRole = user.roleConst;
 
       if (!userRole) {
         return res.status(403).json({ message: "No role assigned" });
@@ -38,11 +38,9 @@ module.exports = function require_access({ role, minRole } = {}) {
         }
         return next();
       }
-
       // No restriction
       return next();
     } catch (err) {
-      console.error("Access middleware error:", err.message);
       res.status(500).send("Internal Server Error");
     }
   };

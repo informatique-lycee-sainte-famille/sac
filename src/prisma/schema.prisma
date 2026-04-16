@@ -28,6 +28,7 @@ model User {
   email      String?  @unique
   firstName  String?
   lastName   String?
+  avatar String? // base64 image
   createdAt  DateTime @default(now())
 
   student       Student?

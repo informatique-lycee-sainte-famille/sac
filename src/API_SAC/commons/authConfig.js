@@ -7,5 +7,5 @@ module.exports = {
     clientSecret: process.env.AZURE_CLIENT_SECRET,
   },
   redirectUri: process.env.AZURE_REDIRECT_URI || "http://localhost:3000/api/o365/redirect",
-  scopes: ["User.Read", "email", "openid", "profile"],
+  scopes: ["User.Read", "email", "openid", "profile", "Group.Read.All"],
 };
