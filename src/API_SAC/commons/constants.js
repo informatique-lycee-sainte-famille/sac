@@ -34,4 +34,19 @@ const BASE_URLS = {
 
 const API_VERSION_PARAM = `?verbe=get&v=${API_VERSION}`;
 
-module.exports = { DATA_URLS, BASE_URLS, API_VERSION, API_VERSION_PARAM };
+const ROLES = {
+  STUDENT: "ELEVE",
+  TEACHER: "PROFESSEUR",
+  STAFF: "PERSONNEL",
+  ADMIN: "ADMIN",
+};
+
+// Priority (higher = more privileges)
+const ROLE_PRIORITY = {
+  [ROLES.STUDENT]: 1,
+  [ROLES.TEACHER]: 2,
+  [ROLES.STAFF]: 3,
+  [ROLES.ADMIN]: 4,
+};
+
+module.exports = { DATA_URLS, BASE_URLS, API_VERSION, API_VERSION_PARAM, ROLES, ROLE_PRIORITY };

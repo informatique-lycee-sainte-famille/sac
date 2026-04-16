@@ -1,6 +1,8 @@
 //app.js
 
 require("./commons/env");
+const networkFilter = require("./middlewares/network_filter");
+const { prisma } = require("./commons/prisma");
 const express = require("express");
 const bodyParser = require("body-parser");
 const path = require("path");
@@ -29,54 +31,24 @@ app.set('trust proxy', true);
 app.use(bodyParser.json());
 app.use(session(sessionOptions));
 
+const require_access = require("./middlewares/require_access");
+const { ROLES } = require("./commons/constants");
+
+app.use("/api/o365", o365Routes);
+// Serve static files from the React frontend app
+app.use(express.static(path.join(__dirname, "../front/public"),
+  { extensions: ['html', 'json', 'png', 'svg', 'js', 'css'], dotfiles: 'allow' }));
+
+// Default: at least logged-in user (student)
+app.use(require_access({ minRole: ROLES.STUDENT }));
+
 // Global access filter middleware
-app.use((req, res, next) => {
-    try {
-        let clientIp = req.ip;
-
-        // console.log(`Received request from IP: ${clientIp} for path: ${req.path}`);
-
-        const jobTitle = req.session?.userInfo?.jobTitle?.toUpperCase();
-
-        if (env === 'dev' && (clientIp === '::1' || clientIp === '127.0.0.1')) {
-            return next();
-        }
-
-        if (!clientIp || !jobTitle) return next();
-
-        let parsedIp = ipaddr.parse(clientIp);
-
-        // Convert IPv4-mapped IPv6 (::ffff:10.29.x.x) to IPv4
-        if (parsedIp.kind() === 'ipv6' && parsedIp.isIPv4MappedAddress()) {
-            parsedIp = parsedIp.toIPv4Address();
-        }
-
-        // If still IPv6 (like ::1), skip LAN check in dev
-        if (parsedIp.kind() !== LAN_SUBNET[0].kind()) {
-            console.log("IP version mismatch, skipping LAN check");
-            return next();
-        }
-
-        const isInLan = parsedIp.match(LAN_SUBNET);
-
-        console.log(
-            `IP: ${parsedIp.toString()} | Job: ${jobTitle} | LAN: ${isInLan}`
-        );
-
-        if (jobTitle === "ELEVE" && !isInLan) {
-            console.warn(`Blocked ELEVE outside LAN: ${parsedIp.toString()}`);
-
-            return res
-                .status(403)
-                .sendFile(path.join(__dirname, "../front/public/errors/403.html"));
-        }
-
-        next();
-    } catch (err) {
-        console.error("IP filter error:", err.message);
-        return res.status(500).send("Internal Server Error");
-    }
-});
+app.use(
+  networkFilter({
+    env,
+    LAN_SUBNET,
+  })
+);
 
 // Set the correct host based on the environment
 try {
@@ -100,19 +72,30 @@ try {
 //// DOCS ROUTE ////
 
 // mount routes
-
 app.use("/api/admin", adminRoutes);
 app.use("/api/attendance", attendanceRoutes);
 app.use("/api/classes", classesRoutes);
 app.use("/api/nfc", nfcRoutes);
-app.use("/api/o365", o365Routes);
+
 app.use("/api/sessions", sessionsRoutes);
 app.use("/api/system", systemRoutes);
 app.use("/api/user", userRoutes);
 
-// Serve static files from the React frontend app
-app.use(express.static(path.join(__dirname, "../front/public"),
-  { extensions: ['html', 'json', 'png', 'svg', 'js', 'css'], dotfiles: 'allow' }));
+
+// 🧹 Cleanup expired sessions every hour
+setInterval(async () => {
+  try {
+    await prisma.browserSession.deleteMany({
+      where: {
+        expiresAt: { lt: new Date() },
+      },
+    });
+
+    console.log("🧹 Expired sessions cleaned");
+  } catch (err) {
+    console.error("Session cleanup error:", err.message);
+  }
+}, 1000 * 60 * 60);
 
 const server = app.listen(port, () => {
   console.log(`SAC server is running on http://localhost:${port}`);

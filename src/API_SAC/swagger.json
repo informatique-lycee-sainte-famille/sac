@@ -413,7 +413,7 @@
             "schema": {
               "type": "object",
               "properties": {
-                "nfcUid": { "type": "string" },
+                "nfc_token": { "type": "string" },
                 "userId": { "type": "integer" }
               }
             }
@@ -561,7 +561,7 @@
       "type": "object",
       "properties": {
         "id": { "type": "integer" },
-        "nfcUid": { "type": "string" },
+        "nfc_token": { "type": "string" },
         "userId": { "type": "integer" },
         "scannedAt": {
           "type": "string",
@@ -573,9 +573,9 @@
 
     "NfcScanRequest": {
       "type": "object",
-      "required": ["nfcUid"],
+      "required": ["nfc_token"],
       "properties": {
-        "nfcUid": {
+        "nfc_token": {
           "type": "string",
           "description": "UID NFC (salle)"
         }
