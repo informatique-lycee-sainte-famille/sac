@@ -46,7 +46,6 @@ router.get("/redirect", async (req, res) => {
       },
     }).then(res => res.json());
 
-    console.log(`User is a ${userInfo.jobTitle}`);
     console.log("User info:", userInfo);
 
     // =========================
@@ -75,8 +74,6 @@ router.get("/redirect", async (req, res) => {
 
     const groupsData = await groupsResponse.json();
 
-    console.log("Groups raw:", groupsData);
-
     const groups = (groupsData.value || [])
       .filter(group =>
         group["@odata.type"] === "#microsoft.graph.group" &&
@@ -87,8 +84,6 @@ router.get("/redirect", async (req, res) => {
         id: group.id,
         name: group.displayName,
       }));
-
-    console.log("Filtered groups:", groups);
 
     // =========================
     // ROLE FROM GROUPS
@@ -112,7 +107,6 @@ router.get("/redirect", async (req, res) => {
         const buffer = Buffer.from(await photoResponse.arrayBuffer());
         avatarBase64 = `data:image/jpeg;base64,${buffer.toString("base64")}`;
       } else {
-        console.log("No profile picture found");
       }
     } catch (err) {
       console.warn("Error fetching profile picture:", err.message);
