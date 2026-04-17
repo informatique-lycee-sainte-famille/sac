@@ -1,5 +1,6 @@
 const express = require("express");
 const { prisma } = require("../commons/prisma");
+const { sendMail } = require("../commons/mail");
 const generateAttendancePdf = require("../../scripts/generateAttendancePdf");
 const router = express.Router();
 
@@ -56,13 +57,16 @@ router.get("/me", async (req, res) => {
   res.json(records);
 });
 
-router.get("/pdf", (req, res) => {
+router.get("/pdf", async (req, res) => {
   const schoolYear = `${new Date().getMonth() >= 8 ? new Date().getFullYear() : new Date().getFullYear() - 1} - ${new Date().getMonth() >= 8 ? new Date().getFullYear() + 1 : new Date().getFullYear()}`;
   const todayFormatted = new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(new Date());
+  const datetimeGenerated = new Date().toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" });
   const data = {
     className: "BTS CIEL",
     year: schoolYear,
-    date: todayFormatted,
+    dateFormatted: todayFormatted,
+    datetimeGenerated: datetimeGenerated,
+    author: req.session.user.firstName + " " + req.session.user.lastName.toUpperCase(),
     students: [
       { firstName: "Jean", lastName: "Dupont", morning_signature: "✔", afternoon_signature: "" },
       { firstName: "Marie", lastName: "Martin", morning_signature: "✔", afternoon_signature: "✔" },
@@ -104,7 +108,30 @@ router.get("/pdf", (req, res) => {
     ]
   };
 
-  generateAttendancePdf(res, data);
+  const pdfBuffer = await generateAttendancePdf(data);
+
+  const filename = `${data.className.replace(/\s+/g, "_")}_${data.datetimeGenerated.split(" ").join("_").replace(/\//g, "-")}_presences.pdf`;
+
+  await sendMail({
+      to: [
+        "j.flusin@lyceesaintefamille.com",
+        "t.lormont@lyceesaintefamille.com"
+      ],
+      subject: "Feuille de présence - " + data.className + " - " + data.datetimeGenerated,
+      html: "<b>Bonjour,</b><br><br>Veuillez trouver ci-joint la feuille de présence pour la classe " + data.className + " générée le " + data.datetimeGenerated + ".<br><br>Cordialement,<br>L'outil SAC.",
+      attachments: [
+        {
+          name: filename,
+          contentType: "application/pdf",
+          contentBytes: pdfBuffer.toString("base64"),
+        }
+      ]
+    });
+
+    // 📄 OPTIONAL: send to browser too
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `inline; filename=${filename}`);
+    res.send(pdfBuffer);
 });
 
 

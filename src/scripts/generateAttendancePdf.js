@@ -1,12 +1,21 @@
 const PDFDocument = require("pdfkit");
 const path = require("path");
 
-function generateAttendancePdf(res, data) {
-  const doc = new PDFDocument({ margin: 40 });
+function generateAttendancePdf(data) {
+  return new Promise((resolve, reject) => {
+  const doc = new PDFDocument({ 
+    margin: 40,
+    info: {
+      Title: `Feuille d'émargement - ${data.className}`,
+      Author: data.author || "SAC",
+      Subject: "Présences",
+    }
+  });
 
-  res.setHeader("Content-Type", "application/pdf");
-  res.setHeader("Content-Disposition", "inline; filename=attendance.pdf");
-  doc.pipe(res);
+  const chunks = [];
+  doc.on("data", chunk => chunks.push(chunk));
+  doc.on("end", () => resolve(Buffer.concat(chunks)));
+  doc.on("error", reject);
 
   // =========================
   // HEADER
@@ -25,7 +34,8 @@ function generateAttendancePdf(res, data) {
   doc.fontSize(10)
     .text(`Classe: ${data.className}`, { align: "center" })
     .text(`Année: ${data.year}`, { align: "center" })
-    .text(`Date: ${data.date}`, { align: "center" });
+    .text(`Date: ${data.dateFormatted}`, { align: "center" })
+    .text(`Établi par: ${data.author || "N/A" } le ${data.datetimeGenerated.replace(" ", " à ")} avec SAC`, { align: "center" });
 
   doc.moveDown(2);
 
@@ -158,6 +168,7 @@ function generateAttendancePdf(res, data) {
   });
 
   doc.end();
+});
 }
 
 // =========================

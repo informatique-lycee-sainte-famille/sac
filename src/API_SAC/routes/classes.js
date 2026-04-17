@@ -4,7 +4,6 @@ const router = express.Router();
 
 router.get("/me", async (req, res) => {
   const userId = req.session.userId;
-//   console.log(process.env.DATABASE_URL);
 
   const classes = await prisma.class.findMany({
     where: {
