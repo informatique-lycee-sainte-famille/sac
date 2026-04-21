@@ -133,13 +133,15 @@ model AttendanceRecord {
   sessionId Int
   studentId Int
   status    AttendanceStatus
+  signature String? // b64 signature of the student / teacher for this session
   scannedAt DateTime?
 
-  createdAt DateTime @default(now())   // ✅ audit (fix #7)
-  updatedAt DateTime @updatedAt        // ✅ audit (fix #7)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   session CourseSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   student User          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  teacher User?         @relation(fields: [sessionId, studentId], references: [id, id], onDelete: SetNull)
 
   @@id([sessionId, studentId])
 }

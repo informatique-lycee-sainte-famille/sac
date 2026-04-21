@@ -400,7 +400,7 @@ async function getDataByType(type, args = {}) {
       const url = await buildUrl('EDT_SALLE', { salle: args.salle });
       const res = await fetchData(url, commonBody);
       if (res?.code === 200 && Array.isArray(res.data)) {
-        console.log(`res: ${JSON.stringify(res)}`);
+        // console.log(`res: ${JSON.stringify(res)}`);
         cours = res.data;
       } else {
         throw new Error('Aucun cours trouvé pour la salle demandée.');
@@ -473,7 +473,7 @@ async function getDataByType(type, args = {}) {
       const url = await buildUrl('EDT_PROFESSEUR', { prof: args.prof });
       const res = await fetchData(url, commonBody);
 
-      console.log(`res: ${JSON.stringify(res)}`);
+      // console.log(`res: ${JSON.stringify(res)}`);
 
       if (res?.code === 200 && Array.isArray(res.data)) {
         cours = res.data;

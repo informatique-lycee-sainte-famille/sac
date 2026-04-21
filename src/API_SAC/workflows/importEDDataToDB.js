@@ -12,6 +12,17 @@ function parseDateTime(dateStr, timeStr) {
   return new Date(`${dateStr}T${timeStr}`);
 }
 
+function computeSessionStatus(c, startTime, endTime) {
+  const now = new Date();
+
+  if (c.isAnnule) return "cancelled";
+  if (now < startTime) return "scheduled";
+  if (now >= startTime && now <= endTime) return "ongoing";
+  if (now > endTime) return "completed";
+
+  return "scheduled"; // fallback safety
+}
+
 // -----------------------------------------------------------------------------
 // IMPORT SALLES → Room
 // -----------------------------------------------------------------------------
@@ -28,7 +39,7 @@ async function importRooms() {
       create: {
         code: s.code,
         name: s.libelle,
-        nfcUid: `ROOM_${s.id}`, // ⚠️ temp mapping (you’ll replace later)
+        nfcUid: `ROOM_${s.id}`,
       },
     });
   }
@@ -145,10 +156,10 @@ async function importSessions() {
             if (!teacher || !room) continue;
 
             const startTime = fromParis(c.start_date);
-
             const endTime = fromParis(c.end_date);
-
             const externalId = String(c.id);
+
+            const status = computeSessionStatus(c, startTime, endTime);
 
             await prisma.courseSession.upsert({
             where: { externalId },
@@ -162,6 +173,7 @@ async function importSessions() {
                 startTime: startTime,
                 color: c.color,
                 endTime: endTime,
+                status: status,
             },
             create: {
                 externalId,
@@ -174,6 +186,7 @@ async function importSessions() {
                 startTime: startTime,
                 color: c.color,
                 endTime: endTime,
+                status: status,
             },
             });
             // console.log(`   ➕ Imported session ${c.id} for class ${cls.code}`);
@@ -245,20 +258,19 @@ async function importStudents() {
 // MAIN SEED FUNCTION
 // -----------------------------------------------------------------------------
 
-async function importEDDataToDB() {
+async function importEDDataToDB(dataTypes = ['SALLES', 'CLASSES', 'PROFESSEURS', 'EDT_CLASSE', 'ELEVES_ALL']) {
   console.log("🚀 Starting EcoleDirecte import...\n");
 
   try {
-    await importRooms();
-    await importClasses();
-    await importTeachers();
-    await importSessions();
-    await importStudents();
+    if (dataTypes.includes('SALLES')) await importRooms();
+    if (dataTypes.includes('CLASSES')) await importClasses();
+    if (dataTypes.includes('PROFESSEURS')) await importTeachers();
+    if (dataTypes.includes('EDT_CLASSE')) await importSessions();
+    if (dataTypes.includes('ELEVES_ALL')) await importStudents();
+
     console.log("\n🎉 Import completed successfully");
   } catch (error) {
     console.error("💥 Global import error:", error);
-  } finally {
-    await prisma.$disconnect();
   }
 }
 

@@ -14,11 +14,19 @@ router.post("/scan", async (req, res) => {
       return res.status(400).json({ error: "nfcUid manquant" });
     }
 
-    const user = req.session.userInfo;
-    const userId = req.session.userId || null;
-    const userType = user?.jobTitle?.toLowerCase();
+    const user = req.session?.user;
+    const userId = user?.id || null;
+    const role = user?.role?.toUpperCase();
+
+    console.log(
+      `👤 NFC User: ${user?.firstName || "Unknown"} (ID: ${userId}) Role: ${role}`
+    );
 
     console.log(`📡 Scan NFC reçu: ${nfcUid}`);
+
+    if (!userId || !role) {
+      return res.status(401).json({ error: "Utilisateur non authentifié" });
+    }
 
     // 🔍 1. Trouver la salle associée au NFC
     const room = await prisma.room.findUnique({
@@ -39,13 +47,13 @@ router.post("/scan", async (req, res) => {
         userId: userId,
         ipAddress: req.ip,
         UserAgent: req.headers["user-agent"],
-        DeviceId: req.headers["x-device-id"] || null
-      }
+        DeviceId: req.headers["x-device-id"] || null,
+      },
     });
 
     // 🎯 3. Logique métier selon rôle
-    switch (userType) {
-      case "eleve":
+    switch (role) {
+      case "STUDENT":
         console.log("👨‍🎓 Traitement élève");
 
         const eleveResponse = await eleveScan(req, res, { room });
@@ -54,31 +62,34 @@ router.post("/scan", async (req, res) => {
           .status(eleveResponse.status)
           .json({ message: eleveResponse.text });
 
-      case "personnel":
-        console.log("🧑‍💼 Traitement staff");
-
-        // Exemple : juste confirmer scan
-        return res.json({
-          message: "Scan staff enregistré",
-          room: room.code
-        });
-
-      case "enseignant":
-      case "formateur":
+      case "TEACHER":
         console.log("👨‍🏫 Traitement enseignant");
 
-        const teacherResponse = await enseignantScan(req, res, { room });
+        const enseignantResponse = await enseignantScan(nfcUid, user);
+
+        if (enseignantResponse.error) {
+          return res.status(403).json({ error: enseignantResponse.error });
+        }
 
         return res.json({
           message: "Scan enseignant OK",
-          room: room.code
+          room: room.code,
+        });
+
+      case "STAFF":
+      case "ADMIN":
+        console.log("🧑‍💼 Traitement staff");
+
+        return res.json({
+          message: "Scan staff enregistré",
+          room: room.code,
         });
 
       default:
-        console.warn("❌ Type utilisateur inconnu");
+        console.warn(`❌ Rôle inconnu: ${role}`);
 
         return res.status(403).json({
-          error: "Type utilisateur non autorisé"
+          error: "Rôle non autorisé",
         });
     }
 
@@ -86,7 +97,7 @@ router.post("/scan", async (req, res) => {
     console.error("💥 Erreur NFC:", err);
 
     return res.status(500).json({
-      error: "Erreur serveur NFC"
+      error: "Erreur serveur NFC",
     });
   }
 });
