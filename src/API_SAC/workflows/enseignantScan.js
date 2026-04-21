@@ -1,14 +1,13 @@
 // src/API_SAC/workflows/enseignantScan.js
 const { getDataByType } = require('../../scripts/get_data.js');
 
-async function enseignantScan(req, res) {
-    const coursProfName = req.session.edProfile ? req.session.edProfile.ED.nom + " " + req.session.edProfile.ED.prenom.slice(0, 1) + "." : null;
-    const nfcUid = req.body.nfcUid;
+async function enseignantScan(nfcUid, user) {
+    const coursProfName = user.edProfile ? user.edProfile.ED.nom + " " + user.edProfile.ED.prenom.slice(0, 1) + "." : null;
+    nfcUid = nfcUid.replace("ROOM_", ""); // Assuming NFC UIDs are stored without the "ROOM_" prefix
     console.log(`User's coursProfName: ${coursProfName} and NFC uid: ${nfcUid}`);
     if(!coursProfName) {
-        return res.status(400).json({ error: "User's coursProfName not found" });
+        return { error: "User's coursProfName not found" };
     }
-    //   get current cours for this classeId and current time
     //   get current cours for this classeId and current time
     const currentTime = new Date();
     const cours = await getDataByType('EDT_SALLE', { salle: nfcUid, date: "today" });
@@ -20,15 +19,15 @@ async function enseignantScan(req, res) {
     });
     const coursProfNamesInOngoingCours = ongoingCours.map(c => c.prof).filter(name => name);
     if (!coursProfNamesInOngoingCours.includes(coursProfName)) {
-        return res.status(403).json({ error: "Teacher not assigned to the current course in this room" });
+        return { error: "Teacher not assigned to the current course in this room" };
     }
     const isTheRightProfessor = coursProfNamesInOngoingCours.includes(coursProfName);
     if (!isTheRightProfessor) {
-        return res.status(403).json({ error: "Teacher not assigned to the current course in this room" });
+        return { error: "Teacher not assigned to the current course in this room" };
     }else {
         console.log(`Ongoing cours for teacher ${coursProfName} at ${currentTime}:`, ongoingCours);
     }
-    return res.status(200).json({ message: `NFC uid ${nfcUid} received for teacher ${coursProfName}` });
+    return { message: `NFC uid ${nfcUid} received for teacher ${coursProfName}` };
 }
 
 module.exports = { enseignantScan };

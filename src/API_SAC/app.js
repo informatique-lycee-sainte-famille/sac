@@ -4,6 +4,7 @@ require("./commons/env");
 const networkFilter = require("./middlewares/network_filter");
 const { prisma } = require("./commons/prisma");
 const express = require("express");
+const cron = require('node-cron');
 const bodyParser = require("body-parser");
 const path = require("path");
 const session = require("express-session");
@@ -11,6 +12,7 @@ const swaggerUi = require('swagger-ui-express');
 const ipaddr = require('ipaddr.js');
 const swaggerDocument = require('./swagger.json');
 const { sessionOptions } = require("./commons/sessionConfig");
+const { importEDDataToDB } = require("./workflows/importEDDataToDB");
 
 const adminRoutes = require("./routes/admin");
 const attendanceRoutes = require("./routes/attendance");
@@ -84,6 +86,21 @@ setInterval(async () => {
     console.error("Session cleanup error:", err.message);
   }
 }, 1000 * 60 * 60);
+
+// run importdatatodb workflow on startup and every day at 6am
+importEDDataToDB(['SALLES', 'CLASSES', 'PROFESSEURS', 'EDT_CLASSE', 'ELEVES_ALL']).catch(err => {
+  console.error("Error during initial ED import:", err.message);
+});
+
+cron.schedule('0 6 * * *', () => {
+  importEDDataToDB(['SALLES', 'CLASSES', 'PROFESSEURS', 'EDT_CLASSE', 'ELEVES_ALL'])
+    .catch(err => console.error("Cron import error:", err.message));
+});
+
+cron.schedule('*/5 * * * *', () => {
+  importEDDataToDB(['EDT_CLASSE'])
+    .catch(err => console.error("Cron import error:", err.message));
+});
 
 const server = app.listen(port, () => {
   console.log(`SAC server is running on http://localhost:${port}`);
