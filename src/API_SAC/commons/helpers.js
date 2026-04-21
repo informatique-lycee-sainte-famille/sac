@@ -1,9 +1,12 @@
-const { DATA_URLS, BASE_URLS, API_VERSION } = require("./constants");
 require("./env");
+const { DATA_URLS, BASE_URLS, API_VERSION } = require("./constants");
+const { prisma } = require("./prisma");
 
 const fs = require("fs");
 const path = require("path");
 const { execSync } = require("child_process");
+const { DateTime } = require("luxon");
+
 
 let TOKEN = process.env.ECOLEDIRECTE_USER_TOKEN;
 const USER_ID = process.env.ECOLEDIRECTE_USER_ID;
@@ -79,11 +82,11 @@ async function fetchData(url, bodyData = "{}", retries = 0) {
   if (retries > 2)
     throw new Error("❌ Trop de tentatives de reconnexion (boucle 520).");
 
-  console.log(`➡️  Fetching ${url}`);
+  // console.log(`➡️  Fetching ${url}`);
   const payload =
     typeof bodyData === "object" ? JSON.stringify(bodyData) : bodyData;
   const body = new URLSearchParams({ data: payload });
-  console.log(`   with body: ${body}`);
+  // console.log(`   with body: ${body}`);
 
   const res = await fetch(url, { method: "POST", headers: getHeaders(), body });
 
@@ -142,6 +145,138 @@ function outputJSON(data, args) {
   }
 }
 
+// Timezone helpers
+
+// Parse EDT → JS Date (UTC)
+function fromParis(str) {
+  return DateTime.fromFormat(str, "yyyy-MM-dd HH:mm", { zone: process.env.TZ }).toJSDate();
+}
+
+// Convert DB → Paris (string)
+function toParis(date) {
+  return DateTime.fromJSDate(date).setZone(process.env.TZ).toFormat("yyyy-MM-dd HH:mm");
+}
+
+// Convert DB → Paris ISO (API-safe)
+function toParisISO(date) {
+  return DateTime.fromJSDate(date).setZone(process.env.TZ).toISO();
+}
+
+// Normalize PROFS NAMES
+
+function normalize(str) {
+  if (!str) return "";
+
+  return str
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // remove accents
+    .toUpperCase()
+    .replace(/[^A-Z]/g, ""); // keep only letters
+}
+
+// Keep structure (for better matching)
+function normalizeSoft(str) {
+  if (!str) return "";
+
+  return str
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function parseProfName(prof) {
+  if (!prof) return { lastName: "", firstInitial: "" };
+
+  // remove civilities
+  prof = prof.replace(/^(M\.|MME|Mme|MR|Madame|Monsieur)\s+/i, "");
+
+  const parts = prof.trim().split(" ");
+
+  if (parts.length === 0) return { lastName: "", firstInitial: "" };
+
+  const lastPart = parts[parts.length - 1];
+
+  // detect initial like "E."
+  if (/^[A-Z]\.?$/i.test(lastPart)) {
+    return {
+      lastName: parts.slice(0, -1).join(" "),
+      firstInitial: lastPart[0].toUpperCase(),
+    };
+  }
+
+  // otherwise assume full firstname
+  return {
+    lastName: parts.slice(0, -1).join(" "),
+    firstInitial: parts[parts.length - 1][0]?.toUpperCase() || "",
+  };
+}
+
+function scoreTeacherMatch(input, teacher) {
+  let score = 0;
+
+  const inputLast = normalize(input.lastName);
+  const teacherLast = normalize(teacher.lastName);
+
+  // exact match
+  if (inputLast === teacherLast) score += 100;
+
+  // contains (handles DE / LA / etc.)
+  if (teacherLast.includes(inputLast) || inputLast.includes(teacherLast)) {
+    score += 50;
+  }
+
+  // soft match (spaces preserved)
+  const softInput = normalizeSoft(input.lastName);
+  const softTeacher = normalizeSoft(teacher.lastName);
+
+  if (softInput === softTeacher) score += 30;
+
+  // first initial match
+  if (
+    input.firstInitial &&
+    teacher.firstName &&
+    input.firstInitial === teacher.firstName[0]?.toUpperCase()
+  ) {
+    score += 20;
+  }
+
+  return score;
+}
+
+async function findBestTeacherMatch(prof) {
+  const parsed = parseProfName(prof);
+
+  const teachers = await prisma.teacher.findMany({
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+    },
+  });
+
+  let best = null;
+  let bestScore = 0;
+
+  for (const t of teachers) {
+    const score = scoreTeacherMatch(parsed, t);
+
+    if (score > bestScore) {
+      bestScore = score;
+      best = t;
+    }
+  }
+
+  // threshold → avoid bad matches
+  if (bestScore < 50) {
+    console.warn("⚠️ No reliable teacher match:", prof);
+    return null;
+  }
+
+  return best;
+}
+
 module.exports = {
   fetchData,
   USER_ID,
@@ -150,4 +285,11 @@ module.exports = {
   outputJSON,
   buildUrl,
   parseArgs,
+  fromParis,
+  toParis,
+  toParisISO,
+  normalize,
+  normalizeSoft,
+  parseProfName,
+  findBestTeacherMatch
 };

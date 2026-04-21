@@ -1,6 +1,8 @@
 const express = require("express");
 const { prisma } = require("../commons/prisma");
 const { sendMail } = require("../commons/mail");
+const require_access = require("../middlewares/require_access");
+const { ROLES } = require("../commons/constants");
 const generateAttendancePdf = require("../../scripts/generateAttendancePdf");
 const router = express.Router();
 
@@ -57,7 +59,7 @@ router.get("/me", async (req, res) => {
   res.json(records);
 });
 
-router.get("/pdf", async (req, res) => {
+router.get("/pdf", require_access({ minRole: ROLES.STAFF }), async (req, res) => {
   const schoolYear = `${new Date().getMonth() >= 8 ? new Date().getFullYear() : new Date().getFullYear() - 1} - ${new Date().getMonth() >= 8 ? new Date().getFullYear() + 1 : new Date().getFullYear()}`;
   const todayFormatted = new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(new Date());
   const datetimeGenerated = new Date().toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" });
