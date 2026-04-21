@@ -8,21 +8,21 @@ const router = express.Router();
 
 router.post("/scan", async (req, res) => {
   try {
-    const { nfc_token } = req.body;
+    const { nfcUid } = req.body;
 
-    if (!nfc_token) {
-      return res.status(400).json({ error: "nfc_token manquant" });
+    if (!nfcUid) {
+      return res.status(400).json({ error: "nfcUid manquant" });
     }
 
     const user = req.session.userInfo;
     const userId = req.session.userId || null;
     const userType = user?.jobTitle?.toLowerCase();
 
-    console.log(`📡 Scan NFC reçu: ${nfc_token}`);
+    console.log(`📡 Scan NFC reçu: ${nfcUid}`);
 
     // 🔍 1. Trouver la salle associée au NFC
     const room = await prisma.room.findUnique({
-      where: { nfcUid: nfc_token }
+      where: { nfcUid: nfcUid },
     });
 
     if (!room) {
@@ -35,7 +35,7 @@ router.post("/scan", async (req, res) => {
     // 📝 2. Log du scan NFC
     await prisma.nfcScan.create({
       data: {
-        nfcUid: nfc_token,
+        nfcUid: nfcUid,
         userId: userId,
         ipAddress: req.ip,
         UserAgent: req.headers["user-agent"],

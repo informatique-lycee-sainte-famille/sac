@@ -46,7 +46,7 @@ router.get("/redirect", async (req, res) => {
       },
     }).then(res => res.json());
 
-    console.log("User info:", userInfo);
+    // console.log("User info:", userInfo);
 
     // =========================
     // OPTIONAL ED PROFILE
@@ -135,6 +135,90 @@ router.get("/redirect", async (req, res) => {
         avatar: avatarBase64,
       },
     });
+
+    // =========================
+    // LINK USER <-> STUDENT / TEACHER / STAFF (based on jobTitle)
+    // =========================
+    if (edProfile?.ED?.id && userInfo.jobTitle) {
+      const edId = String(edProfile.ED.id);
+      const job = userInfo.jobTitle.toUpperCase();
+
+      try {
+        // 🔥 CLEAN ALL PREVIOUS LINKS (important for idempotency)
+        await prisma.student.updateMany({
+          where: { userId: dbUser.id },
+          data: { userId: null },
+        });
+
+        await prisma.teacher.updateMany({
+          where: { userId: dbUser.id },
+          data: { userId: null },
+        });
+
+        await prisma.staff.updateMany({
+          where: { userId: dbUser.id },
+          data: { userId: null },
+        });
+
+        // =========================
+        // STUDENT
+        // =========================
+        if (job === "ELEVE") {
+          await prisma.student.upsert({
+            where: { externalId: edId },
+            update: {
+              userId: dbUser.id,
+            },
+            create: {
+              externalId: edId,
+              userId: dbUser.id,
+            },
+          });
+        }
+
+        // =========================
+        // TEACHER
+        // =========================
+        else if (job === "PROFESSEUR" || job === "FORMATEUR") {
+          await prisma.teacher.upsert({
+            where: { externalId: edId },
+            update: {
+              userId: dbUser.id,
+            },
+            create: {
+              externalId: edId,
+              userId: dbUser.id,
+            },
+          });
+        }
+
+        // =========================
+        // STAFF (PERSONNEL)
+        // =========================
+        else if (job === "PERSONNEL") {
+          await prisma.staff.upsert({
+            where: { externalId: edId },
+            update: {
+              userId: dbUser.id,
+            },
+            create: {
+              externalId: edId,
+              userId: dbUser.id,
+            },
+          });
+        }
+
+        // =========================
+        // UNKNOWN ROLE
+        // =========================
+        else {
+          console.warn("⚠️ Unsupported jobTitle for linking:", job);
+        }
+
+      } catch (err) {
+        console.error("❌ Linking user failed:", err.message);
+      }
+    }
 
     // =========================
     // STORE SESSION
