@@ -28,53 +28,41 @@ enum SessionStatus {
 
 model User {
   id         Int      @id @default(autoincrement())
-  externalId String?  @unique
+
+  // 🔐 IDs
+  o365Id     String?  @unique   // Azure / Microsoft ID
+  edId       String?  @unique   // EcoleDirecte ID
+
   role       UserRole
-  email      String?  @unique
+
+  // 📧 Emails
+  o365Email  String?  @unique
+  edEmail    String?
+
+  // 👤 Identity
   firstName  String?
   lastName   String?
-  avatar     String?
+
+  // 🖼 Avatars
+  o365AvatarB64 String?
+  edPhotoUrl    String?
+
+  // 🎓 Student-specific
+  classId    Int?
+
+  // 🧠 Optional flexible field (future-proof)
+  metadata   Json?
+
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  student Student?
-  teacher Teacher? 
-  staff Staff?
+  // 🔗 Relations
+  class Class? @relation(fields: [classId], references: [id])
+
+  teachingSessions CourseSession[] @relation("TeacherSessions")
 
   attendance AttendanceRecord[]
   nfcScans   NfcScan[]
-}
-
-model Student {
-  id         Int     @id @default(autoincrement())
-  userId     Int?    @unique
-  externalId String? @unique
-  classId    Int?
-  photo      String?
-
-  user  User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
-  class Class? @relation(fields: [classId], references: [id])
-}
-
-model Teacher {
-  id         Int     @id @default(autoincrement())
-  userId     Int?    @unique
-  externalId String? @unique
-
-  firstName String?
-  lastName  String?
-
-  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
-
-  sessions CourseSession[]
-}
-
-model Staff {
-  id         Int     @id @default(autoincrement())
-  userId     Int?    @unique
-  externalId String? @unique
-
-  user User? @relation(fields: [userId], references: [id])
 }
 
 model Room {
@@ -85,7 +73,7 @@ model Room {
   reservable Boolean @default(true)
 
   sessions CourseSession[]
-  scans    NfcScan[] // 🔥 link to scans
+  scans    NfcScan[]
 }
 
 model Class {
@@ -96,32 +84,35 @@ model Class {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  students Student[]
+  users    User[]          // 🔥 replaces Student[]
   sessions CourseSession[]
 
   @@unique([code])
 }
 
 model CourseSession {
-  id        Int      @id @default(autoincrement())
-  classId   Int
-  roomId    Int
-  teacherId Int
-  color     String?
-  matiere   String?
-  codeMatiere String? 
-  label     String?
-  startTime DateTime
-  endTime   DateTime
-  status    SessionStatus @default(scheduled)
-  externalId String?       @unique
+  id           Int      @id @default(autoincrement())
+  classId      Int
+  roomId       Int
+  teacherId    Int      // now points to User
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  color        String?
+  matiere      String?
+  codeMatiere  String?
+  label        String?
 
-  class   Class   @relation(fields: [classId], references: [id])
-  room    Room    @relation(fields: [roomId], references: [id])
-  teacher Teacher @relation(fields: [teacherId], references: [id])
+  startTime    DateTime
+  endTime      DateTime
+
+  status       SessionStatus @default(scheduled)
+  externalId   String?       @unique
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  class   Class @relation(fields: [classId], references: [id])
+  room    Room  @relation(fields: [roomId], references: [id])
+  teacher User  @relation("TeacherSessions", fields: [teacherId], references: [id])
 
   attendance AttendanceRecord[]
 
@@ -131,32 +122,33 @@ model CourseSession {
 
 model AttendanceRecord {
   sessionId Int
-  studentId Int
+  userId    Int
+
   status    AttendanceStatus
-  signature String? // b64 signature of the student / teacher for this session
+  signature String?
   scannedAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   session CourseSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  student User          @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  teacher User?         @relation(fields: [sessionId, studentId], references: [id, id], onDelete: SetNull)
+  user    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@id([sessionId, studentId])
+  @@id([sessionId, userId])
 }
 
 model NfcScan {
   id        Int      @id @default(autoincrement())
   nfcUid    String
-  roomId    Int?     // ✅ added relation (fix #4)
+  roomId    Int?
   userId    Int?
+
   scannedAt DateTime @default(now())
   ipAddress String?
   UserAgent String?
   DeviceId  String?
 
-  room Room? @relation(fields: [roomId], references: [id], onDelete: SetNull) // ✅ link
+  room Room? @relation(fields: [roomId], references: [id], onDelete: SetNull)
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 }
 

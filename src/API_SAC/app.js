@@ -88,12 +88,12 @@ setInterval(async () => {
 }, 1000 * 60 * 60);
 
 // run importdatatodb workflow on startup and every day at 6am
-importEDDataToDB(['SALLES', 'CLASSES', 'PROFESSEURS', 'EDT_CLASSE', 'ELEVES_ALL']).catch(err => {
+importEDDataToDB(['SALLES', 'CLASSES', 'USERS', 'EDT_CLASSE']).catch(err => {
   console.error("Error during initial ED import:", err.message);
 });
 
 cron.schedule('0 6 * * *', () => {
-  importEDDataToDB(['SALLES', 'CLASSES', 'PROFESSEURS', 'EDT_CLASSE', 'ELEVES_ALL'])
+  importEDDataToDB(['SALLES', 'CLASSES', 'USERS', 'EDT_CLASSE'])
     .catch(err => console.error("Cron import error:", err.message));
 });
 

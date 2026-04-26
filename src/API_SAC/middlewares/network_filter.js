@@ -6,11 +6,8 @@ module.exports = function ipFilter({ env, LAN_SUBNET }) {
     try {
       let clientIp = req.ip;
 
-      const userInfo = req.session?.userInfo || {};
-      const roles = (userInfo.roles || []).map(r => r.toUpperCase());
-      const groups = (userInfo.groups || []).map(g => g.toUpperCase());
-
-      // console.log(`Session info: ${JSON.stringify(req.session)}`);
+      const userInfo = req.session?.user || {};
+      const role = (userInfo.role || "").toUpperCase();
 
       // Allow localhost in dev
       if (env === "dev" && (clientIp === "::1" || clientIp === "127.0.0.1")) {
@@ -35,12 +32,12 @@ module.exports = function ipFilter({ env, LAN_SUBNET }) {
       const isInLan = parsedIp.match(LAN_SUBNET);
 
       // console.log(
-      //   `IP: ${parsedIp.toString()} | Roles: ${roles.join(",")} | Groups: ${groups.join(",")} | LAN: ${isInLan}`
+      //   `IP: ${parsedIp.toString()} | Role: ${role} | LAN: ${isInLan}`
       // );
 
       // 🔒 Define access logic
       const isStudent =
-        roles.includes("STUDENT") || groups.includes("ELEVE");
+        role === "STUDENT";
 
       if (isStudent && !isInLan) {
         console.warn(`Blocked STUDENT outside LAN: ${parsedIp.toString()}`);
