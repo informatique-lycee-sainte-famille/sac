@@ -6,6 +6,7 @@ WORKDIR /app
 
 # Copy package.json and package-lock.json to install dependencies
 COPY package*.json ./
+COPY .env.example .env
 
 # Install dependencies
 RUN npm install
