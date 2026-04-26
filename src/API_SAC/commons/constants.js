@@ -35,9 +35,9 @@ const BASE_URLS = {
 const API_VERSION_PARAM = `?verbe=get&v=${API_VERSION}`;
 
 const ROLES = {
-  STUDENT: "ELEVE",
-  TEACHER: "PROFESSEUR",
-  STAFF: "PERSONNEL",
+  STUDENT: "STUDENT",
+  TEACHER: "TEACHER",
+  STAFF: "STAFF",
   ADMIN: "ADMIN",
 };
 

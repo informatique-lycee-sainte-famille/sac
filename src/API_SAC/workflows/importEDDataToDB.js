@@ -1,6 +1,6 @@
 require("../commons/env");
 const { getDataByType } = require('../../scripts/get_data.js');
-const { fromParis, findBestTeacherMatch, normalizeSoft } = require("../commons/helpers");
+const { fromParis, findBestUserTeacherMatch, normalizeSoft } = require("../commons/helpers");
 const { prisma } = require("../commons/prisma");
 
 // -----------------------------------------------------------------------------
@@ -73,33 +73,6 @@ async function importClasses() {
 }
 
 // -----------------------------------------------------------------------------
-// IMPORT PROFESSEURS → Teacher
-// -----------------------------------------------------------------------------
-
-async function importTeachers() {
-  const profs = await getDataByType('PROFESSEURS');
-
-  for (const p of profs) {
-    await prisma.teacher.upsert({
-        where: {
-            externalId: String(p.id),
-        },
-        update: {
-            firstName: p.prenom.trim(),
-            lastName: normalizeSoft(p.nom),
-        },
-        create: {
-            externalId: String(p.id),
-            firstName: p.prenom.trim(),
-            lastName: normalizeSoft(p.nom),
-        },
-    });
-    }
-
-  console.log(`✅ Imported ${profs.length} teachers`);
-}
-
-// -----------------------------------------------------------------------------
 // IMPORT EDT_CLASSE → CourseSession
 // -----------------------------------------------------------------------------
 
@@ -119,7 +92,7 @@ async function importSessions() {
     try {
       // 🔥 fetch EDT per class using externalId
       const cours = await getDataByType('EDT_CLASSE', {
-        date: 'today',
+        date: '2026-04-24',
         classe: cls.externalId,
       });
     //   console.log(`📥 Fetched ${cours.length} sessions for class ${cls.code}`);
@@ -141,7 +114,7 @@ async function importSessions() {
         }
         try {
             const classEntity = cls;
-            const teacher = await findBestTeacherMatch(c.prof);
+            const teacher = await findBestUserTeacherMatch(c.prof);
 
             const room = await prisma.room.findFirst({
             where: {
@@ -206,52 +179,123 @@ async function importSessions() {
   console.log(`✅ Imported ${total} course sessions`);
 }
 
-// import students
-async function importStudents() {
-  const students = await getDataByType('ELEVES_ALL');
+async function importUsers() {
+  const [students, teachers] = await Promise.all([
+    getDataByType('ELEVES'),
+    getDataByType('PROFESSEURS')
+  ]);
 
-  // 🔥 preload classes (performance + avoids repeated queries)
-  const classMap = new Map(
-    (await prisma.class.findMany()).map(c => [c.externalId, c])
-  );
+  let studentsProcessed = 0;
+  let teachersProcessed = 0;
 
+  let studentsCreated = 0;
+  let studentsUpdated = 0;
+
+  let teachersCreated = 0;
+  let teachersUpdated = 0;
+
+  // 🔥 STUDENTS
   for (const s of students) {
-    let classEntity = null;
+    const edId = String(s.id);
 
-    if (s.classe && s.classe.id !== undefined) {
-      classEntity = classMap.get(s.classe.id);
-    }
+    const newData = {
+      firstName: s.prenom,
+      lastName: normalizeSoft(s.nom),
+      role: "student",
+      edEmail: s.email || null,
+      edPhotoUrl: s.photo?.startsWith("//") ? `https:${s.photo}` : null,
+    };
 
-    await prisma.student.upsert({
-      where: {
-        externalId: String(s.id),
-      },
-      update: {
-        class: classEntity
-          ? { connect: { id: classEntity.id } }
-          : { disconnect: true },
-
-        // ✅ ADD THIS
-        photo: s.photo && s.photo.startsWith("//")
-          ? `https:${s.photo}`
-          : null,
-      },
-      create: {
-        externalId: String(s.id),
-
-        class: classEntity
-          ? { connect: { id: classEntity.id } }
-          : undefined,
-
-        // ✅ ADD THIS
-        photo: s.photo && s.photo.startsWith("//")
-          ? `https:${s.photo}`
-          : null,
+    const existing = await prisma.user.findUnique({
+      where: { edId },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        edPhotoUrl: true,
       },
     });
+
+    if (!existing) {
+      await prisma.user.create({
+        data: {
+          edId,
+          ...newData,
+        },
+      });
+      studentsCreated++;
+    } else {
+      const hasChanged =
+        existing.firstName !== newData.firstName ||
+        existing.lastName !== newData.lastName ||
+        existing.role !== newData.role ||
+        existing.edPhotoUrl !== newData.edPhotoUrl;
+
+      if (hasChanged) {
+        await prisma.user.update({
+          where: { id: existing.id },
+          data: newData,
+        });
+        studentsUpdated++;
+      }
+    }
+
+    studentsProcessed++;
   }
 
-  console.log(`✅ Imported ${students.length} students`);
+  // 🔥 TEACHERS
+  for (const p of teachers) {
+    const edId = String(p.id);
+
+    const newData = {
+      firstName: p.prenom,
+      lastName: normalizeSoft(p.nom),
+      role: "teacher",
+    };
+
+    const existing = await prisma.user.findUnique({
+      where: { edId },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+      },
+    });
+
+    if (!existing) {
+      await prisma.user.create({
+        data: {
+          edId,
+          ...newData,
+        },
+      });
+      teachersCreated++;
+    } else {
+      const hasChanged =
+        existing.firstName !== newData.firstName ||
+        existing.lastName !== newData.lastName ||
+        existing.role !== newData.role;
+
+      if (hasChanged) {
+        await prisma.user.update({
+          where: { id: existing.id },
+          data: newData,
+        });
+        teachersUpdated++;
+      }
+    }
+
+    teachersProcessed++;
+  }
+
+  console.log(`
+✅ Users import completed:
+   👨‍🎓 Students → ${studentsProcessed} total (created: ${studentsCreated}, updated: ${studentsUpdated})
+   👨‍🏫 Teachers → ${teachersProcessed} total (created: ${teachersCreated}, updated: ${teachersUpdated})
+   📊 TOTAL → ${studentsProcessed + teachersProcessed}
+  `);
 }
 
 // -----------------------------------------------------------------------------
@@ -264,9 +308,8 @@ async function importEDDataToDB(dataTypes = ['SALLES', 'CLASSES', 'PROFESSEURS',
   try {
     if (dataTypes.includes('SALLES')) await importRooms();
     if (dataTypes.includes('CLASSES')) await importClasses();
-    if (dataTypes.includes('PROFESSEURS')) await importTeachers();
+    if (dataTypes.includes('USERS')) await importUsers();
     if (dataTypes.includes('EDT_CLASSE')) await importSessions();
-    if (dataTypes.includes('ELEVES_ALL')) await importStudents();
 
     console.log("\n🎉 Import completed successfully");
   } catch (error) {

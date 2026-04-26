@@ -245,10 +245,11 @@ function scoreTeacherMatch(input, teacher) {
   return score;
 }
 
-async function findBestTeacherMatch(prof) {
+async function findBestUserTeacherMatch(prof) {
   const parsed = parseProfName(prof);
 
-  const teachers = await prisma.teacher.findMany({
+  const teachers = await prisma.user.findMany({
+    where: { role: "teacher" },
     select: {
       id: true,
       firstName: true,
@@ -291,5 +292,5 @@ module.exports = {
   normalize,
   normalizeSoft,
   parseProfName,
-  findBestTeacherMatch
+  findBestUserTeacherMatch
 };

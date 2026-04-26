@@ -91,9 +91,14 @@ router.get("/nfc/logs", async (req, res) => {
 
 // TEST INFO
 router.get("/test", require_access({ minRole: ROLES.ADMIN }), async (req, res) => {
-  const course = await prisma.courseSession.findFirst();
-  course.startTime = toParisISO(course.startTime);
-  course.endTime = toParisISO(course.endTime);
+  const course = await prisma.user.findUnique({
+    where: { id: 2249 },
+    include: {
+      teachingSessions: true
+    }
+  });
+  // course.startTime = toParisISO(course.startTime);
+  // course.endTime = toParisISO(course.endTime);
   res.json(course);
 });
 

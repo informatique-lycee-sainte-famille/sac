@@ -1,5 +1,6 @@
-// src/API_SAC/routes/o365Auth.js
+// src/API_SAC/routes/o365.js
 
+const sharp = require("sharp");
 const express = require("express");
 const router = express.Router();
 
@@ -49,18 +50,6 @@ router.get("/redirect", async (req, res) => {
     // console.log("User info:", userInfo);
 
     // =========================
-    // OPTIONAL ED PROFILE
-    // =========================
-    let edProfile = null;
-
-    if (userInfo.jobTitle) {
-      edProfile = await returnEDAccount(
-        userInfo,
-        userInfo.jobTitle.toLowerCase()
-      );
-    }
-
-    // =========================
     // FETCH GROUPS
     // =========================
     const groupsResponse = await fetch(
@@ -91,6 +80,20 @@ router.get("/redirect", async (req, res) => {
     const roleConst = getHighestRoleFromGroups(groups);
     const role = mapToPrismaRole(roleConst);
 
+    console.log(`user role const: ${roleConst} -> prisma role: ${role}`);
+
+    // =========================
+    // OPTIONAL ED PROFILE
+    // =========================
+    let edProfile = null;
+
+    if (roleConst) {
+      edProfile = await returnEDAccount(
+        userInfo,
+        roleConst,
+      );
+    }
+
     let avatarBase64 = null;
 
     try {
@@ -105,8 +108,14 @@ router.get("/redirect", async (req, res) => {
 
       if (photoResponse.ok) {
         const buffer = Buffer.from(await photoResponse.arrayBuffer());
-        avatarBase64 = `data:image/jpeg;base64,${buffer.toString("base64")}`;
+        const compressedBuffer = await sharp(buffer)
+          .resize(50, 50, { fit: "cover" })
+          .jpeg({ quality: 85 })
+          .toBuffer();
+
+        avatarBase64 = `data:image/jpeg;base64,${compressedBuffer.toString("base64")}`;
       } else {
+        console.warn("No profile picture available");
       }
     } catch (err) {
       console.warn("Error fetching profile picture:", err.message);
@@ -115,125 +124,89 @@ router.get("/redirect", async (req, res) => {
     // =========================
     // UPSERT USER IN DB
     // =========================
-    const dbUser = await prisma.user.upsert({
-      where: {
-        externalId: userInfo.id,
-      },
-      update: {
-        email: userInfo.mail || userInfo.userPrincipalName,
-        firstName: userInfo.givenName,
-        lastName: userInfo.surname,
-        role: role,
-        avatar: avatarBase64,
-      },
-      create: {
-        externalId: userInfo.id,
-        email: userInfo.mail || userInfo.userPrincipalName,
-        firstName: userInfo.givenName,
-        lastName: userInfo.surname,
-        role: role,
-        avatar: avatarBase64,
-      },
-    });
+    let dbUser = null;
+
+    const edId = edProfile?.ED?.id ? String(edProfile.ED.id) : null;
 
     // =========================
-    // LINK USER <-> STUDENT / TEACHER / STAFF (based on jobTitle)
+    // CASE 1: ED MATCH FOUND
     // =========================
-    if (edProfile?.ED?.id && userInfo.jobTitle) {
-      const edId = String(edProfile.ED.id);
-      const job = userInfo.jobTitle.toUpperCase();
+    if (edId) {
+      const existingUser = await prisma.user.findUnique({
+        where: { edId },
+      });
 
-      try {
-        // 🔥 CLEAN ALL PREVIOUS LINKS (important for idempotency)
-        await prisma.student.updateMany({
-          where: { userId: dbUser.id },
-          data: { userId: null },
+      if (existingUser) {
+        // 🔥 UPDATE existing ED user
+        dbUser = await prisma.user.update({
+          where: { id: existingUser.id },
+          data: {
+            o365Id: userInfo.id,
+            o365Email: userInfo.mail || userInfo.userPrincipalName,
+            firstName: userInfo.givenName,
+            lastName: userInfo.surname,
+            role,
+            o365AvatarB64: avatarBase64,
+            edEmail: edProfile?.ED?.email || null,
+          },
         });
-
-        await prisma.teacher.updateMany({
-          where: { userId: dbUser.id },
-          data: { userId: null },
+      } else {
+        // ⚠️ ED user not in DB (unexpected but possible)
+        dbUser = await prisma.user.create({
+          data: {
+            edId,
+            o365Id: userInfo.id,
+            o365Email: userInfo.mail || userInfo.userPrincipalName,
+            firstName: userInfo.givenName,
+            lastName: userInfo.surname,
+            role,
+            o365AvatarB64: avatarBase64,
+            edEmail: edProfile?.ED?.email || null,
+          },
         });
-
-        await prisma.staff.updateMany({
-          where: { userId: dbUser.id },
-          data: { userId: null },
-        });
-
-        // =========================
-        // STUDENT
-        // =========================
-        if (job === "ELEVE") {
-          await prisma.student.upsert({
-            where: { externalId: edId },
-            update: {
-              userId: dbUser.id,
-            },
-            create: {
-              externalId: edId,
-              userId: dbUser.id,
-            },
-          });
-        }
-
-        // =========================
-        // TEACHER
-        // =========================
-        else if (job === "PROFESSEUR" || job === "FORMATEUR") {
-          await prisma.teacher.upsert({
-            where: { externalId: edId },
-            update: {
-              userId: dbUser.id,
-            },
-            create: {
-              externalId: edId,
-              userId: dbUser.id,
-            },
-          });
-        }
-
-        // =========================
-        // STAFF (PERSONNEL)
-        // =========================
-        else if (job === "PERSONNEL") {
-          await prisma.staff.upsert({
-            where: { externalId: edId },
-            update: {
-              userId: dbUser.id,
-            },
-            create: {
-              externalId: edId,
-              userId: dbUser.id,
-            },
-          });
-        }
-
-        // =========================
-        // UNKNOWN ROLE
-        // =========================
-        else {
-          console.warn("⚠️ Unsupported jobTitle for linking:", job);
-        }
-
-      } catch (err) {
-        console.error("❌ Linking user failed:", err.message);
       }
     }
+
+    // =========================
+    // CASE 2: NO ED MATCH
+    // =========================
+    else {
+      dbUser = await prisma.user.upsert({
+        where: { o365Id: userInfo.id },
+        update: {
+          o365Email: userInfo.mail || userInfo.userPrincipalName,
+          firstName: userInfo.givenName,
+          lastName: userInfo.surname,
+          role,
+          o365AvatarB64: avatarBase64,
+        },
+        create: {
+          o365Id: userInfo.id,
+          o365Email: userInfo.mail || userInfo.userPrincipalName,
+          firstName: userInfo.givenName,
+          lastName: userInfo.surname,
+          role,
+          o365AvatarB64: avatarBase64,
+        },
+      });
+    }
+
 
     // =========================
     // STORE SESSION
     // =========================
     req.session.user = {
       id: dbUser.id,
-      externalId: dbUser.externalId,
-      email: dbUser.email,
+      o365Id: dbUser.o365Id,
+      edId: dbUser.edId,
+      email: dbUser.o365Email,
       firstName: dbUser.firstName,
       lastName: dbUser.lastName,
       role: dbUser.role,
       roleConst: roleConst,
-      groups: groups,
+      groups: userInfo.groups,
       edProfile: edProfile,
-      avatar: dbUser.avatar
+      avatar: dbUser.o365AvatarB64,
     };
 
     req.session.account = tokenResponse.account;

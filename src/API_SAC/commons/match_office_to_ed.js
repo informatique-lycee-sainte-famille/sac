@@ -45,9 +45,8 @@ function mapRoleToDataType(role) {
   const r = role?.toUpperCase();
   if (r === 'STUDENT') return 'ELEVES_ALL';
   if( r === 'STAFF' || r === 'ADMIN') return 'PERSONNELS';
-  if (r === 'TEACHER') {
-    return 'PROFESSEURS';
-  }
+  if (r === 'TEACHER') return 'PROFESSEURS';
+  if(r === 'ADMIN') return null;
   throw new Error(`Type d'annuaire non supporté: ${role}`);
 }
 
@@ -127,7 +126,6 @@ async function returnEDAccount(officeAccount, role = 'STUDENT', options = {}) {
   // For élèves you might have classeId/Code/Libelle derived in your ELEVES logic
   if (bestMatch.classe.id || bestMatch.classe.code || bestMatch.classe.libelle) {
     result.ED.classeId = bestMatch.classe.id || null;
-    result.ED.classeCode = bestMatch.classe.code || null;
     result.ED.classeLibelle = bestMatch.classe.libelle || null;
   }
 
