@@ -10,10 +10,10 @@ COPY package*.json ./
 # Install dependencies
 RUN npm install
 
-RUN npx prisma generate
-
 # Copy the rest of the application files
 COPY ./src/ .
+
+RUN npx prisma generate
 
 # Stage 2: runtime
 FROM node:25-alpine AS runtime
