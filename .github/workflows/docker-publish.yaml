@@ -8,6 +8,10 @@ on:
     branches:
       - main
 
+concurrency:
+  group: deploy-main
+  cancel-in-progress: true
+
 jobs:
   # =========================
   # BUILD JOB
@@ -38,7 +42,9 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          tags: ghcr.io/${{ github.repository }}/server-app:latest
+          tags: |
+            ghcr.io/${{ github.repository }}/server-app:latest
+            ghcr.io/${{ github.repository }}/server-app:${{ github.sha }}
 
   # =========================
   # DEPLOY JOB
