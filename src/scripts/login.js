@@ -10,8 +10,7 @@ const PASS = process.env.ECOLEDIRECTE_MDP;
 const { DATA_URLS, BASE_URLS, API_VERSION_PARAM } = require('../API_SAC/commons/constants');
 
 if (!IDENT || !PASS) {
-  console.error("⚠️  Renseigne ECOLEDIRECTE_IDENTIFIANT et ECOLEDIRECTE_MDP dans .env");
-  process.exit(1);
+  console.error("⚠️  Renseigne ECOLEDIRECTE_IDENTIFIANT et ECOLEDIRECTE_MDP dans .env");  
 }
 
 const GTK_URL = `${BASE_URLS.API}/login.awp?gtk=1&v=${API_VERSION_PARAM}`;
@@ -142,7 +141,7 @@ function updateEnvBatch(updates) {
 
     if (!(resp?.code === 200 && resp.token)) {
       console.error(`❌ Login échoué (${resp.code}) : ${resp.message}`);
-      process.exit(2);
+      throw new Error(`Login failed (${resp.code}) : ${resp.message}`);
     }
 
     const baseToken = resp.token;
@@ -168,7 +167,7 @@ function updateEnvBatch(updates) {
         });
       } else {
         console.error("❌ Impossible de changer de profil :", sw);
-        process.exit(2);
+        throw new Error(`Échec du switch de profil (${sw.code}) : ${sw.message}`);
       }
     } else {
       // Déjà en A

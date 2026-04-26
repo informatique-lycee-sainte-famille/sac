@@ -6,11 +6,6 @@ const ECOLEDIRECTE_APIP_BASE_URL = process.env.ECOLEDIRECTE_APIP_BASE_URL;
 const USER_ID = process.env.ECOLEDIRECTE_USER_ID;
 const API_VERSION = process.env.ECOLEDIRECTE_API_VERSION;
 
-if (!TOKEN) {
-  console.error('⚠️  ECOLEDIRECTE_USER_TOKEN manquant dans .env');
-  process.exit(1);
-}
-
 const CHECK_URL = `${ECOLEDIRECTE_APIP_BASE_URL}/enseignants/${USER_ID}/messages.awp?typeRecuperation=received&orderBy=date&order=desc&onlyRead=0&getAll=1&verbe=get&v=${API_VERSION}`;
 
 const HEADERS = {

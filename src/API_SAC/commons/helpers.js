@@ -11,11 +11,6 @@ const { DateTime } = require("luxon");
 let TOKEN = process.env.ECOLEDIRECTE_USER_TOKEN;
 const USER_ID = process.env.ECOLEDIRECTE_USER_ID;
 
-// if (!TOKEN) {
-//   console.error("⚠️  Variable ECOLEDIRECTE_USER_TOKEN manquante dans .env");
-//   process.exit(1);
-// }
-
 function getHeaders() {
   return {
     Accept: "application/json, text/plain, */*",
