@@ -9,7 +9,8 @@ const authConfig = require("../commons/authConfig");
 const { prisma } = require("../commons/prisma");
 const { returnEDAccount } = require("../commons/match_office_to_ed.js");
 
-const { getHighestRoleFromGroups, mapToPrismaRole } = require("../commons/constants");
+const { getHighestRoleFromGroups, mapToPrismaRole, ROLES } = require("../commons/constants");
+const require_access = require("../middlewares/require_access");
 
 // =========================
 // LOGIN
@@ -229,7 +230,7 @@ router.get("/logout", (req, res) => {
 // =========================
 // CURRENT USER
 // =========================
-router.get("/me", (req, res) => {
+router.get("/me", require_access({ minRole: ROLES.STUDENT }), async (req, res) => {
   if (!req.session?.user) {
     return res.status(401).json({ error: "Not logged in" });
   }

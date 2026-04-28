@@ -1,5 +1,7 @@
 // src/API_SAC/routes/nfc.js
 const express = require("express");
+const require_access = require("../middlewares/require_access");
+const { ROLES } = require("../commons/constants");
 const { processNfcScan } = require("../workflows/startCourseSession.js");
 const {
   prepareFinalizeFromNfc,
@@ -8,7 +10,7 @@ const {
 
 const router = express.Router();
 
-router.post("/scan/prepare", async (req, res) => {
+router.post("/scan/prepare", require_access({ minRole: ROLES.TEACHER }), async (req, res) => {
   try {
     const result = await processNfcScan(req, { dryRun: true });
     return res.status(result.status).json(result.body);
@@ -21,7 +23,7 @@ router.post("/scan/prepare", async (req, res) => {
   }
 });
 
-router.post("/scan/finalize/prepare", async (req, res) => {
+router.post("/scan/finalize/prepare", require_access({ minRole: ROLES.TEACHER }), async (req, res) => {
   try {
     const result = await prepareFinalizeFromNfc(req);
     return res.status(result.status).json(result.body);
@@ -34,7 +36,7 @@ router.post("/scan/finalize/prepare", async (req, res) => {
   }
 });
 
-router.post("/scan/finalize", async (req, res) => {
+router.post("/scan/finalize", require_access({ minRole: ROLES.TEACHER }), async (req, res) => {
   try {
     const result = await finalizeSession(req);
     return res.status(result.status).json(result.body);
@@ -48,7 +50,7 @@ router.post("/scan/finalize", async (req, res) => {
   }
 });
 
-router.post("/scan", async (req, res) => {
+router.post("/scan", require_access({ minRole: ROLES.STUDENT }), async (req, res) => {
   try {
     const result = await processNfcScan(req);
     return res.status(result.status).json(result.body);

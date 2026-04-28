@@ -1,8 +1,10 @@
 const express = require("express");
 const { prisma } = require("../commons/prisma");
+const require_access = require("../middlewares/require_access");
+const { ROLES } = require("../commons/constants");
 const router = express.Router();
 
-router.get("/me", async (req, res) => {
+router.get("/me", require_access({ minRole: ROLES.STUDENT }), async (req, res) => {
   const userId = req.session.userId;
 
   const classes = await prisma.class.findMany({
