@@ -124,6 +124,22 @@ router.get("/redirect", async (req, res) => {
     let dbUser = null;
 
     const edId = edProfile?.ED?.id ? String(edProfile.ED.id) : null;
+    const edEmail = edProfile?.ED?.email || null;
+    const baseUserUpdate = {
+      o365Id: userInfo.id,
+      o365Email: userInfo.mail || userInfo.userPrincipalName,
+      firstName: userInfo.givenName,
+      lastName: userInfo.surname,
+      role,
+    };
+
+    if (avatarBase64) {
+      baseUserUpdate.o365AvatarB64 = avatarBase64;
+    }
+
+    if (edEmail) {
+      baseUserUpdate.edEmail = edEmail;
+    }
 
     // =========================
     // CASE 1: ED MATCH FOUND
@@ -137,15 +153,7 @@ router.get("/redirect", async (req, res) => {
         // 🔥 UPDATE existing ED user
         dbUser = await prisma.user.update({
           where: { id: existingUser.id },
-          data: {
-            o365Id: userInfo.id,
-            o365Email: userInfo.mail || userInfo.userPrincipalName,
-            firstName: userInfo.givenName,
-            lastName: userInfo.surname,
-            role,
-            o365AvatarB64: avatarBase64,
-            edEmail: edProfile?.ED?.email || null,
-          },
+          data: baseUserUpdate,
         });
       } else {
         // ⚠️ ED user not in DB (unexpected but possible)
@@ -158,7 +166,7 @@ router.get("/redirect", async (req, res) => {
             lastName: userInfo.surname,
             role,
             o365AvatarB64: avatarBase64,
-            edEmail: edProfile?.ED?.email || null,
+            edEmail,
           },
         });
       }
@@ -170,13 +178,7 @@ router.get("/redirect", async (req, res) => {
     else {
       dbUser = await prisma.user.upsert({
         where: { o365Id: userInfo.id },
-        update: {
-          o365Email: userInfo.mail || userInfo.userPrincipalName,
-          firstName: userInfo.givenName,
-          lastName: userInfo.surname,
-          role,
-          o365AvatarB64: avatarBase64,
-        },
+        update: baseUserUpdate,
         create: {
           o365Id: userInfo.id,
           o365Email: userInfo.mail || userInfo.userPrincipalName,

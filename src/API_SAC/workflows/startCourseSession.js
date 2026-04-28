@@ -1,5 +1,9 @@
+const sharp = require("sharp");
 const { prisma } = require("../commons/prisma");
 const { isSessionFinalized } = require("./finalizeCourseSession");
+
+const SIGNATURE_MAX_INPUT_LENGTH = 750000;
+const SIGNATURE_MAX_OUTPUT_LENGTH = 220000;
 
 function normalizeRole(role) {
   return role ? String(role).toUpperCase() : null;
@@ -25,9 +29,37 @@ function getSignature(req) {
 
 function isValidSignature(signature) {
   if (!signature || typeof signature !== "string") return false;
-  if (signature.length > 750000) return false;
+  if (signature.length > SIGNATURE_MAX_INPUT_LENGTH) return false;
 
   return /^data:image\/(png|jpeg);base64,[A-Za-z0-9+/=]+$/.test(signature);
+}
+
+async function compressSignature(signature) {
+  const match = signature.match(/^data:image\/(png|jpeg);base64,([A-Za-z0-9+/=]+)$/);
+  if (!match) return null;
+
+  const inputBuffer = Buffer.from(match[2], "base64");
+  const outputBuffer = await sharp(inputBuffer)
+    .rotate()
+    .resize({
+      width: 900,
+      height: 320,
+      fit: "inside",
+      withoutEnlargement: true,
+    })
+    .flatten({ background: "#ffffff" })
+    .jpeg({
+      quality: 78,
+      mozjpeg: true,
+    })
+    .toBuffer();
+
+  const compressed = `data:image/jpeg;base64,${outputBuffer.toString("base64")}`;
+  if (compressed.length > SIGNATURE_MAX_OUTPUT_LENGTH) {
+    throw new Error("Compressed signature is too large.");
+  }
+
+  return compressed;
 }
 
 function response(status, code, message, extra = {}) {
@@ -316,6 +348,8 @@ async function processNfcScan(req, options = {}) {
   }
 
   const signature = getSignature(req);
+  let compressedSignature = null;
+
   if (!dryRun && !isValidSignature(signature)) {
     return response(
       400,
@@ -324,12 +358,24 @@ async function processNfcScan(req, options = {}) {
     );
   }
 
+  if (!dryRun) {
+    try {
+      compressedSignature = await compressSignature(signature);
+    } catch {
+      return response(
+        400,
+        "INVALID_SIGNATURE_IMAGE",
+        "La signature manuscrite fournie est illisible ou trop volumineuse."
+      );
+    }
+  }
+
   if (role === "TEACHER") {
-    return validateTeacher(courseSession, user.id, now, signature, dryRun);
+    return validateTeacher(courseSession, user.id, now, compressedSignature, dryRun);
   }
 
   if (role === "STUDENT") {
-    return validateStudent(courseSession, user, sessionUser, now, signature, dryRun);
+    return validateStudent(courseSession, user, sessionUser, now, compressedSignature, dryRun);
   }
 
   return response(403, "ROLE_NOT_ALLOWED", "Role non autorise.");
