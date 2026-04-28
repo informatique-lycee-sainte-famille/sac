@@ -8,7 +8,7 @@ const { generateClassDayPdf } = require("../workflows/finalizeCourseSession");
 const router = express.Router();
 
 // Liste session (prof)
-router.get("/session/:sessionId", async (req, res) => {
+router.get("/session/:sessionId", require_access({ minRole: ROLES.TEACHER }), async (req, res) => {
   const { sessionId } = req.params;
 
   const records = await prisma.attendanceRecord.findMany({
@@ -19,7 +19,7 @@ router.get("/session/:sessionId", async (req, res) => {
 });
 
 // Validation prof
-router.post("/session/:sessionId/validate", async (req, res) => {
+router.post("/session/:sessionId/validate", require_access({ minRole: ROLES.TEACHER }), async (req, res) => {
   const { sessionId } = req.params;
   const updates = req.body;
 
@@ -50,7 +50,7 @@ router.post("/session/:sessionId/validate", async (req, res) => {
 });
 
 // Historique perso
-router.get("/me", async (req, res) => {
+router.get("/me", require_access({ minRole: ROLES.STUDENT }), async (req, res) => {
   const userId = req.session.userId;
 
   const records = await prisma.attendanceRecord.findMany({

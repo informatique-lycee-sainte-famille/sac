@@ -1,9 +1,11 @@
 const express = require("express");
 const { prisma } = require("../commons/prisma");
+const require_access = require("../middlewares/require_access");
+const { ROLES } = require("../commons/constants");
 const router = express.Router();
 
 // Sessions du jour
-router.get("/today", async (req, res) => {
+router.get("/today", require_access({ minRole: ROLES.STUDENT }), async (req, res) => {
   try {
     const userId = req.session.userId;
     const now = new Date();
@@ -42,7 +44,7 @@ router.get("/today", async (req, res) => {
 });
 
 // Détail session
-router.get("/:sessionId", async (req, res) => {
+router.get("/:sessionId", require_access({ minRole: ROLES.STUDENT }), async (req, res) => {
   const { sessionId } = req.params;
 
   const session = await prisma.courseSession.findUnique({
