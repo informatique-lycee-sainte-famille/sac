@@ -1,21 +1,33 @@
 const express = require("express");
 const { prisma } = require("../commons/prisma");
+const { formatSessionUser } = require("../commons/sessionUser");
 const require_access = require("../middlewares/require_access");
 const { ROLES } = require("../commons/constants");
+
 const router = express.Router();
 
 router.get("/me", require_access({ minRole: ROLES.STUDENT }), async (req, res) => {
   try {
-    const userId = req.session.userId;
+    if (!req.session?.user?.id) {
+      return res.status(401).json({ error: "UNAUTHENTICATED", message: "Utilisateur non authentifie." });
+    }
 
     const user = await prisma.user.findUnique({
-      where: { id: userId }
+      where: { id: req.session.user.id },
+      include: { class: true },
     });
 
-    res.json(user);
+    if (!user) {
+      return res.status(404).json({ error: "USER_NOT_FOUND", message: "Utilisateur introuvable." });
+    }
+
+    req.session.user = formatSessionUser(user, req.session.user);
+    return res.json(req.session.user);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Erreur serveur" });
+    return res.status(500).json({
+      error: "USER_FETCH_FAILED",
+      message: err.message,
+    });
   }
 });
 

@@ -1,6 +1,16 @@
 {
-  "watch": ["src"],
-  "ext": ".ts,.js,.json",
-  "ignore": [],
+  "watch": [
+    "src/API_SAC",
+    "src/prisma",
+    "src/scripts"
+  ],
+  "ext": "js,json,prisma",
+  "ignore": [
+    "src/front",
+    "src/front/**",
+    "src/generated",
+    "src/generated/**",
+    "node_modules"
+  ],
   "exec": "node src/API_SAC/app.js"
 }

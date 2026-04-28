@@ -10,7 +10,7 @@ const {
 
 const router = express.Router();
 
-router.post("/scan/prepare", require_access({ minRole: ROLES.TEACHER }), async (req, res) => {
+router.post("/scan/prepare", require_access({ minRole: ROLES.STUDENT }), async (req, res) => {
   try {
     const result = await processNfcScan(req, { dryRun: true });
     return res.status(result.status).json(result.body);
