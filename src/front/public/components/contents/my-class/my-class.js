@@ -21,7 +21,7 @@ export async function init() {
     target.innerHTML = `
       <h3 class="text-lg font-semibold">${data.name || data.label || "Classe"}</h3>
       <p class="mt-1 text-sm text-neutral-600">${students.length} eleve(s)</p>
-      <ul class="mt-4">${rows || "<li class=\"text-sm text-neutral-500\">Aucun eleve trouve.</li>"}</ul>
+      <ul class="mt-4">${rows || "<li class=\"text-sm text-neutral-500\">Aucun eleve trouvé.</li>"}</ul>
     `;
   } catch (error) {
     target.innerHTML = `<p class="text-sm text-red-700">${error.message}</p>`;

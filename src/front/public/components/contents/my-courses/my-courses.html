@@ -1,17 +1,20 @@
-<section class="min-h-full overflow-y-auto bg-neutral-100 px-4 py-6 text-neutral-950 sm:px-8">
+<section class="min-h-full bg-neutral-100 px-4 py-6 text-neutral-950 sm:px-8">
   <div class="mx-auto w-full max-w-6xl">
-    <div class="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+    <div class="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
       <div>
         <h2 class="text-2xl font-semibold">Mes cours</h2>
         <p id="my-courses-date" class="text-sm text-neutral-500">Aujourd'hui</p>
       </div>
-      <button
-        id="my-courses-refresh"
-        type="button"
-        class="mt-3 w-fit border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-800 transition hover:bg-neutral-50 sm:mt-0"
-      >
-        Actualiser
-      </button>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <button id="my-courses-prev" type="button" class="border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-800 transition hover:bg-neutral-50">Cours précédents</button>
+        <button id="my-courses-yesterday" type="button" class="border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-800 transition hover:bg-neutral-50">Hier</button>
+        <button id="my-courses-today" type="button" class="border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-800 transition hover:bg-neutral-50">Aujourd'hui</button>
+        <button id="my-courses-tomorrow" type="button" class="border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-800 transition hover:bg-neutral-50">Demain</button>
+        <button id="my-courses-next" type="button" class="border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-800 transition hover:bg-neutral-50">Cours suivants</button>
+        <input id="my-courses-calendar" type="date" class="border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-800" />
+        <button id="my-courses-refresh" type="button" class="border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-800 transition hover:bg-neutral-50">Actualiser</button>
+      </div>
     </div>
 
     <div id="my-courses-content" class="mt-5 space-y-3">

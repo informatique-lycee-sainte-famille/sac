@@ -76,7 +76,8 @@ async function importClasses() {
 // IMPORT EDT_CLASSE → CourseSession
 // -----------------------------------------------------------------------------
 
-async function importSessions() {
+async function importSessions(options = {}) {
+  const date = options.date || 'today';
   const classes = await prisma.class.findMany(
     // filter only class with edId exists
     { where: { edId: { not: null } } }
@@ -92,7 +93,7 @@ async function importSessions() {
     try {
       // 🔥 fetch EDT per class using edId
       const cours = await getDataByType('EDT_CLASSE', {
-        date: 'today',
+        date,
         classe: cls.edId,
       });
     //   console.log(`📥 Fetched ${cours.length} sessions for class ${cls.code}`);
@@ -315,14 +316,14 @@ async function importUsers() {
 // MAIN SEED FUNCTION
 // -----------------------------------------------------------------------------
 
-async function importEDDataToDB(dataTypes = ['SALLES', 'CLASSES', 'PROFESSEURS', 'EDT_CLASSE', 'ELEVES_ALL']) {
+async function importEDDataToDB(dataTypes = ['SALLES', 'CLASSES', 'PROFESSEURS', 'EDT_CLASSE', 'ELEVES_ALL'], options = {}) {
   console.log("🚀 Starting EcoleDirecte import...\n");
 
   try {
     if (dataTypes.includes('SALLES')) await importRooms();
     if (dataTypes.includes('CLASSES')) await importClasses();
     if (dataTypes.includes('USERS')) await importUsers();
-    if (dataTypes.includes('EDT_CLASSE')) await importSessions();
+    if (dataTypes.includes('EDT_CLASSE')) await importSessions(options.edtClasse || {});
 
     console.log("\n🎉 Import completed successfully");
   } catch (error) {

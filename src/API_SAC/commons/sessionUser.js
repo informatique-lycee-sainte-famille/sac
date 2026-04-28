@@ -4,6 +4,8 @@ function formatSessionUser(dbUser, sessionUser = {}, roleConst = sessionUser.rol
     o365Id: dbUser.o365Id,
     edId: dbUser.edId,
     email: dbUser.o365Email,
+    o365Email: dbUser.o365Email,
+    edEmail: dbUser.edEmail,
     firstName: dbUser.firstName,
     lastName: dbUser.lastName,
     role: dbUser.role,
