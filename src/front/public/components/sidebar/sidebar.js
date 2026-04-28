@@ -9,6 +9,13 @@ export function init() {
         return;
       }
 
+      if (contentName === "my-courses" && !["student", "teacher"].includes(window.SACApp?.user?.role)) {
+        await window.SACComponents.loadContent("home", "#content-slot", {
+          app: window.SACApp,
+        });
+        return;
+      }
+
       if (contentName !== "scan") {
         window.SACComponents.setScanNavigationEnabled(false);
       }

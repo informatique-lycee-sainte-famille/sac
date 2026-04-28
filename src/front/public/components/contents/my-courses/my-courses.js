@@ -1,10 +1,34 @@
+const state = {
+  selectedDate: toIsoDate(new Date()),
+};
+
 function escapeHtml(value) {
-  return String(value || "")
+  return String(value ?? "")
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+function toIsoDate(value) {
+  const date = value instanceof Date ? value : new Date(value);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function shiftDate(days) {
+  const date = new Date(`${state.selectedDate}T12:00:00`);
+  date.setDate(date.getDate() + days);
+  state.selectedDate = toIsoDate(date);
+}
+
+function setRelativeDate(days) {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  state.selectedDate = toIsoDate(date);
 }
 
 function formatTime(value) {
@@ -22,25 +46,73 @@ function formatDate(value = new Date()) {
     day: "2-digit",
     month: "long",
     year: "numeric",
+  }).format(new Date(`${toIsoDate(value)}T12:00:00`));
+}
+
+function formatDateTime(value) {
+  if (!value) return "Non renseigné";
+
+  return new Intl.DateTimeFormat("fr-FR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
   }).format(new Date(value));
 }
 
 function formatStatus(status) {
   const statuses = {
-    scheduled: "Planifie",
+    scheduled: "Planifié",
     ongoing: "En cours",
-    completed: "Termine",
-    cancelled: "Annule",
+    completed: "Terminé",
+    cancelled: "Annulé",
   };
 
-  return statuses[status] || status || "Planifie";
+  return statuses[status] || status || "Planifié";
 }
 
 function formatAttendance(attendance, isFinalized) {
-  if (attendance?.status === "present") return "Presence validee";
+  if (attendance?.status === "present") return "Présent";
   if (attendance?.status === "absent") return "Absent";
-  if (isFinalized) return "Appel envoye";
-  return "Non valide";
+  if (isFinalized) return "Appel envoyé";
+  return "Non validé";
+}
+
+function attendanceClass(attendance, isFinalized) {
+  if (attendance?.status === "present") return "bg-emerald-50 text-emerald-800";
+  if (attendance?.status === "absent") return "bg-red-50 text-red-800";
+  if (isFinalized) return "bg-amber-50 text-amber-800";
+  return "bg-neutral-100 text-neutral-700";
+}
+
+function finalizationLabel(finalization) {
+  return finalization?.sentToEdAt
+    ? `Appel ED envoyé le ${formatDateTime(finalization.sentToEdAt)}`
+    : "Appel ED non envoyé";
+}
+
+function teacherStatsHtml(stats, variant = "card") {
+  if (!stats) return "";
+
+  const items = [
+    ["Présents", stats.presentCount ?? 0, "text-emerald-700"],
+    ["Absents", stats.absentCount ?? 0, "text-red-700"],
+    ["Présence", `${stats.presencePercent ?? 0}%`, "text-[#624292]"],
+  ];
+  const compact = variant === "card";
+
+  return `
+    <div class="${compact ? "mt-4 grid grid-cols-3 gap-2" : "mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3"}">
+      ${items.map(([label, value, colorClass]) => `
+        <div class="border border-neutral-200 bg-neutral-50 p-3">
+          <p class="text-xs uppercase text-neutral-500">${escapeHtml(label)}</p>
+          <p class="mt-1 text-lg font-semibold ${colorClass}">${escapeHtml(value)}</p>
+        </div>
+      `).join("")}
+    </div>
+  `;
 }
 
 function renderSession(session) {
@@ -49,15 +121,28 @@ function renderSession(session) {
   const room = session.room?.name || session.room?.code || "Salle non definie";
   const className = session.class?.name || session.class?.code || "Classe non definie";
   const color = session.color || "#624292";
+  const userRole = window.SACApp?.user?.role;
+  const isTeacher = userRole === "teacher";
+  const pdfButton = userRole === "teacher"
+    ? `<a
+        href="/api/sessions/${session.id}/pdf"
+        target="_blank"
+        rel="noopener"
+        class="border border-[#624292] bg-[#624292] px-3 py-2 text-sm font-medium text-white transition hover:bg-[#52357f]"
+      >
+        PDF émargement
+      </a>`
+    : "";
+  const statsHtml = isTeacher ? teacherStatsHtml(session.stats, "card") : "";
 
   return `
     <article class="border border-neutral-200 bg-white p-4 shadow-sm">
-      <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div class="min-w-0">
           <div class="flex items-center gap-3">
             <span class="h-10 w-1.5 shrink-0" style="background:${escapeHtml(color)}"></span>
             <div class="min-w-0">
-              <h3 class="truncate text-lg font-semibold">${escapeHtml(title)}</h3>
+              <h3 class="break-words text-lg font-semibold">${escapeHtml(title)}</h3>
               <p class="text-sm text-neutral-500">${formatTime(session.startTime)} - ${formatTime(session.endTime)}</p>
             </div>
           </div>
@@ -65,31 +150,210 @@ function renderSession(session) {
 
         <div class="flex flex-wrap gap-2 text-xs">
           <span class="bg-neutral-100 px-2 py-1 text-neutral-700">${escapeHtml(formatStatus(session.status))}</span>
-          <span class="bg-neutral-100 px-2 py-1 text-neutral-700">${escapeHtml(formatAttendance(session.attendance, session.isFinalized))}</span>
+          <span class="${attendanceClass(session.attendance, session.isFinalized)} px-2 py-1">${escapeHtml(formatAttendance(session.attendance, session.isFinalized))}</span>
         </div>
       </div>
 
       <dl class="mt-4 grid gap-3 text-sm text-neutral-700 sm:grid-cols-3">
         <div>
           <dt class="text-xs uppercase text-neutral-400">Classe</dt>
-          <dd class="mt-1 font-medium">${escapeHtml(className)}</dd>
+          <dd class="mt-1 break-words font-medium">${escapeHtml(className)}</dd>
         </div>
         <div>
           <dt class="text-xs uppercase text-neutral-400">Salle</dt>
-          <dd class="mt-1 font-medium">${escapeHtml(room)}</dd>
+          <dd class="mt-1 break-words font-medium">${escapeHtml(room)}</dd>
         </div>
         <div>
           <dt class="text-xs uppercase text-neutral-400">Enseignant</dt>
-          <dd class="mt-1 font-medium">${escapeHtml(teacherName || "Non renseigne")}</dd>
+          <dd class="mt-1 break-words font-medium">${escapeHtml(teacherName || "Non renseigné")}</dd>
         </div>
       </dl>
+
+      ${statsHtml}
+
+      ${isTeacher ? `
+        <p class="mt-3 text-xs font-medium ${session.finalization?.sentToEdAt ? "text-emerald-700" : "text-amber-700"}">
+          ${escapeHtml(finalizationLabel(session.finalization))}
+        </p>
+      ` : ""}
+
+      <div class="mt-4 flex flex-wrap gap-2">
+        <button
+          type="button"
+          data-session-details="${session.id}"
+          class="border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-800 transition hover:bg-neutral-50"
+        >
+          Voir le détail
+        </button>
+        ${pdfButton}
+      </div>
     </article>
   `;
 }
 
+function detailRow(label, value) {
+  return `
+    <div class="grid grid-cols-1 gap-1 border-t border-neutral-200 py-2 sm:grid-cols-[140px_1fr]">
+      <dt class="text-xs font-semibold uppercase text-neutral-500">${escapeHtml(label)}</dt>
+      <dd class="break-words text-sm text-neutral-950">${escapeHtml(value || "Non renseigné")}</dd>
+    </div>
+  `;
+}
+
+function signatureBlock(record) {
+  if (!record?.signature) {
+    return `<div class="border border-neutral-200 bg-neutral-50 p-4 text-sm text-neutral-500">Aucune signature enregistrée.</div>`;
+  }
+
+  return `
+    <div class="border border-neutral-200 bg-white p-3">
+      <img src="${escapeHtml(record.signature)}" alt="Signature" class="max-h-32 max-w-full object-contain" />
+    </div>
+  `;
+}
+
+function attendanceRows(records) {
+  if (!records?.length) {
+    return `<p class="text-sm text-neutral-500">Aucune présence enregistrée.</p>`;
+  }
+
+  return records.map(record => {
+    const name = `${record.user?.lastName || ""} ${record.user?.firstName || ""}`.trim() || `Utilisateur #${record.userId}`;
+    return `
+      <tr class="border-t border-neutral-200">
+        <td class="px-2 py-2 text-sm">${escapeHtml(name)}</td>
+        <td class="px-2 py-2 text-sm">${escapeHtml(formatAttendance(record, false))}</td>
+        <td class="px-2 py-2 text-sm">${escapeHtml(formatDateTime(record.scannedAt))}</td>
+        <td class="px-2 py-2 text-sm">${record.signature ? "Oui" : "Non"}</td>
+      </tr>
+    `;
+  }).join("");
+}
+
+function closeCourseModal() {
+  document.getElementById("course-session-modal")?.remove();
+}
+
+async function openCourseModal(sessionId) {
+  closeCourseModal();
+
+  const modal = document.createElement("div");
+  modal.id = "course-session-modal";
+  modal.className = "fixed inset-0 z-[9998] flex items-center justify-center overflow-y-auto bg-black/60 p-4";
+  modal.innerHTML = `
+    <div class="w-full max-w-3xl bg-white p-5 text-neutral-950 shadow-2xl">
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <h2 class="text-xl font-semibold">Détail du cours</h2>
+          <p class="mt-1 text-sm text-neutral-500">Chargement...</p>
+        </div>
+        <button type="button" data-course-modal-close class="border border-neutral-300 px-3 py-1 text-sm transition hover:bg-neutral-100">Fermer</button>
+      </div>
+    </div>
+  `;
+  modal.addEventListener("click", event => {
+    if (event.target === modal || event.target.closest("[data-course-modal-close]")) {
+      closeCourseModal();
+    }
+  });
+  document.body.appendChild(modal);
+
+  try {
+    const response = await fetch(`/api/sessions/${sessionId}`);
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || data.error || "Impossible de charger le détail du cours.");
+    }
+
+    const title = data.label || data.matiere || data.codeMatiere || "Cours";
+    const teacherName = `${data.teacher?.firstName || ""} ${data.teacher?.lastName || ""}`.trim();
+    const currentRecord = data.currentUserAttendance;
+    const isTeacherView = Boolean(data.canGeneratePdf);
+    const statsHtml = isTeacherView ? teacherStatsHtml(data.stats, "modal") : "";
+    const teacherPdf = data.canGeneratePdf
+      ? `<a href="/api/sessions/${data.id}/pdf" target="_blank" rel="noopener" class="inline-flex border border-[#624292] bg-[#624292] px-3 py-2 text-sm font-medium text-white transition hover:bg-[#52357f]">Générer le PDF d'émargement</a>`
+      : "";
+    const attendanceTable = data.attendance?.length && data.canGeneratePdf
+      ? `
+        <div class="mt-5">
+          <h3 class="text-base font-semibold">Présences du cours</h3>
+          <div class="mt-2 overflow-x-auto">
+            <table class="w-full min-w-[560px] border border-neutral-200 text-left">
+              <thead class="bg-neutral-100 text-xs uppercase text-neutral-500">
+                <tr>
+                  <th class="px-2 py-2">Utilisateur</th>
+                  <th class="px-2 py-2">Statut</th>
+                  <th class="px-2 py-2">Scan</th>
+                  <th class="px-2 py-2">Signature</th>
+                </tr>
+              </thead>
+              <tbody>${attendanceRows(data.attendance)}</tbody>
+            </table>
+          </div>
+        </div>
+      `
+      : "";
+
+    modal.innerHTML = `
+      <div class="w-full max-w-3xl bg-white p-5 text-neutral-950 shadow-2xl">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <h2 class="break-words text-xl font-semibold">${escapeHtml(title)}</h2>
+            <p class="mt-1 text-sm text-neutral-500">${formatTime(data.startTime)} - ${formatTime(data.endTime)}</p>
+          </div>
+          <button type="button" data-course-modal-close class="shrink-0 border border-neutral-300 px-3 py-1 text-sm transition hover:bg-neutral-100">Fermer</button>
+        </div>
+
+        <dl class="mt-4">
+          ${detailRow("Classe", data.class?.name || data.class?.code)}
+          ${detailRow("Salle", data.room?.name || data.room?.code)}
+          ${detailRow("Enseignant", teacherName)}
+          ${detailRow("Statut cours", formatStatus(data.status))}
+          ${isTeacherView ? detailRow("Validation ED", finalizationLabel(data.finalization)) : ""}
+          ${detailRow("Mon statut", formatAttendance(currentRecord, Boolean(data.finalization)))}
+          ${detailRow("Mon scan NFC", formatDateTime(currentRecord?.scannedAt))}
+        </dl>
+
+        ${statsHtml}
+
+        <div class="mt-5">
+          <h3 class="text-base font-semibold">Ma signature</h3>
+          <div class="mt-2">${signatureBlock(currentRecord)}</div>
+        </div>
+
+        ${attendanceTable}
+
+        <div class="mt-5 flex flex-wrap gap-2">
+          ${teacherPdf}
+        </div>
+      </div>
+    `;
+  } catch (error) {
+    modal.innerHTML = `
+      <div class="w-full max-w-lg bg-white p-5 text-neutral-950 shadow-2xl">
+        <div class="flex items-start justify-between gap-4">
+          <p class="text-sm font-medium text-red-700">${escapeHtml(error.message)}</p>
+          <button type="button" data-course-modal-close class="border border-neutral-300 px-3 py-1 text-sm transition hover:bg-neutral-100">Fermer</button>
+        </div>
+      </div>
+    `;
+  }
+}
+
+function bindCourseActions() {
+  document.querySelectorAll("[data-session-details]").forEach(button => {
+    button.addEventListener("click", () => openCourseModal(button.dataset.sessionDetails));
+  });
+}
+
 async function loadCourses() {
   const target = document.getElementById("my-courses-content");
+  const calendar = document.getElementById("my-courses-calendar");
+  const dateTarget = document.getElementById("my-courses-date");
   if (!target) return;
+
+  if (calendar) calendar.value = state.selectedDate;
+  if (dateTarget) dateTarget.innerText = formatDate(state.selectedDate);
 
   target.innerHTML = `
     <div class="border border-neutral-200 bg-white p-5 shadow-sm">
@@ -98,23 +362,25 @@ async function loadCourses() {
   `;
 
   try {
-    const response = await fetch("/api/sessions/today");
-    const data = await response.json().catch(() => []);
+    const response = await fetch(`/api/sessions/today?date=${encodeURIComponent(state.selectedDate)}`);
+    const payload = await response.json().catch(() => ({}));
+    const data = Array.isArray(payload) ? payload : payload.sessions;
 
     if (!response.ok) {
-      throw new Error(data.message || data.error || "Impossible de charger les cours.");
+      throw new Error(payload.message || payload.error || "Impossible de charger les cours.");
     }
 
     if (!Array.isArray(data) || data.length === 0) {
       target.innerHTML = `
         <div class="border border-neutral-200 bg-white p-5 shadow-sm">
-          <p class="text-sm text-neutral-600">Aucun cours trouve pour aujourd'hui.</p>
+          <p class="text-sm text-neutral-600">Aucun cours trouvé pour cette date.</p>
         </div>
       `;
       return;
     }
 
     target.innerHTML = data.map(renderSession).join("");
+    bindCourseActions();
   } catch (error) {
     target.innerHTML = `
       <div class="border border-red-200 bg-red-50 p-5 text-red-800 shadow-sm">
@@ -125,12 +391,35 @@ async function loadCourses() {
 }
 
 export async function init() {
-  const dateTarget = document.getElementById("my-courses-date");
   const refreshButton = document.getElementById("my-courses-refresh");
+  const calendar = document.getElementById("my-courses-calendar");
 
-  if (dateTarget) {
-    dateTarget.innerText = formatDate();
-  }
+  document.getElementById("my-courses-prev")?.addEventListener("click", async () => {
+    shiftDate(-1);
+    await loadCourses();
+  });
+  document.getElementById("my-courses-next")?.addEventListener("click", async () => {
+    shiftDate(1);
+    await loadCourses();
+  });
+  document.getElementById("my-courses-yesterday")?.addEventListener("click", async () => {
+    setRelativeDate(-1);
+    await loadCourses();
+  });
+  document.getElementById("my-courses-today")?.addEventListener("click", async () => {
+    setRelativeDate(0);
+    await loadCourses();
+  });
+  document.getElementById("my-courses-tomorrow")?.addEventListener("click", async () => {
+    setRelativeDate(1);
+    await loadCourses();
+  });
+  calendar?.addEventListener("change", async () => {
+    if (calendar.value) {
+      state.selectedDate = calendar.value;
+      await loadCourses();
+    }
+  });
 
   refreshButton?.addEventListener("click", loadCourses);
   await loadCourses();

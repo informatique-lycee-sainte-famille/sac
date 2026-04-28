@@ -28,9 +28,14 @@ const app = express();
 const port = process.env.PORT || 3000;
 const env = process.env.ENV || 'dev';
 const allowedPaths = ['/api/o365', '/api/documentation'];
-const LAN_SUBNET = ipaddr.parseCIDR(process.env.LAN_SUBNET); 
+const lanSubnetValues = (process.env.LAN_SUBNETS || process.env.LAN_SUBNET || "")
+  .split(",")
+  .map(subnet => subnet.trim())
+  .filter(Boolean);
+const LAN_SUBNETS = lanSubnetValues.map(subnet => ipaddr.parseCIDR(subnet));
+const trustProxy = process.env.TRUST_PROXY || "loopback, linklocal, uniquelocal";
 
-app.set('trust proxy', true);
+app.set('trust proxy', trustProxy);
 app.use(bodyParser.json({ limit: "1mb" }));
 app.use(session(sessionOptions));
 
@@ -49,7 +54,7 @@ app.use(require_access({ minRole: ROLES.STUDENT }));
 app.use(
   networkFilter({
     env,
-    LAN_SUBNET,
+    LAN_SUBNETS,
   })
 );
 
@@ -87,13 +92,34 @@ setInterval(async () => {
   }
 }, 1000 * 60 * 60);
 
+function getNextMonthEdtRange() {
+  const start = new Date();
+  const end = new Date();
+  end.setDate(end.getDate() + 30);
+
+  const format = date => date.toISOString().slice(0, 10);
+  return `${format(start)}:${format(end)}`;
+}
+
+async function refreshNextMonthClassSchedule(reason) {
+  const date = getNextMonthEdtRange();
+  console.log(`📅 Refreshing EDT_CLASSE for next month (${date}) - ${reason}`);
+
+  await importEDDataToDB(['EDT_CLASSE'], {
+    edtClasse: { date },
+  });
+}
+
 // run importdatatodb workflow on startup and every day at 6am
-importEDDataToDB(['SALLES', 'CLASSES', 'USERS', 'EDT_CLASSE']).catch(err => {
-  console.error("Error during initial ED import:", err.message);
-});
+importEDDataToDB(['SALLES', 'CLASSES', 'USERS'])
+  .then(() => refreshNextMonthClassSchedule("startup"))
+  .catch(err => {
+    console.error("Error during initial ED import:", err.message);
+  });
 
 cron.schedule('0 6 * * *', () => {
-  importEDDataToDB(['SALLES', 'CLASSES', 'USERS', 'EDT_CLASSE'])
+  importEDDataToDB(['SALLES', 'CLASSES', 'USERS'])
+    .then(() => refreshNextMonthClassSchedule("daily cron"))
     .catch(err => console.error("Cron import error:", err.message));
 });
 

@@ -19,6 +19,20 @@ function formatTime(value) {
   }).format(new Date(value));
 }
 
+function formatDateTime(value) {
+  if (!value) return "";
+
+  return new Intl.DateTimeFormat("fr-FR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    timeZone: "Europe/Paris",
+  }).format(new Date(value));
+}
+
 function stripImagePrefix(signature) {
   return signature.replace(/^data:image\/\w+;base64,/, "");
 }
@@ -85,7 +99,19 @@ function drawHeader(doc, data) {
   doc.text(`Cours: ${data.courseLabel || "N/A"}`, { align: "center" });
   doc.text(`Salle: ${data.roomName || data.roomCode || "N/A"}`, { align: "center" });
   doc.text(`Date: ${formatDate(data.startTime)} - ${formatTime(data.startTime)} / ${formatTime(data.endTime)}`, { align: "center" });
-  doc.text(`Genere par: ${data.author || "SAC"} le ${new Date().toLocaleString("fr-FR")}`, { align: "center" });
+  doc.text(`Generé par: ${data.author || "SAC"} le ${new Date().toLocaleString("fr-FR")}`, { align: "center" });
+  if (data.finalization?.sentToEdAt) {
+    doc
+      .font("Helvetica-Bold")
+      .fillColor("#166534")
+      .text(`Appel envoye a EcoleDirecte le ${formatDateTime(data.finalization.sentToEdAt)}`, { align: "center" });
+  } else {
+    doc
+      .font("Helvetica-Bold")
+      .fillColor("#991b1b")
+      .text("Appel non envoye a EcoleDirecte - feuille non finalisee", { align: "center" });
+  }
+  doc.font("Helvetica").fillColor("#000");
   doc.moveDown(1.5);
 }
 

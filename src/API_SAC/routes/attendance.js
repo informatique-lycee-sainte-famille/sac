@@ -70,14 +70,14 @@ router.get("/pdf/day", require_access({ minRole: ROLES.TEACHER }), async (req, r
     }
     const classInfo = await prisma.class.findUnique({ where: { id: parseInt(classId) } });
     if (!classInfo) {
-      return res.status(404).json({ error: "Classe non trouvee" });
+      return res.status(404).json({ error: "Classe non trouvée" });
     }
 
     const author = `${req.session.user.firstName || ""} ${req.session.user.lastName || ""}`.trim() || "SAC";
     const { sessions, pdfBuffer } = await generateClassDayPdf({ classId, date, author });
 
     if (!sessions.length) {
-      return res.status(404).json({ error: "Aucune session trouvee pour cette classe et cette date" });
+      return res.status(404).json({ error: "Aucune session trouvée pour cette classe et cette date" });
     }
 
     const filename = `${classInfo.code}_${date}_emargements.pdf`;

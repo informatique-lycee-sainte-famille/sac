@@ -137,7 +137,7 @@ router.get("/redirect", async (req, res) => {
       baseUserUpdate.o365AvatarB64 = avatarBase64;
     }
 
-    if (edEmail) {
+    if (edEmail !== null) {
       baseUserUpdate.edEmail = edEmail;
     }
 

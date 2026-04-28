@@ -59,7 +59,7 @@ async function isSessionFinalized(sessionId) {
 }
 
 async function markSessionFinalized(session, user, edResult, filename) {
-  await prisma.courseSessionFinalization.create({
+  return prisma.courseSessionFinalization.create({
     data: {
       sessionId: session.id,
       sentByUserId: user.id,
@@ -111,6 +111,7 @@ async function findCurrentSessionByRoom(roomId) {
       room: true,
       teacher: true,
       attendance: { include: { user: true } },
+      finalization: true,
     },
     orderBy: { startTime: "desc" },
   });
@@ -124,6 +125,7 @@ async function findSessionById(sessionId) {
       room: true,
       teacher: true,
       attendance: { include: { user: true } },
+      finalization: true,
     },
   });
 }
@@ -169,6 +171,13 @@ function sessionToPdfDataFromStudents(session, students, author) {
     startTime: session.startTime,
     endTime: session.endTime,
     author,
+    finalization: session.finalization
+      ? {
+          sentToEdAt: session.finalization.sentToEdAt,
+          sentByUserId: session.finalization.sentByUserId,
+          pdfFilename: session.finalization.pdfFilename,
+        }
+      : null,
     teacher: {
       firstName: session.teacher.firstName,
       lastName: session.teacher.lastName,
@@ -395,9 +404,10 @@ async function finalizeSession(req) {
   });
 
   const author = `${user.firstName || ""} ${user.lastName || ""}`.trim() || "SAC";
-  const pdfBuffer = await generateAttendancePdf(sessionToPdfDataFromStudents(session, dbStudents, author));
   const filename = `${session.class.code}_${toParisDateTime(session.startTime).toFormat("yyyy-MM-dd_HH-mm")}_emargement.pdf`;
-  await markSessionFinalized(session, user, edResult, filename);
+  const finalization = await markSessionFinalized(session, user, edResult, filename);
+  session.finalization = finalization;
+  const pdfBuffer = await generateAttendancePdf(sessionToPdfDataFromStudents(session, dbStudents, author));
 
   const sessionPdfSentTo = await sendSessionPdfToTeacher({
     session,
@@ -406,7 +416,7 @@ async function finalizeSession(req) {
   });
   const dailyPdf = await sendDailyPdfToPersonnelIfLastSession({ session, author });
 
-  return response(200, "SESSION_ATTENDANCE_FINALIZED", "Appel envoye a EcoleDirecte et PDF genere.", {
+  return response(200, "SESSION_ATTENDANCE_FINALIZED", "Appel envoye a EcoleDirecte et PDF generé et envoyé par mail.", {
     sessionId: session.id,
     ed: edResult,
     mail: {
@@ -436,6 +446,7 @@ async function generateClassDayPdf({ classId, date, author = "SAC" }) {
       room: true,
       teacher: true,
       attendance: { include: { user: true } },
+      finalization: true,
     },
     orderBy: { startTime: "asc" },
   });

@@ -59,19 +59,129 @@
       );
     }
 
+    function getEdAvatarSrc(data) {
+      return (
+        data?.edPhotoUrl ||
+        data?.edAvatarUrl ||
+        data?.edProfile?.photoUrl ||
+        data?.edProfile?.photo ||
+        data?.edProfile?.urlPhoto ||
+        null
+      );
+    }
+
+    function closeUserInfoPopup() {
+      document.getElementById("user-info-popup")?.remove();
+    }
+
+    function userInfoRow(label, value) {
+      return `
+        <div class="grid grid-cols-1 gap-1 border-t border-neutral-200 py-2 sm:grid-cols-[130px_1fr]">
+          <dt class="text-xs font-semibold uppercase text-neutral-500">${escapeHtml(label)}</dt>
+          <dd class="break-words text-sm text-neutral-950">${escapeHtml(value || "Non renseigné")}</dd>
+        </div>
+      `;
+    }
+
+    function userPhoto(label, src) {
+      const photoContent = src
+        ? `<img
+            src="${escapeHtml(src)}"
+            alt="${escapeHtml(label)}"
+            class="h-24 w-24 rounded-full border border-neutral-200 bg-white object-cover"
+          />`
+        : `<div class="flex h-24 w-24 items-center justify-center rounded-full border border-neutral-200 bg-neutral-100 px-3 text-center text-xs font-medium leading-tight text-neutral-500">
+            Aucune image fournie
+          </div>`;
+
+      return `
+        <div class="min-w-0">
+          <p class="mb-2 text-xs font-semibold uppercase text-neutral-500">${escapeHtml(label)}</p>
+          ${photoContent}
+        </div>
+      `;
+    }
+
+    function openUserInfoPopup() {
+      const data = appState.user;
+      if (!data) return;
+
+      closeUserInfoPopup();
+
+      const popup = document.createElement("div");
+      const photoEd = getEdAvatarSrc(data);
+      const edPhotoHtml = data.role === "student" ? userPhoto("Photo ED", photoEd) : "";
+      popup.id = "user-info-popup";
+      popup.className = "fixed inset-0 z-[9998] flex items-center justify-center bg-black/60 p-4";
+      popup.innerHTML = `
+        <div class="w-full max-w-lg bg-white p-5 text-neutral-950 shadow-2xl">
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <h2 class="text-xl font-semibold">Informations utilisateur</h2>
+              <p class="mt-1 text-sm text-neutral-500">Résumé du profil connecté</p>
+            </div>
+            <button
+              type="button"
+              data-user-info-close
+              class="shrink-0 border border-neutral-300 px-3 py-1 text-sm transition hover:bg-neutral-100"
+            >
+              Fermer
+            </button>
+          </div>
+
+          <div class="mt-4 flex gap-6">
+            ${userPhoto("Photo Office", data.avatar || data.o365AvatarB64)}
+            ${edPhotoHtml}
+          </div>
+
+          <dl class="mt-4">
+            ${userInfoRow("Prénom", data.firstName)}
+            ${userInfoRow("Nom", data.lastName)}
+            ${userInfoRow("Type", formatRole(data.role))}
+            ${userInfoRow("Identifiant", data.id)}
+            ${userInfoRow("Mail Office 365", data.o365Email || data.email)}
+            ${userInfoRow("Mail EcoleDirecte", data.edEmail)}
+          </dl>
+        </div>
+      `;
+
+      popup.addEventListener("click", event => {
+        if (event.target === popup || event.target.closest("[data-user-info-close]")) {
+          closeUserInfoPopup();
+        }
+      });
+
+      document.body.appendChild(popup);
+    }
+
+    function bindUserInfoPopup() {
+      ["sidebar-user-info", "mobile-user-info"].forEach(id => {
+        const element = byId(id);
+        if (!element || element.dataset.popupBound === "true") return;
+
+        element.dataset.popupBound = "true";
+        element.addEventListener("click", openUserInfoPopup);
+      });
+    }
+
     function refreshProfileView() {
       const data = appState.user;
       const profilePanel = byId("profile-panel");
       const avatar = byId("avatar");
       const authSidebars = document.querySelectorAll("[data-auth-sidebar]");
       const sidebarUserInfo = byId("sidebar-user-info");
+      const mobileUserInfo = byId("mobile-user-info");
       const studentOnlyLinks = document.querySelectorAll("[data-student-only-link]");
+      const courseLinks = document.querySelectorAll("[data-course-link]");
 
       authSidebars.forEach(sidebar => {
         sidebar.classList.toggle("hidden", !data);
       });
       studentOnlyLinks.forEach(link => {
         link.classList.toggle("hidden", data?.role !== "student");
+      });
+      courseLinks.forEach(link => {
+        link.classList.toggle("hidden", !["student", "teacher"].includes(data?.role));
       });
 
       if (!data) {
@@ -85,8 +195,7 @@
         setText("auth-card-subtitle", "Votre nouvel outil de gestion d'appel automatisé");
         avatar?.removeAttribute("src");
         avatar?.classList.add("hidden");
-        if (sidebarUserInfo) {
-          sidebarUserInfo.innerHTML = `
+        const emptyUserInfoHtml = `
             <img
               id="sidebar-user-avatar"
               src="${USER_PLACEHOLDER_AVATAR}"
@@ -95,7 +204,19 @@
             />
             INFOS<br />UTILISATEURS
           `;
+        if (sidebarUserInfo) sidebarUserInfo.innerHTML = emptyUserInfoHtml;
+        if (mobileUserInfo) {
+          mobileUserInfo.innerHTML = `
+            <img
+              id="mobile-user-avatar"
+              src="${USER_PLACEHOLDER_AVATAR}"
+              alt="Avatar utilisateur"
+              class="h-9 w-9 shrink-0 rounded-full bg-white object-cover"
+            />
+            <span class="block min-w-0 max-w-full whitespace-normal break-words">INFOS UTILISATEURS</span>
+          `;
         }
+        bindUserInfoPopup();
         return;
       }
 
@@ -117,9 +238,9 @@
           `${data.firstName || ""} ${data.lastName || ""}`.trim() || data.email || "Utilisateur";
         const className = data.class?.name || data.class?.code || "";
         const classHtml = data.role === "student"
-          ? `<span class="mt-2 block max-w-full whitespace-normal break-words border-t border-neutral-300 pt-2 text-xs normal-case leading-tight text-neutral-700">${escapeHtml(className || "Classe non renseignee")}</span>`
+          ? `<span class="mt-2 block max-w-full whitespace-normal break-words border-t border-neutral-300 pt-2 text-xs normal-case leading-tight text-neutral-700">${escapeHtml(className || "Classe non renseignée")}</span>`
           : "";
-        sidebarUserInfo.innerHTML = `
+        const userInfoHtml = `
           <img
             id="sidebar-user-avatar"
             src="${escapeHtml(getUserAvatarSrc(data))}"
@@ -130,6 +251,26 @@
           <span class="mt-1 block max-w-full whitespace-normal break-words text-xs normal-case leading-tight text-neutral-700">${escapeHtml(formatRole(data.role))}</span>
           ${classHtml}
         `;
+        sidebarUserInfo.innerHTML = userInfoHtml;
+        if (mobileUserInfo) {
+          const classLine = data.role === "student" && className
+            ? `<span class="block max-w-full whitespace-normal break-words text-[11px] normal-case leading-tight text-neutral-600">${escapeHtml(className)}</span>`
+            : "";
+          mobileUserInfo.innerHTML = `
+            <img
+              id="mobile-user-avatar"
+              src="${escapeHtml(getUserAvatarSrc(data))}"
+              alt="Avatar utilisateur"
+              class="h-9 w-9 shrink-0 rounded-full bg-white object-cover"
+            />
+            <span class="block min-w-0 max-w-full">
+              <span class="block max-w-full whitespace-normal break-words text-xs font-semibold normal-case leading-tight">${escapeHtml(displayName)}</span>
+              <span class="block max-w-full whitespace-normal break-words text-[11px] normal-case leading-tight text-neutral-700">${escapeHtml(formatRole(data.role))}</span>
+              ${classLine}
+            </span>
+          `;
+        }
+        bindUserInfoPopup();
       }
 
       if (avatar) {
@@ -511,6 +652,10 @@
           : window.SACComponents.getContentFromHash("home");
 
         if (initialContent === "my-class" && user.role !== "student") {
+          initialContent = "home";
+        }
+
+        if (initialContent === "my-courses" && !["student", "teacher"].includes(user.role)) {
           initialContent = "home";
         }
 

@@ -1,38 +1,89 @@
 const path = require("path");
 const ipaddr = require("ipaddr.js");
 
-module.exports = function ipFilter({ env, LAN_SUBNET }) {
+function parseForwardedFor(value) {
+  if (!value) return [];
+
+  return String(value)
+    .split(",")
+    .map(ip => ip.trim())
+    .filter(Boolean);
+}
+
+function normalizeIp(ip) {
+  if (!ip) return null;
+
+  const value = String(ip).replace(/^::ffff:/, "");
+  try {
+    const parsed = ipaddr.parse(value);
+    return parsed.toString();
+  } catch {
+    return value;
+  }
+}
+
+function getRequestIpChain(req) {
+  const socketIp = normalizeIp(req.socket?.remoteAddress);
+  const forwardedFor = parseForwardedFor(req.headers["x-forwarded-for"]).map(normalizeIp);
+  const expressIps = (req.ips || []).map(normalizeIp);
+
+  return {
+    clientIp: normalizeIp(req.ip),
+    expressIps,
+    forwardedFor,
+    realIp: normalizeIp(req.headers["x-real-ip"]),
+    socketIp,
+    chain: [...forwardedFor, socketIp].filter(Boolean),
+  };
+}
+
+function parseIp(value) {
+  let parsedIp = ipaddr.parse(value);
+
+  if (parsedIp.kind() === "ipv6" && parsedIp.isIPv4MappedAddress()) {
+    parsedIp = parsedIp.toIPv4Address();
+  }
+
+  return parsedIp;
+}
+
+function ipMatchesAnySubnet(parsedIp, subnets) {
+  return subnets.some(subnet => (
+    parsedIp.kind() === subnet[0].kind() &&
+    parsedIp.match(subnet)
+  ));
+}
+
+function formatSubnet(subnet) {
+  return `${subnet[0].toString()}/${subnet[1]}`;
+}
+
+module.exports = function ipFilter({ env, LAN_SUBNETS = [] }) {
   return (req, res, next) => {
     try {
-      let clientIp = req.ip;
+      const ipChain = getRequestIpChain(req);
+      let clientIp = ipChain.clientIp;
+      req.network = ipChain;
 
       const userInfo = req.session?.user || {};
       const role = (userInfo.role || "").toUpperCase();
 
       // Allow localhost in dev
-      if (env === "dev" && (clientIp === "::1" || clientIp === "127.0.0.1")) {
+      if (env === "dev" && (clientIp == "::1" || clientIp == "127.0.0.1")) {
         return next();
       }
 
       if (!clientIp) return next();
 
-      let parsedIp = ipaddr.parse(clientIp);
-
-      // Convert IPv4-mapped IPv6 (::ffff:x.x.x.x)
-      if (parsedIp.kind() === "ipv6" && parsedIp.isIPv4MappedAddress()) {
-        parsedIp = parsedIp.toIPv4Address();
-      }
-
-      // Skip if IP version mismatch
-      if (parsedIp.kind() !== LAN_SUBNET[0].kind()) {
-        console.log("IP version mismatch, skipping LAN check");
-        return next();
-      }
-
-      const isInLan = parsedIp.match(LAN_SUBNET);
+      const parsedIp = parseIp(clientIp);
+      const isInLan = ipMatchesAnySubnet(parsedIp, LAN_SUBNETS);
 
       console.log(
-        `IP: ${parsedIp.toString()} | Role: ${role} | LAN: ${isInLan}`
+        `IP: ${parsedIp.toString()} | Role: ${role} | LAN: ${isInLan} | ` +
+        `Allowed LANs: ${LAN_SUBNETS.map(formatSubnet).join(", ") || "none"} | ` +
+        `Express chain: ${ipChain.expressIps.join(" -> ") || "none"} | ` +
+        `XFF: ${ipChain.forwardedFor.join(" -> ") || "none"} | ` +
+        `X-Real-IP: ${ipChain.realIp || "none"} | Socket: ${ipChain.socketIp || "none"}`
       );
 
       // 🔒 Define access logic
@@ -40,7 +91,10 @@ module.exports = function ipFilter({ env, LAN_SUBNET }) {
         role === "STUDENT";
 
       if (isStudent && !isInLan) {
-        console.warn(`Blocked STUDENT outside LAN: ${parsedIp.toString()}`);
+        console.warn(
+          `Blocked STUDENT outside allowed LANs: ${parsedIp.toString()} ` +
+          `(${LAN_SUBNETS.map(formatSubnet).join(", ") || "none configured"})`
+        );
 
         return res
           .status(403)
