@@ -1,4 +1,5 @@
 const { prisma } = require("../commons/prisma");
+const { isSessionFinalized } = require("./finalizeCourseSession");
 
 function normalizeRole(role) {
   return role ? String(role).toUpperCase() : null;
@@ -40,15 +41,16 @@ function response(status, code, message, extra = {}) {
   };
 }
 
-async function logNfcScan(req, { nfcUid, roomId, userId }) {
+async function logNfcScan(req, { nfcUid, roomId, userId, sessionId = null }) {
   await prisma.nfcScan.create({
     data: {
       nfcUid,
       roomId,
       userId,
+      sessionId,
       ipAddress: req.ip,
       UserAgent: req.headers["user-agent"],
-      DeviceId: req.headers["x-device-id"] || null,
+      deviceFingerprint: req.headers["x-device-fingerprint"] || req.headers["x-device-id"] || null,
     },
   });
 }
@@ -77,7 +79,7 @@ async function resolveStudentClassId(user, sessionUser) {
   if (!externalClassId) return null;
 
   const classEntity = await prisma.class.findUnique({
-    where: { externalId: Number(externalClassId) },
+    where: { edId: Number(externalClassId) },
     select: { id: true },
   });
 
@@ -120,6 +122,20 @@ async function validateTeacher(session, userId, scannedAt, signature, dryRun = f
 
   const existingAttendance = await findAttendance(session.id, userId);
   if (existingAttendance?.status === "present") {
+    if (dryRun) {
+      return response(
+        200,
+        "TEACHER_SESSION_FINALIZE_AVAILABLE",
+        "Presence enseignant deja validee. Vous pouvez finaliser l'appel.",
+        {
+          sessionId: session.id,
+          room: session.room.code,
+          role: "teacher",
+          canFinalize: true,
+        }
+      );
+    }
+
     return alreadyRegisteredResponse(session, "teacher");
   }
 
@@ -261,8 +277,6 @@ async function processNfcScan(req, options = {}) {
     return response(404, "UNKNOWN_ROOM", "Salle inconnue pour ce NFC.");
   }
 
-  await logNfcScan(req, { nfcUid, roomId: room.id, userId: sessionUser.id });
-
   if (!user) {
     return response(401, "USER_NOT_FOUND", "Utilisateur introuvable.");
   }
@@ -270,6 +284,7 @@ async function processNfcScan(req, options = {}) {
   const role = sessionUser.role;
 
   if (role === "STAFF" || role === "ADMIN") {
+    await logNfcScan(req, { nfcUid, roomId: room.id, userId: sessionUser.id });
     return response(200, "STAFF_SCAN_LOGGED", "Scan staff enregistre.", {
       room: room.code,
       role: role.toLowerCase(),
@@ -280,11 +295,23 @@ async function processNfcScan(req, options = {}) {
   const courseSession = await findOngoingSession(room.id, now);
 
   if (!courseSession) {
+    await logNfcScan(req, { nfcUid, roomId: room.id, userId: sessionUser.id });
     return response(
       403,
       "NO_ONGOING_SESSION",
       "Aucun cours en cours dans cette salle.",
       { room: room.code }
+    );
+  }
+
+  await logNfcScan(req, { nfcUid, roomId: room.id, userId: sessionUser.id, sessionId: courseSession.id });
+
+  if (await isSessionFinalized(courseSession.id)) {
+    return response(
+      403,
+      "APPEL_ALREADY_SENT",
+      "L'appel a deja ete envoye pour ce cours.",
+      { sessionId: courseSession.id, room: courseSession.room.code }
     );
   }
 
