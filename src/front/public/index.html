@@ -192,10 +192,12 @@
     }
 
     async function callNfcApi(path, body) {
+      const deviceFingerprint = await getDeviceFingerprint();
       const res = await fetch(path, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "x-device-fingerprint": deviceFingerprint,
         },
         body: JSON.stringify(body),
       });
@@ -209,6 +211,121 @@
       return data;
     }
 
+    async function getDeviceFingerprint() {
+      const components = {
+        userAgent: navigator.userAgent,
+        platform: navigator.platform,
+        languages: navigator.languages || [navigator.language],
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        screen: {
+          width: window.screen?.width,
+          height: window.screen?.height,
+          availWidth: window.screen?.availWidth,
+          availHeight: window.screen?.availHeight,
+          colorDepth: window.screen?.colorDepth,
+          pixelDepth: window.screen?.pixelDepth,
+        },
+        viewport: {
+          width: window.innerWidth,
+          height: window.innerHeight,
+          devicePixelRatio: window.devicePixelRatio,
+        },
+        hardwareConcurrency: navigator.hardwareConcurrency || null,
+        deviceMemory: navigator.deviceMemory || null,
+        maxTouchPoints: navigator.maxTouchPoints || 0,
+        plugins: Array.from(navigator.plugins || []).map(plugin => plugin.name).sort(),
+        mimeTypes: Array.from(navigator.mimeTypes || []).map(mimeType => mimeType.type).sort(),
+        fonts: detectInstalledFonts(),
+        canvas: getCanvasSignal(),
+      };
+
+      return sha256(JSON.stringify(components));
+    }
+
+    function detectInstalledFonts() {
+      const candidates = [
+        "Arial", "Arial Black", "Calibri", "Cambria", "Candara", "Comic Sans MS",
+        "Consolas", "Courier New", "Georgia", "Helvetica", "Impact", "Lucida Console",
+        "Segoe UI", "Tahoma", "Times New Roman", "Trebuchet MS", "Verdana",
+        "Roboto", "Open Sans", "Inter", "Noto Sans", "SF Pro Text",
+      ];
+      const baseFonts = ["monospace", "sans-serif", "serif"];
+      const testText = "mmmmmmmmmmlli";
+      const testSize = "72px";
+      const container = document.createElement("div");
+      const baseline = {};
+
+      container.style.position = "absolute";
+      container.style.left = "-9999px";
+      container.style.top = "-9999px";
+      container.style.fontSize = testSize;
+      container.style.visibility = "hidden";
+      document.body.appendChild(container);
+
+      for (const baseFont of baseFonts) {
+        const span = document.createElement("span");
+        span.style.fontFamily = baseFont;
+        span.textContent = testText;
+        container.appendChild(span);
+        baseline[baseFont] = `${span.offsetWidth}x${span.offsetHeight}`;
+      }
+
+      const detected = candidates.filter(font => {
+        return baseFonts.some(baseFont => {
+          const span = document.createElement("span");
+          span.style.fontFamily = `"${font}", ${baseFont}`;
+          span.textContent = testText;
+          container.appendChild(span);
+          const size = `${span.offsetWidth}x${span.offsetHeight}`;
+          return size !== baseline[baseFont];
+        });
+      });
+
+      container.remove();
+      return detected.sort();
+    }
+
+    function getCanvasSignal() {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return null;
+
+      canvas.width = 280;
+      canvas.height = 80;
+      ctx.textBaseline = "top";
+      ctx.fillStyle = "#f60";
+      ctx.fillRect(0, 0, 120, 36);
+      ctx.fillStyle = "#069";
+      ctx.font = "18px Arial";
+      ctx.fillText("SAC attendance 2026", 8, 8);
+      ctx.fillStyle = "rgba(102, 204, 0, 0.7)";
+      ctx.font = "16px Times New Roman";
+      ctx.fillText("signature+nfc", 12, 42);
+      ctx.globalCompositeOperation = "multiply";
+      ctx.fillStyle = "rgb(255,0,255)";
+      ctx.beginPath();
+      ctx.arc(210, 35, 24, 0, Math.PI * 2);
+      ctx.fill();
+
+      return canvas.toDataURL();
+    }
+
+    async function sha256(value) {
+      if (window.crypto?.subtle) {
+        const data = new TextEncoder().encode(value);
+        const hash = await window.crypto.subtle.digest("SHA-256", data);
+        return Array.from(new Uint8Array(hash), byte => byte.toString(16).padStart(2, "0")).join("");
+      }
+
+      let hash = 0;
+      for (let index = 0; index < value.length; index += 1) {
+        hash = ((hash << 5) - hash) + value.charCodeAt(index);
+        hash |= 0;
+      }
+
+      return `fallback-${Math.abs(hash).toString(16)}`;
+    }
+
     async function prepareNfc(nfcUid) {
       setNfcResult("Verification du badge NFC...", "info");
       return callNfcApi("/api/nfc/scan/prepare", { nfcUid });
@@ -217,6 +334,27 @@
     async function sendNfc(nfcUid, signature) {
       setNfcResult("Traitement du badge NFC...", "info");
       return callNfcApi("/api/nfc/scan", { nfcUid, signature });
+    }
+
+    async function finalizeNfc(nfcUid) {
+      setNfcResult("Preparation de la validation finale...", "info");
+      const summary = await callNfcApi("/api/nfc/scan/finalize/prepare", { nfcUid });
+
+      const confirmed = window.confirm(
+        `Envoyer l'appel a EcoleDirecte ?\n\n` +
+        `Classe: ${summary.className}\n` +
+        `Cours: ${summary.courseLabel || "N/A"}\n` +
+        `Horaire: ${summary.horaire}\n` +
+        `Presents: ${summary.presentCount}/${summary.totalStudents}\n` +
+        `Absents: ${summary.absentCount}`
+      );
+
+      if (!confirmed) {
+        return { message: "Validation finale annulee." };
+      }
+
+      setNfcResult("Envoi de l'appel et generation du PDF...", "info");
+      return callNfcApi("/api/nfc/scan/finalize", { sessionId: summary.sessionId });
     }
 
     async function processPendingNfc(user) {
@@ -239,6 +377,13 @@
 
       try {
         const prepareResult = await prepareNfc(pendingNfc);
+        if (prepareResult.canFinalize) {
+          const result = await finalizeNfc(pendingNfc);
+          sessionStorage.removeItem("pendingNfcUid");
+          setNfcResult(result.message || "Validation finale terminee.", "success");
+          return;
+        }
+
         const needsSignature = ["student", "teacher"].includes(prepareResult.role);
         const signature = needsSignature ? await captureSignature() : null;
         const result = await sendNfc(pendingNfc, signature);

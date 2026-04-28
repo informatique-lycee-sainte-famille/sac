@@ -56,13 +56,13 @@ async function importClasses() {
 
   for (const c of classes) {
     await prisma.class.upsert({
-        where: { externalId: c.id },
+        where: { edId: c.id },
         update: {
             name: c.libelle,
             code: c.code,
         },
         create: {
-            externalId: c.id,
+            edId: c.id,
             code: c.code,
             name: c.libelle,
         },
@@ -78,10 +78,10 @@ async function importClasses() {
 
 async function importSessions() {
   const classes = await prisma.class.findMany(
-    // filter only class with externalId exists
-    { where: { externalId: { not: null } } }
+    // filter only class with edId exists
+    { where: { edId: { not: null } } }
     // only ext id 142
-    // { where: { externalId: 16 } }
+    // { where: { edId: 16 } }
   );
 
   let total = 0;
@@ -90,10 +90,10 @@ async function importSessions() {
     let totalForClass = 0;
     let skipped = 0;
     try {
-      // 🔥 fetch EDT per class using externalId
+      // 🔥 fetch EDT per class using edId
       const cours = await getDataByType('EDT_CLASSE', {
         date: 'today',
-        classe: cls.externalId,
+        classe: cls.edId,
       });
     //   console.log(`📥 Fetched ${cours.length} sessions for class ${cls.code}`);
     //   add debug log for each session
@@ -130,12 +130,12 @@ async function importSessions() {
 
             const startTime = fromParis(c.start_date);
             const endTime = fromParis(c.end_date);
-            const externalId = String(c.id);
+            const edId = String(c.id);
 
             const status = computeSessionStatus(c, startTime, endTime);
 
             await prisma.courseSession.upsert({
-            where: { externalId },
+            where: { edId },
             update: {
                 classId: classEntity.id,
                 teacherId: teacher.id,
@@ -149,7 +149,7 @@ async function importSessions() {
                 status: status,
             },
             create: {
-                externalId,
+                edId,
                 classId: classEntity.id,
                 teacherId: teacher.id,
                 roomId: room.id,
@@ -197,6 +197,16 @@ async function importUsers() {
   // 🔥 STUDENTS
   for (const s of students) {
     const edId = String(s.id);
+    let classId = null;
+
+    if (s.classeId) {
+      const classEntity = await prisma.class.findUnique({
+        where: { edId: Number(s.classeId) },
+        select: { id: true },
+      });
+
+      classId = classEntity?.id || null;
+    }
 
     const newData = {
       firstName: s.prenom,
@@ -204,6 +214,7 @@ async function importUsers() {
       role: "student",
       edEmail: s.email || null,
       edPhotoUrl: s.photo?.startsWith("//") ? `https:${s.photo}` : null,
+      classId,
     };
 
     const existing = await prisma.user.findUnique({
@@ -214,6 +225,7 @@ async function importUsers() {
         lastName: true,
         role: true,
         edPhotoUrl: true,
+        classId: true,
       },
     });
 
@@ -230,7 +242,8 @@ async function importUsers() {
         existing.firstName !== newData.firstName ||
         existing.lastName !== newData.lastName ||
         existing.role !== newData.role ||
-        existing.edPhotoUrl !== newData.edPhotoUrl;
+        existing.edPhotoUrl !== newData.edPhotoUrl ||
+        existing.classId !== newData.classId;
 
       if (hasChanged) {
         await prisma.user.update({

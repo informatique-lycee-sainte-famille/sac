@@ -138,6 +138,57 @@
       }
     },
 
+    "/nfc/scan/finalize/prepare": {
+      "post": {
+        "summary": "Préparer la validation finale d'un appel",
+        "description": "Route enseignant appelée après un second scan NFC. Retourne le résumé de l'appel à confirmer avant envoi EcoleDirecte.",
+        "security": [{ "oauth2": ["user"] }],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": { "$ref": "#/definitions/NfcPrepareRequest" }
+          }
+        ],
+        "responses": {
+          "200": { "schema": { "$ref": "#/definitions/FinalizePrepareResponse" } },
+          "403": { "description": "Refusé" },
+          "404": { "description": "Salle ou session introuvable" }
+        },
+        "tags": ["NFC"]
+      }
+    },
+
+    "/nfc/scan/finalize": {
+      "post": {
+        "summary": "Valider définitivement l'appel",
+        "description": "Envoie les absences à EcoleDirecte avec l'horaire du cours, puis génère le PDF d'émargement de la session.",
+        "security": [{ "oauth2": ["user"] }],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": ["sessionId"],
+              "properties": {
+                "sessionId": { "type": "integer" }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": { "schema": { "$ref": "#/definitions/FinalizeResponse" } },
+          "400": { "description": "Requête invalide" },
+          "403": { "description": "Refusé" },
+          "404": { "description": "Session introuvable" }
+        },
+        "tags": ["NFC"]
+      }
+    },
+
     "/attendance/session/{sessionId}": {
       "get": {
         "summary": "Liste des présences (prof)",
@@ -587,17 +638,57 @@
       }
     },
 
+    "/attendance/pdf/day": {
+      "get": {
+        "summary": "PDF journalier d'une classe",
+        "description": "Génère un seul PDF contenant toutes les feuilles d'émargement des sessions d'une classe pour une journée.",
+        "security": [{ "oauth2": ["user"] }],
+        "parameters": [
+          {
+            "name": "classId",
+            "in": "query",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "format": "date"
+          }
+        ],
+        "responses": {
+          "200": { "description": "PDF" },
+          "404": { "description": "Aucune session" }
+        },
+        "tags": ["Attendance"]
+      }
+    },
+
     "NfcScan": {
       "type": "object",
       "properties": {
         "id": { "type": "integer" },
         "nfcUid": { "type": "string" },
+        "roomId": { "type": "integer" },
         "userId": { "type": "integer" },
+        "sessionId": { "type": "integer" },
+        "eventType": {
+          "type": "string",
+          "enum": ["room_scan", "system_event"]
+        },
+        "comment": { "type": "string" },
         "scannedAt": {
           "type": "string",
           "format": "date-time"
         },
-        "ipAddress": { "type": "string" }
+        "ipAddress": { "type": "string" },
+        "UserAgent": { "type": "string" },
+        "deviceFingerprint": {
+          "type": "string",
+          "description": "SHA-256 du fingerprint navigateur envoye via l'en-tete x-device-fingerprint."
+        }
       }
     },
 
@@ -637,6 +728,38 @@
         "role": {
           "type": "string",
           "enum": ["student", "teacher", "staff", "admin"]
+        }
+      }
+    },
+
+    "FinalizePrepareResponse": {
+      "type": "object",
+      "properties": {
+        "status": { "type": "string" },
+        "message": { "type": "string" },
+        "sessionId": { "type": "integer" },
+        "className": { "type": "string" },
+        "courseLabel": { "type": "string" },
+        "horaire": { "type": "string" },
+        "presentCount": { "type": "integer" },
+        "absentCount": { "type": "integer" },
+        "totalStudents": { "type": "integer" }
+      }
+    },
+
+    "FinalizeResponse": {
+      "type": "object",
+      "properties": {
+        "status": { "type": "string" },
+        "message": { "type": "string" },
+        "sessionId": { "type": "integer" },
+        "pdf": {
+          "type": "object",
+          "properties": {
+            "filename": { "type": "string" },
+            "contentType": { "type": "string" },
+            "contentBase64": { "type": "string" }
+          }
         }
       }
     },

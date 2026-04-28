@@ -80,8 +80,6 @@ router.get("/redirect", async (req, res) => {
     const roleConst = getHighestRoleFromGroups(groups);
     const role = mapToPrismaRole(roleConst);
 
-    console.log(`user role const: ${roleConst} -> prisma role: ${role}`);
-
     // =========================
     // OPTIONAL ED PROFILE
     // =========================
@@ -114,8 +112,6 @@ router.get("/redirect", async (req, res) => {
           .toBuffer();
 
         avatarBase64 = `data:image/jpeg;base64,${compressedBuffer.toString("base64")}`;
-      } else {
-        console.warn("No profile picture available");
       }
     } catch (err) {
       console.warn("Error fetching profile picture:", err.message);

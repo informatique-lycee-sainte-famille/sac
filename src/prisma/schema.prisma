@@ -26,6 +26,11 @@ enum SessionStatus {
   cancelled
 }
 
+enum NfcScanEventType {
+  room_scan
+  system_event
+}
+
 model User {
   id         Int      @id @default(autoincrement())
 
@@ -60,6 +65,7 @@ model User {
   class Class? @relation(fields: [classId], references: [id])
 
   teachingSessions CourseSession[] @relation("TeacherSessions")
+  finalizedSessions CourseSessionFinalization[] @relation("CourseSessionFinalizations")
 
   attendance AttendanceRecord[]
   nfcScans   NfcScan[]
@@ -78,7 +84,7 @@ model Room {
 
 model Class {
   id         Int      @id @default(autoincrement())
-  externalId Int?     @unique
+  edId       Int?     @unique
   code       String
   name       String
   createdAt  DateTime @default(now())
@@ -105,7 +111,7 @@ model CourseSession {
   endTime      DateTime
 
   status       SessionStatus @default(scheduled)
-  externalId   String?       @unique
+  edId         String?       @unique
 
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -115,9 +121,24 @@ model CourseSession {
   teacher User  @relation("TeacherSessions", fields: [teacherId], references: [id])
 
   attendance AttendanceRecord[]
+  finalization CourseSessionFinalization?
 
   @@index([teacherId, startTime, endTime])
   @@index([roomId, startTime, endTime])
+}
+
+model CourseSessionFinalization {
+  id            Int      @id @default(autoincrement())
+  sessionId     Int      @unique
+  sentByUserId  Int
+  sentToEdAt    DateTime @default(now())
+  pdfFilename   String?
+  edResponse    Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  session CourseSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sentBy  User          @relation("CourseSessionFinalizations", fields: [sentByUserId], references: [id], onDelete: Restrict)
 }
 
 model AttendanceRecord {
@@ -142,11 +163,14 @@ model NfcScan {
   nfcUid    String
   roomId    Int?
   userId    Int?
+  sessionId Int?
+  eventType NfcScanEventType @default(room_scan)
+  comment   String?
 
   scannedAt DateTime @default(now())
   ipAddress String?
   UserAgent String?
-  DeviceId  String?
+  deviceFingerprint String?
 
   room Room? @relation(fields: [roomId], references: [id], onDelete: SetNull)
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
