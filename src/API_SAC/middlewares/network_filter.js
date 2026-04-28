@@ -31,9 +31,9 @@ module.exports = function ipFilter({ env, LAN_SUBNET }) {
 
       const isInLan = parsedIp.match(LAN_SUBNET);
 
-      // console.log(
-      //   `IP: ${parsedIp.toString()} | Role: ${role} | LAN: ${isInLan}`
-      // );
+      console.log(
+        `IP: ${parsedIp.toString()} | Role: ${role} | LAN: ${isInLan}`
+      );
 
       // 🔒 Define access logic
       const isStudent =

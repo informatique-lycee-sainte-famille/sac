@@ -8,9 +8,9 @@ const { msalClient } = require("../commons/msalClient");
 const authConfig = require("../commons/authConfig");
 const { prisma } = require("../commons/prisma");
 const { returnEDAccount } = require("../commons/match_office_to_ed.js");
+const { formatSessionUser } = require("../commons/sessionUser");
 
 const { getHighestRoleFromGroups, mapToPrismaRole, ROLES } = require("../commons/constants");
-const require_access = require("../middlewares/require_access");
 
 // =========================
 // LOGIN
@@ -194,19 +194,12 @@ router.get("/redirect", async (req, res) => {
     // =========================
     // STORE SESSION
     // =========================
-    req.session.user = {
-      id: dbUser.id,
-      o365Id: dbUser.o365Id,
-      edId: dbUser.edId,
-      email: dbUser.o365Email,
-      firstName: dbUser.firstName,
-      lastName: dbUser.lastName,
-      role: dbUser.role,
-      roleConst: roleConst,
-      groups: userInfo.groups,
-      edProfile: edProfile,
-      avatar: dbUser.o365AvatarB64,
-    };
+    dbUser = await prisma.user.findUnique({
+      where: { id: dbUser.id },
+      include: { class: true },
+    });
+
+    req.session.user = formatSessionUser(dbUser, {}, roleConst, userInfo.groups, edProfile);
 
     req.session.account = tokenResponse.account;
 
@@ -227,17 +220,6 @@ router.get("/logout", (req, res) => {
   req.session.destroy(() => {
     res.redirect("/");
   });
-});
-
-// =========================
-// CURRENT USER
-// =========================
-router.get("/me", require_access({ minRole: ROLES.STUDENT }), async (req, res) => {
-  if (!req.session?.user) {
-    return res.status(401).json({ error: "Not logged in" });
-  }
-
-  res.json(req.session.user);
 });
 
 module.exports = router;
