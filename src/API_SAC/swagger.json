@@ -89,7 +89,7 @@
     "/nfc/scan": {
       "post": {
         "summary": "Scanner NFC (élève ou prof)",
-        "description": "Valide la présence automatiquement selon la session en cours",
+        "description": "Valide la présence automatiquement selon le cours importé actuellement en cours dans la salle NFC. L'enseignant affecté au cours doit valider sa présence avant les élèves. Les élèves et enseignants doivent fournir une signature manuscrite en base64.",
         "security": [{ "oauth2": ["user"] }],
         "parameters": [
           {
@@ -103,7 +103,36 @@
           "200": {
             "schema": { "$ref": "#/definitions/ScanResponse" }
           },
-          "403": { "description": "Refusé" }
+          "400": { "description": "Requête invalide" },
+          "401": { "description": "Utilisateur non authentifié" },
+          "403": { "description": "Refusé" },
+          "404": { "description": "Salle inconnue" }
+        },
+        "tags": ["NFC"]
+      }
+    },
+
+    "/nfc/scan/prepare": {
+      "post": {
+        "summary": "Préparer un scan NFC",
+        "description": "Vérifie le cours, le rôle, l'ordre de validation et si la présence est déjà enregistrée avant d'afficher la signature côté frontend.",
+        "security": [{ "oauth2": ["user"] }],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": { "$ref": "#/definitions/NfcPrepareRequest" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "schema": { "$ref": "#/definitions/ScanResponse" }
+          },
+          "400": { "description": "Requête invalide" },
+          "401": { "description": "Utilisateur non authentifié" },
+          "403": { "description": "Refusé ou présence déjà enregistrée" },
+          "404": { "description": "Salle inconnue" }
         },
         "tags": ["NFC"]
       }
@@ -534,11 +563,12 @@
       "type": "object",
       "properties": {
         "sessionId": { "type": "integer" },
-        "studentId": { "type": "integer" },
+        "userId": { "type": "integer" },
         "status": {
           "type": "string",
-          "enum": ["present", "late", "absent", "excused"]
+          "enum": ["present", "absent"]
         },
+        "signature": { "type": "string" },
         "scannedAt": {
           "type": "string",
           "format": "date-time"
@@ -549,10 +579,10 @@
     "AttendanceUpdate": {
       "type": "object",
       "properties": {
-        "studentId": { "type": "integer" },
+        "userId": { "type": "integer" },
         "status": {
           "type": "string",
-          "enum": ["present", "late", "absent", "excused"]
+          "enum": ["present", "absent"]
         }
       }
     },
@@ -577,7 +607,22 @@
       "properties": {
         "nfcUid": {
           "type": "string",
-          "description": "UID NFC (salle)"
+          "description": "UID NFC de la salle, par exemple ROOM_123"
+        },
+        "signature": {
+          "type": "string",
+          "description": "Image de signature manuscrite au format data URL base64 PNG/JPEG. Obligatoire pour les élèves et enseignants."
+        }
+      }
+    },
+
+    "NfcPrepareRequest": {
+      "type": "object",
+      "required": ["nfcUid"],
+      "properties": {
+        "nfcUid": {
+          "type": "string",
+          "description": "UID NFC de la salle, par exemple ROOM_123"
         }
       }
     },
@@ -587,7 +632,12 @@
       "properties": {
         "status": { "type": "string" },
         "sessionId": { "type": "integer" },
-        "message": { "type": "string" }
+        "message": { "type": "string" },
+        "room": { "type": "string" },
+        "role": {
+          "type": "string",
+          "enum": ["student", "teacher", "staff", "admin"]
+        }
       }
     },
 

@@ -31,7 +31,7 @@ const allowedPaths = ['/api/o365', '/api/documentation'];
 const LAN_SUBNET = ipaddr.parseCIDR(process.env.LAN_SUBNET); 
 
 app.set('trust proxy', true);
-app.use(bodyParser.json());
+app.use(bodyParser.json({ limit: "1mb" }));
 app.use(session(sessionOptions));
 
 const require_access = require("./middlewares/require_access");

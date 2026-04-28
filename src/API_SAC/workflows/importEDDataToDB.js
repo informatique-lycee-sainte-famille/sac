@@ -92,7 +92,7 @@ async function importSessions() {
     try {
       // 🔥 fetch EDT per class using externalId
       const cours = await getDataByType('EDT_CLASSE', {
-        date: '2026-04-24',
+        date: 'today',
         classe: cls.externalId,
       });
     //   console.log(`📥 Fetched ${cours.length} sessions for class ${cls.code}`);

@@ -8,8 +8,42 @@
     body { font-family: sans-serif; background: #111; color: #eee; padding: 20px }
     button { padding: 10px 20px; border: 0; margin-right: 10px; cursor: pointer }
     #info { margin-top: 20px; white-space: pre; }
+    #signature-modal {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.75);
+      padding: 16px;
+      z-index: 9999;
+    }
+    #signature-modal.open { display: flex; }
+    #signature-box {
+      width: min(520px, 100%);
+      background: #1f2937;
+      color: #fff;
+      border-radius: 8px;
+      padding: 18px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+    }
+    #signature-canvas {
+      width: 100%;
+      height: 220px;
+      background: #fff;
+      border: 1px solid #9ca3af;
+      border-radius: 4px;
+      touch-action: none;
+    }
+    #signature-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 12px;
+    }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <script src="https://cdn.jsdelivr.net/npm/signature_pad@5.1.2/dist/signature_pad.umd.min.js"></script>
   <link rel="manifest" href="manifest.json" />
 </head>
 
@@ -18,7 +52,20 @@
   <button onclick="location.href='/api/o365/login'" id="login-btn">Login</button>
   <button onclick="location.href='/api/o365/logout'" id="logout-btn">Logout</button>
   <img src="" alt="Avatar" id="avatar" style="width: 50px; height: 50px; border-radius: 50%; display: none;" />
+  <div id="nfc-result" style="margin-top: 20px;"></div>
   <div id="info">Not loaded</div>
+  <div id="signature-modal" aria-hidden="true">
+    <div id="signature-box">
+      <h2>Signature</h2>
+      <p>Signez pour valider votre présence.</p>
+      <canvas id="signature-canvas"></canvas>
+      <div id="signature-actions">
+        <button type="button" id="signature-clear">Effacer</button>
+        <button type="button" id="signature-cancel">Annuler</button>
+        <button type="button" id="signature-submit">Valider</button>
+      </div>
+    </div>
+  </div>
 
   <script>
     if ("serviceWorker" in navigator) {
@@ -36,31 +83,179 @@
         document.getElementById("info").innerText = JSON.stringify(data, null, 2);
         document.getElementById("logout-btn").style.display = "block";
         document.getElementById("login-btn").style.display = "none";
-        document.getElementById("avatar").src = data.avatar;
-        document.getElementById("avatar").style.display = "block";
+        if (data.avatar) {
+          document.getElementById("avatar").src = data.avatar;
+          document.getElementById("avatar").style.display = "block";
+        } else {
+          document.getElementById("avatar").removeAttribute("src");
+          document.getElementById("avatar").style.display = "none";
+        }
+        return data;
       } catch {
         document.getElementById("info").innerText = "Not logged in";
         document.getElementById("logout-btn").style.display = "none";
+        document.getElementById("login-btn").style.display = "block";
+        document.getElementById("avatar").removeAttribute("src");
+        document.getElementById("avatar").style.display = "none";
+        return null;
       }
     }
-    async function sendNfc() {
-        // get nfc parameter from url and send it to the server with some user infos
-        const urlParams = new URLSearchParams(window.location.search);
-        const nfc = urlParams.get('nfc');
-        if (nfc) {
-            await fetch('/api/nfc/scan', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ 
-                    nfcUid: nfc
-                })
-            });
-        }
+
+    function setNfcResult(message, type = "info") {
+      const result = document.getElementById("nfc-result");
+      const colors = {
+        info: "#93c5fd",
+        success: "#86efac",
+        error: "#fca5a5",
+      };
+
+      result.style.color = colors[type] || colors.info;
+      result.innerText = message || "";
     }
-    sendNfc();
-    loadProfile();
+
+    function getNfcFromUrl() {
+      const urlParams = new URLSearchParams(window.location.search);
+      return urlParams.get("nfc");
+    }
+
+    function cleanNfcFromUrl() {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("nfc");
+
+      const cleanPath =
+        url.pathname +
+        (url.searchParams.toString() ? `?${url.searchParams.toString()}` : "") +
+        url.hash;
+
+      window.history.replaceState({}, "", cleanPath || "/");
+    }
+
+    function captureSignature() {
+      return new Promise((resolve, reject) => {
+        const modal = document.getElementById("signature-modal");
+        const canvas = document.getElementById("signature-canvas");
+        const clearBtn = document.getElementById("signature-clear");
+        const cancelBtn = document.getElementById("signature-cancel");
+        const submitBtn = document.getElementById("signature-submit");
+        let signaturePad = null;
+
+        function resizeCanvas() {
+          const ratio = Math.max(window.devicePixelRatio || 1, 1);
+          const rect = canvas.getBoundingClientRect();
+          canvas.width = Math.floor(rect.width * ratio);
+          canvas.height = Math.floor(rect.height * ratio);
+          canvas.getContext("2d").scale(ratio, ratio);
+          signaturePad.clear();
+        }
+
+        function close() {
+          modal.classList.remove("open");
+          modal.setAttribute("aria-hidden", "true");
+          window.removeEventListener("resize", resizeCanvas);
+          clearBtn.removeEventListener("click", clear);
+          cancelBtn.removeEventListener("click", cancel);
+          submitBtn.removeEventListener("click", submit);
+        }
+
+        function clear() {
+          signaturePad.clear();
+        }
+
+        function cancel() {
+          close();
+          reject(new Error("Signature annulee."));
+        }
+
+        function submit() {
+          if (signaturePad.isEmpty()) {
+            setNfcResult("La signature est obligatoire.", "error");
+            return;
+          }
+
+          const signature = signaturePad.toDataURL("image/png");
+          close();
+          resolve(signature);
+        }
+
+        modal.classList.add("open");
+        modal.setAttribute("aria-hidden", "false");
+        signaturePad = new SignaturePad(canvas, {
+          backgroundColor: "rgb(255,255,255)",
+        });
+        resizeCanvas();
+
+        window.addEventListener("resize", resizeCanvas);
+        clearBtn.addEventListener("click", clear);
+        cancelBtn.addEventListener("click", cancel);
+        submitBtn.addEventListener("click", submit);
+      });
+    }
+
+    async function callNfcApi(path, body) {
+      const res = await fetch(path, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        throw new Error(data.message || data.error || "Scan NFC refuse");
+      }
+
+      return data;
+    }
+
+    async function prepareNfc(nfcUid) {
+      setNfcResult("Verification du badge NFC...", "info");
+      return callNfcApi("/api/nfc/scan/prepare", { nfcUid });
+    }
+
+    async function sendNfc(nfcUid, signature) {
+      setNfcResult("Traitement du badge NFC...", "info");
+      return callNfcApi("/api/nfc/scan", { nfcUid, signature });
+    }
+
+    async function processPendingNfc(user) {
+      const nfcFromUrl = getNfcFromUrl();
+      const pendingNfc = nfcFromUrl || sessionStorage.getItem("pendingNfcUid");
+
+      if (!pendingNfc) return;
+
+      sessionStorage.setItem("pendingNfcUid", pendingNfc);
+
+      if (nfcFromUrl) {
+        cleanNfcFromUrl();
+      }
+
+      if (!user) {
+        setNfcResult("Connexion requise pour valider la presence...", "info");
+        window.location.href = "/api/o365/login";
+        return;
+      }
+
+      try {
+        const prepareResult = await prepareNfc(pendingNfc);
+        const needsSignature = ["student", "teacher"].includes(prepareResult.role);
+        const signature = needsSignature ? await captureSignature() : null;
+        const result = await sendNfc(pendingNfc, signature);
+        sessionStorage.removeItem("pendingNfcUid");
+        setNfcResult(result.message || "Presence validee.", "success");
+      } catch (err) {
+        sessionStorage.removeItem("pendingNfcUid");
+        setNfcResult(err.message, "error");
+      }
+    }
+
+    async function init() {
+      const user = await loadProfile();
+      await processPendingNfc(user);
+    }
+
+    init();
 
     window.addEventListener("beforeinstallprompt", (e) => {
       console.log(">>> beforeinstallprompt fired!");
