@@ -9,6 +9,10 @@
     let deferredInstallPrompt = null;
     const USER_PLACEHOLDER_AVATAR =
       "/ressources/ensemble_scolaire_lyce_sainte_famille_saintonge_formation_logo_512x512.png";
+    const ADMIN_MEDIA_TRIGGER = [100, 114, 32, 104, 111, 117, 115, 101]
+      .map(code => String.fromCharCode(code))
+      .join("");
+    let adminMediaBuffer = "";
 
     window.addEventListener("beforeinstallprompt", event => {
       event.preventDefault();
@@ -32,6 +36,79 @@
       if (element) {
         element.classList.toggle("hidden", shouldHide);
       }
+    }
+
+    function isAdminSectionActive() {
+      return appState.user?.role === "admin" && window.location.hash.replace(/^#/, "") === "admin";
+    }
+
+    function closeAdminMediaPreview() {
+      document.getElementById("admin-media-preview")?.remove();
+    }
+
+    function showAdminMediaPreview() {
+      closeAdminMediaPreview();
+
+      const modal = document.createElement("div");
+      modal.id = "admin-media-preview";
+      modal.className = "fixed inset-0 z-[10000] flex items-center justify-center bg-black/80 p-4";
+      modal.innerHTML = `
+        <section class="relative w-full max-w-3xl border border-white/20 bg-neutral-950 p-3 shadow-2xl" role="dialog" aria-modal="true" aria-label="Aperçu média">
+          <button type="button" data-admin-media-close class="absolute right-3 top-3 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-black/70 text-white transition hover:bg-black" aria-label="Fermer">
+            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+          </button>
+          <img
+            src="/ressources/logo3.png"
+            alt="Aperçu média"
+            class="max-h-[82vh] w-full object-contain"
+            data-admin-media-image
+          />
+          <div data-admin-media-missing class="hidden p-8 text-center text-white">
+            <p class="text-lg font-semibold">Aperçu indisponible</p>
+            <p class="mt-2 text-sm text-white/70">La ressource demandée n'est pas encore disponible.</p>
+          </div>
+        </section>
+      `;
+
+      modal.addEventListener("click", event => {
+        if (event.target === modal || event.target.closest("[data-admin-media-close]")) {
+          closeAdminMediaPreview();
+        }
+      });
+
+      modal.querySelector("[data-admin-media-image]")?.addEventListener("error", event => {
+        event.currentTarget.classList.add("hidden");
+        modal.querySelector("[data-admin-media-missing]")?.classList.remove("hidden");
+      });
+
+      document.body.appendChild(modal);
+    }
+
+    function bindAdminMediaShortcut() {
+      if (window.__sacAdminMediaShortcutBound) return;
+      window.__sacAdminMediaShortcutBound = true;
+
+      window.addEventListener("keydown", event => {
+        if (event.key === "Escape") {
+          closeAdminMediaPreview();
+          return;
+        }
+
+        if (!isAdminSectionActive() || event.ctrlKey || event.metaKey || event.altKey) {
+          adminMediaBuffer = "";
+          return;
+        }
+
+        if (event.key.length !== 1) return;
+
+        adminMediaBuffer = `${adminMediaBuffer}${event.key.toLowerCase()}`
+          .slice(-ADMIN_MEDIA_TRIGGER.length);
+
+        if (adminMediaBuffer === ADMIN_MEDIA_TRIGGER) {
+          adminMediaBuffer = "";
+          showAdminMediaPreview();
+        }
+      });
     }
 
     function setLoginVisible(shouldShow) {
@@ -911,6 +988,8 @@
     }
 
     async function init() {
+      bindAdminMediaShortcut();
+
       window.SACApp = {
         get user() {
           return appState.user;
