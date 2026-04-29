@@ -74,6 +74,9 @@ Le système SAC repose sur une architecture **client / serveur** interne :
 - `DEBUG=INFO` : logs applicatifs classiques (`console.log`, `console.info`) et avertissements.
 - `DEBUG=WARNING` : uniquement avertissements et erreurs.
 - `DEBUG=PRODUCTION` : uniquement erreurs serveur.
+- `BUSINESS_LOG_RETENTION_DAYS=30` : durée de conservation des logs métier en base avant purge automatique.
+- `ASSETLINKS_SITE=https://sac.example.tld` : domaine publié dans `/.well-known/assetlinks.json`.
+  Si absent, SAC utilise `EXTERNAL_DOMAIN`, puis les headers proxy `X-Forwarded-Proto` / `X-Forwarded-Host`.
 
 ---
 
