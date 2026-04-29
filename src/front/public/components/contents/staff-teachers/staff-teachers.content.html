@@ -1,0 +1,29 @@
+<!-- ./front/public/components/contents/staff-teachers/staff-teachers.content.html -->
+<section class="min-h-full bg-neutral-100 px-4 py-6 text-neutral-950 sm:px-8">
+  <div class="mx-auto w-full max-w-7xl">
+    <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <div>
+        <h2 class="text-2xl font-semibold">Les enseignants / formateurs</h2>
+        <p id="staff-teachers-summary" class="text-sm text-neutral-500">Chargement des formateurs...</p>
+      </div>
+      <button id="staff-teachers-refresh" type="button" class="inline-flex w-fit items-center gap-2 border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-800 transition hover:bg-neutral-50">
+        <i class="fa-solid fa-rotate-right shrink-0" aria-hidden="true"></i>
+        <span>Actualiser</span>
+      </button>
+    </div>
+
+    <div class="mt-5 grid gap-4 lg:grid-cols-[320px_1fr]">
+      <aside class="border border-neutral-200 bg-white p-4 shadow-sm">
+        <label class="block">
+          <span class="text-xs font-semibold uppercase text-neutral-500">Rechercher</span>
+          <input id="staff-teachers-search" type="search" class="mt-1 w-full border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900" placeholder="Nom, mail, matière..." />
+        </label>
+        <div id="staff-teachers-list" class="mt-4 grid gap-2"></div>
+      </aside>
+
+      <div id="staff-teacher-detail" class="min-w-0 border border-neutral-200 bg-white p-5 shadow-sm">
+        <p class="text-sm text-neutral-600">Sélectionnez un formateur.</p>
+      </div>
+    </div>
+  </div>
+</section>

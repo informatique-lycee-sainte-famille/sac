@@ -75,8 +75,17 @@ Le système SAC repose sur une architecture **client / serveur** interne :
 - `DEBUG=WARNING` : uniquement avertissements et erreurs.
 - `DEBUG=PRODUCTION` : uniquement erreurs serveur.
 - `BUSINESS_LOG_RETENTION_DAYS=30` : durée de conservation des logs métier en base avant purge automatique.
+- `ED_PHOTO_CACHE_DELAY_MS=1000` : délai entre deux téléchargements de photos élèves EcoleDirecte.
+- `ED_PHOTO_CACHE_DAILY_LIMIT=500` : nombre maximum de photos élèves traitées par le cache nocturne.
+- `ED_PHOTO_CACHE_TIMEOUT_MS=15000` : timeout réseau par photo EcoleDirecte.
 - `ASSETLINKS_SITE=https://sac.example.tld` : domaine publié dans `/.well-known/assetlinks.json`.
   Si absent, SAC utilise `EXTERNAL_DOMAIN`, puis les headers proxy `X-Forwarded-Proto` / `X-Forwarded-Host`.
+
+## Commandes temporaires
+
+- `npm run ed:photos -- --limit=10 --delayMs=1000` : lance manuellement le cache des photos élèves ED.
+- `npm run ed:photos -- --studentId=123` : traite un seul élève par identifiant SAC.
+- `npm run ed:photos -- --edId=3151` : traite un seul élève par identifiant EcoleDirecte.
 
 ---
 

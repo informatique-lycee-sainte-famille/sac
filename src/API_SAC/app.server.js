@@ -23,9 +23,11 @@ const ipaddr = require('ipaddr.js');
 const swaggerDocument = require('./swagger.openapi.json');
 const { session_options } = require("./commons/session_config.common");
 const { import_ed_data_to_db } = require("./workflows/import_ed_data_to_db.workflow");
+const { process_ed_photo_queue } = require("../scripts/auto/download_ed_student_photo.script");
 
 const adminRoutes = require("./routes/admin.route");
 const attendanceRoutes = require("./routes/attendance.route");
+const businessLogsRoutes = require("./routes/business_logs.route");
 const classesRoutes = require("./routes/classes.route");
 const documentationRoutes = require("./routes/documentation.route");
 const nfcRoutes = require("./routes/nfc.route");
@@ -133,6 +135,7 @@ app.use(
 // mount routes
 app.use("/api/admin", adminRoutes);
 app.use("/api/attendance", attendanceRoutes);
+app.use("/api/business-logs", businessLogsRoutes);
 app.use("/api/classes", classesRoutes);
 app.use("/api/nfc", nfcRoutes);
 
@@ -182,6 +185,14 @@ setInterval(async () => {
 purge_business_logs();
 cron.schedule('30 3 * * *', () => {
   purge_business_logs();
+});
+
+cron.schedule('15 2 * * *', () => {
+  process_ed_photo_queue({
+    delayMs: Number(process.env.ED_PHOTO_CACHE_DELAY_MS || 1000),
+    limit: Number(process.env.ED_PHOTO_CACHE_DAILY_LIMIT || 500),
+    timeoutMs: Number(process.env.ED_PHOTO_CACHE_TIMEOUT_MS || 15000),
+  }).catch(err => log_technical(TECHNICAL_LEVELS.WARNING, "Daily ED student photo cache failed", { error: err }));
 });
 
 function getNextMonthEdtRange() {

@@ -503,6 +503,113 @@
         }
       }
     },
+    "/business-logs": {
+      "get": {
+        "tags": [
+          "Business Logs"
+        ],
+        "summary": "[STAFF+] Lister les logs metier",
+        "description": "Role minimum: personnel ou admin.\n\nRetourne les logs metier stockes en BDD avec filtres par evenement, niveau, entite et utilisateur.",
+        "x-min-role": "staff",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "take",
+            "type": "integer",
+            "required": false,
+            "description": "Nombre de logs a retourner, maximum 500."
+          },
+          {
+            "in": "query",
+            "name": "userId",
+            "type": "integer",
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "event",
+            "type": "string",
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "level",
+            "type": "string",
+            "required": false,
+            "enum": [
+              "ERROR",
+              "WARNING",
+              "INFO",
+              "VERBOSE"
+            ]
+          },
+          {
+            "in": "query",
+            "name": "entityType",
+            "type": "string",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Logs metier",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "filters": {
+                  "type": "object"
+                },
+                "options": {
+                  "type": "object"
+                },
+                "logs": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/BusinessLog"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/classes/staff": {
+      "get": {
+        "tags": [
+          "Classes"
+        ],
+        "summary": "[STAFF+] Classes et eleves",
+        "description": "Role minimum: personnel ou admin.\n\nRetourne les classes avec leurs eleves et les indicateurs utiles: compte O365 lie, deja connecte si o365Email existe, derniere session navigateur connue, dernier scan, mails, compteurs de presence.",
+        "x-min-role": "staff",
+        "responses": {
+          "200": {
+            "description": "Classes visibles par les personnels",
+            "schema": {
+              "$ref": "#/definitions/StaffClassesResponse"
+            }
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        }
+      }
+    },
     "/classes/me": {
       "get": {
         "tags": [
@@ -978,6 +1085,33 @@
         "description": "Role minimum: eleve ou plus."
       }
     },
+    "/user/teachers": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "summary": "[STAFF+] Enseignants et formateurs",
+        "description": "Role minimum: personnel ou admin.\n\nRetourne les enseignants/formateurs avec indicateurs de compte O365, connexion, derniere session navigateur, derniers scans et activite cours.",
+        "x-min-role": "staff",
+        "responses": {
+          "200": {
+            "description": "Enseignants visibles par les personnels",
+            "schema": {
+              "$ref": "#/definitions/StaffTeachersResponse"
+            }
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        }
+      }
+    },
     "/user/me": {
       "get": {
         "tags": [
@@ -1200,6 +1334,183 @@
           "items": {
             "$ref": "#/definitions/User"
           }
+        }
+      }
+    },
+    "StaffClassesResponse": {
+      "type": "object",
+      "properties": {
+        "classes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/StaffClass"
+          }
+        }
+      }
+    },
+    "StaffClass": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "edId": {
+          "type": "integer"
+        },
+        "code": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "studentsCount": {
+          "type": "integer"
+        },
+        "linkedCount": {
+          "type": "integer"
+        },
+        "loggedInCount": {
+          "type": "integer"
+        },
+        "scannedCount": {
+          "type": "integer"
+        },
+        "sessionsCount": {
+          "type": "integer"
+        },
+        "students": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/StaffClassStudent"
+          }
+        }
+      }
+    },
+    "StaffClassStudent": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "firstName": {
+          "type": "string"
+        },
+        "lastName": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "edId": {
+          "type": "string"
+        },
+        "o365Email": {
+          "type": "string"
+        },
+        "edEmail": {
+          "type": "string"
+        },
+        "o365AvatarB64": {
+          "type": "string"
+        },
+        "edPhotoB64": {
+          "type": "string"
+        },
+        "hasO365AccountLinked": {
+          "type": "boolean"
+        },
+        "hasLoggedIn": {
+          "type": "boolean"
+        },
+        "lastLoginAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "lastNfcScanAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "attendanceRecordsCount": {
+          "type": "integer"
+        },
+        "nfcScansCount": {
+          "type": "integer"
+        },
+        "lastAttendance": {
+          "type": "object"
+        }
+      }
+    },
+    "StaffTeachersResponse": {
+      "type": "object",
+      "properties": {
+        "summary": {
+          "type": "object"
+        },
+        "teachers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/StaffTeacher"
+          }
+        }
+      }
+    },
+    "StaffTeacher": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "firstName": {
+          "type": "string"
+        },
+        "lastName": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "edId": {
+          "type": "string"
+        },
+        "o365Email": {
+          "type": "string"
+        },
+        "o365AvatarB64": {
+          "type": "string"
+        },
+        "hasO365AccountLinked": {
+          "type": "boolean"
+        },
+        "hasLoggedIn": {
+          "type": "boolean"
+        },
+        "lastLoginAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "lastNfcScanAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "teachingSessionsCount": {
+          "type": "integer"
+        },
+        "finalizedSessionsCount": {
+          "type": "integer"
+        },
+        "attendanceRecordsCount": {
+          "type": "integer"
+        },
+        "nfcScansCount": {
+          "type": "integer"
+        },
+        "lastCourse": {
+          "type": "object"
+        },
+        "lastFinalizationAt": {
+          "type": "string",
+          "format": "date-time"
         }
       }
     },
@@ -1900,6 +2211,9 @@
     },
     {
       "name": "Attendance"
+    },
+    {
+      "name": "Business Logs"
     },
     {
       "name": "Admin"

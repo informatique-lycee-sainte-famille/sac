@@ -1,0 +1,59 @@
+<!-- ./front/public/components/contents/business-logs/business-logs.content.html -->
+<section class="min-h-full bg-neutral-100 px-4 py-6 text-neutral-950 sm:px-8">
+  <div class="mx-auto w-full max-w-7xl">
+    <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <div>
+        <h2 class="text-2xl font-semibold">Logs métier</h2>
+        <p id="business-logs-summary" class="text-sm text-neutral-500">Chargement des événements...</p>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <button id="business-logs-refresh" type="button" class="inline-flex items-center gap-2 border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-800 transition hover:bg-neutral-50">
+          <i class="fa-solid fa-rotate-right shrink-0" aria-hidden="true"></i>
+          <span>Actualiser</span>
+        </button>
+      </div>
+    </div>
+
+    <form id="business-logs-filters" class="mt-5 grid gap-3 border border-neutral-200 bg-white p-4 shadow-sm md:grid-cols-2 xl:grid-cols-5">
+      <label class="block min-w-0">
+        <span class="text-xs font-semibold uppercase text-neutral-500">Événement</span>
+        <select id="business-logs-event" class="mt-1 w-full border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900"></select>
+      </label>
+      <label class="block min-w-0">
+        <span class="text-xs font-semibold uppercase text-neutral-500">Niveau</span>
+        <select id="business-logs-level" class="mt-1 w-full border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900"></select>
+      </label>
+      <label class="block min-w-0">
+        <span class="text-xs font-semibold uppercase text-neutral-500">Entité</span>
+        <select id="business-logs-entity-type" class="mt-1 w-full border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900"></select>
+      </label>
+      <label class="block min-w-0">
+        <span class="text-xs font-semibold uppercase text-neutral-500">Utilisateur ID</span>
+        <input id="business-logs-user-id" type="number" min="1" class="mt-1 w-full border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900" placeholder="Tous" />
+      </label>
+      <label class="block min-w-0">
+        <span class="text-xs font-semibold uppercase text-neutral-500">Limite</span>
+        <select id="business-logs-take" class="mt-1 w-full border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900">
+          <option value="50">50</option>
+          <option value="100" selected>100</option>
+          <option value="250">250</option>
+          <option value="500">500</option>
+        </select>
+      </label>
+      <div class="flex flex-wrap gap-2 md:col-span-2 xl:col-span-5">
+        <button type="submit" class="inline-flex items-center gap-2 border border-[#624292] bg-[#624292] px-3 py-2 text-sm font-medium text-white transition hover:bg-[#52357f]">
+          <i class="fa-solid fa-filter" aria-hidden="true"></i>
+          <span>Appliquer</span>
+        </button>
+        <button id="business-logs-clear" type="button" class="inline-flex items-center gap-2 border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-800 transition hover:bg-neutral-50">
+          <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+          <span>Réinitialiser</span>
+        </button>
+      </div>
+    </form>
+
+    <div id="business-logs-error" class="mt-5 hidden border border-red-200 bg-red-50 p-4 text-sm text-red-900"></div>
+    <div id="business-logs-list" class="mt-5"></div>
+  </div>
+</section>

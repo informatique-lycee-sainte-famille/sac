@@ -52,6 +52,7 @@ model User {
   // 🖼 Avatars
   o365AvatarB64 String?
   edPhotoUrl    String?
+  edPhotoB64    String?
 
   // 🎓 Student-specific
   classId    Int?

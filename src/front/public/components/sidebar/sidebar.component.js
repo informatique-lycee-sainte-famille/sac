@@ -17,7 +17,7 @@ export function init() {
         return;
       }
 
-      if (contentName === "staff-courses" && !["staff", "admin"].includes(window.SACApp?.user?.role)) {
+      if (["staff-courses", "staff-classes", "staff-teachers", "business-logs"].includes(contentName) && !["staff", "admin"].includes(window.SACApp?.user?.role)) {
         await window.SACComponents.loadContent("home", "#content-slot", {
           app: window.SACApp,
         });
