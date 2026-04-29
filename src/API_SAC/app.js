@@ -1,6 +1,8 @@
 //app.js
 
 require("./commons/env");
+const { configureConsole, getDebugMode } = require("./commons/logger");
+configureConsole();
 const networkFilter = require("./middlewares/network_filter");
 const csrfProtection = require("./middlewares/csrf_protection");
 const rateLimit = require("./middlewares/rate_limit");
@@ -174,4 +176,5 @@ cron.schedule('*/5 * * * *', () => {
 
 const server = app.listen(port, () => {
   console.log(`SAC server is running on http://localhost:${port}`);
+  console.info(`Backend debug level: ${getDebugMode()}`);
 });

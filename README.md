@@ -68,6 +68,15 @@ Le système SAC repose sur une architecture **client / serveur** interne :
 
 ---
 
+## ⚙️ Variables utiles
+
+- `DEBUG=VERBOSE` : tous les logs backend, y compris `console.debug`.
+- `DEBUG=INFO` : logs applicatifs classiques (`console.log`, `console.info`) et avertissements.
+- `DEBUG=WARNING` : uniquement avertissements et erreurs.
+- `DEBUG=PRODUCTION` : uniquement erreurs serveur.
+
+---
+
 ## 📋 Organisation du projet
 
 Le suivi du projet est réalisé via **GitHub Issues** et **GitHub Projects (Kanban)**.

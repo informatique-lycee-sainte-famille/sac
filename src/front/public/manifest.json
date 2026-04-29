@@ -1,35 +1,48 @@
 {
-    "background_color": "white",
-    "theme_color": "white",
-    "description": "Site intranet pour la gestion autonome des présences et absences de l'ensemble scolaire Sainte Famille Saintonge et Saintonge Formation.",
-    "display": "standalone",
-    "icons": [
-      {
-        "src": "ressources/ensemble_scolaire_lyce_sainte_famille_saintonge_formation_logo_512x512.png",
-        "sizes": "512x512",
-        "type": "image/png",
-        "purpose": "maskable any"
-      }
-    ],
-    "name": "Saintonge Gestion Présences proto",
-    "short_name": "Gestion Présences proto",
-    "start_url": "https://sac_beta.flusin.fr/",
-    "scope": "/",
-    "scope_url": "https://sac_beta.flusin.fr/",
-    "prefer_related_applications": false,
-    "handle_links": "preferred",
-    "launch_handler": {
-      "client_mode": ["navigate-existing", "auto"]
+  "id": "/",
+  "name": "Saintonge Access Control",
+  "short_name": "SAC",
+  "description": "Gestion autonome des présences et absences de l'ensemble scolaire Sainte Famille Saintonge.",
+  "lang": "fr-FR",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "window-controls-overlay", "browser"],
+  "orientation": "portrait-primary",
+  "background_color": "#111111",
+  "theme_color": "#624292",
+  "categories": ["education", "productivity"],
+  "prefer_related_applications": false,
+  "handle_links": "preferred",
+  "launch_handler": {
+    "client_mode": ["navigate-existing", "auto"]
+  },
+  "icons": [
+    {
+      "src": "/ressources/ensemble_scolaire_lyce_sainte_famille_saintonge_formation_logo_512x512.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
     },
-    "intent_filters": {
-      "scope_url_scheme": "https",
-      "scope_url_host": "sac_beta.flusin.fr",
-      "scope_url_path": "/"
-    },
-    "related_applications": [
-      {
-        "platform": "webapp",
-        "url": "https://sac_beta.flusin.fr/manifest.json"
-      }
-    ]
-  }
+    {
+      "src": "/ressources/ensemble_scolaire_lyce_sainte_famille_saintonge_formation_logo_512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Accueil",
+      "short_name": "Accueil",
+      "url": "/#home",
+      "icons": [
+        {
+          "src": "/ressources/ensemble_scolaire_lyce_sainte_famille_saintonge_formation_logo_512x512.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ]
+}
