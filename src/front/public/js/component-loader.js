@@ -1,7 +1,7 @@
 (function () {
   const loadedStyles = new Set();
   const moduleCache = new Map();
-  const contentNames = new Set(["home", "scan", "my-courses", "my-class"]);
+  const contentNames = new Set(["home", "scan", "my-courses", "my-class", "staff-courses", "admin"]);
   let activeContent = null;
   let scanNavigationEnabled = false;
 

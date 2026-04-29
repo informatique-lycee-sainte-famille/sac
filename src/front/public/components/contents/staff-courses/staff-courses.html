@@ -1,0 +1,68 @@
+<section class="min-h-full bg-neutral-100 px-4 py-6 text-neutral-950 sm:px-8">
+  <div class="mx-auto w-full max-w-7xl">
+    <div class="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+      <div>
+        <h2 class="text-2xl font-semibold">Les cours</h2>
+        <p id="staff-courses-date-label" class="text-sm text-neutral-500">Aujourd'hui</p>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <div class="inline-flex border border-neutral-300 bg-white text-sm font-medium text-neutral-800">
+          <button id="staff-courses-view-day" type="button" data-staff-period-view="day" class="border-r border-neutral-300 px-3 py-2 transition hover:bg-neutral-50">Jour</button>
+          <button id="staff-courses-view-week" type="button" data-staff-period-view="week" class="border-r border-neutral-300 px-3 py-2 transition hover:bg-neutral-50">Semaine</button>
+          <button id="staff-courses-view-month" type="button" data-staff-period-view="month" class="px-3 py-2 transition hover:bg-neutral-50">Mois</button>
+        </div>
+        <button id="staff-courses-prev" type="button" class="inline-flex items-center gap-2 border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-800 transition hover:bg-neutral-50">
+          <i class="fa-solid fa-chevron-left shrink-0" aria-hidden="true"></i>
+          <span id="staff-courses-prev-label">Veille</span>
+        </button>
+        <button id="staff-courses-today" type="button" class="inline-flex items-center gap-2 border border-[#624292] bg-[#624292] px-3 py-2 text-sm font-medium text-white transition hover:bg-[#52357f]">
+          <i class="fa-regular fa-clock shrink-0" aria-hidden="true"></i>
+          <span id="staff-courses-current-label">Aujourd'hui</span>
+        </button>
+        <button id="staff-courses-next" type="button" class="inline-flex items-center gap-2 border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-800 transition hover:bg-neutral-50">
+          <span id="staff-courses-next-label">Lendemain</span>
+          <i class="fa-solid fa-chevron-right shrink-0" aria-hidden="true"></i>
+        </button>
+        <input id="staff-courses-date" type="date" class="border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-800" />
+        <button id="staff-courses-refresh" type="button" class="inline-flex items-center gap-2 border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-800 transition hover:bg-neutral-50">
+          <i class="fa-solid fa-rotate-right shrink-0" aria-hidden="true"></i>
+          <span>Actualiser</span>
+        </button>
+      </div>
+    </div>
+
+    <form id="staff-courses-filters" class="mt-5 grid gap-3 border border-neutral-200 bg-white p-4 shadow-sm md:grid-cols-2 xl:grid-cols-4">
+      <label class="block min-w-0">
+        <span class="text-xs font-semibold uppercase text-neutral-500">Classe</span>
+        <select id="staff-filter-class" class="mt-1 w-full border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900"></select>
+      </label>
+      <label class="block min-w-0">
+        <span class="text-xs font-semibold uppercase text-neutral-500">Salle</span>
+        <select id="staff-filter-room" class="mt-1 w-full border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900"></select>
+      </label>
+      <label class="block min-w-0">
+        <span class="text-xs font-semibold uppercase text-neutral-500">Enseignant</span>
+        <select id="staff-filter-teacher" class="mt-1 w-full border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900"></select>
+      </label>
+      <label class="block min-w-0">
+        <span class="text-xs font-semibold uppercase text-neutral-500">Matière</span>
+        <select id="staff-filter-subject" class="mt-1 w-full border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900"></select>
+      </label>
+      <div class="flex flex-wrap gap-2 md:col-span-2 xl:col-span-4">
+        <button type="submit" class="inline-flex items-center gap-2 border border-[#624292] bg-[#624292] px-3 py-2 text-sm font-medium text-white transition hover:bg-[#52357f]">
+          <i class="fa-solid fa-filter" aria-hidden="true"></i>
+          <span>Appliquer</span>
+        </button>
+        <button id="staff-courses-clear" type="button" class="inline-flex items-center gap-2 border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-800 transition hover:bg-neutral-50">
+          <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+          <span>Réinitialiser</span>
+        </button>
+      </div>
+    </form>
+
+    <div id="staff-courses-summary" class="mt-5"></div>
+    <div id="staff-courses-dashboard" class="mt-5 grid gap-4 xl:grid-cols-[1.05fr_0.95fr]"></div>
+    <div id="staff-courses-list" class="mt-5"></div>
+  </div>
+</section>

@@ -29,7 +29,23 @@ module.exports = ({ swaggerDocument, env, port }) => {
   // =========================
   // Swagger UI
   // =========================
-  router.use("/", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+  router.use("/", swaggerUi.serve, swaggerUi.setup(swaggerDocument, {
+    swaggerOptions: {
+      withCredentials: true,
+      requestInterceptor: (req) => {
+        req.credentials = "include";
+        const csrfToken = document.cookie
+          .split(";")
+          .map(cookie => cookie.trim())
+          .find(cookie => cookie.startsWith("XSRF-TOKEN="))
+          ?.slice("XSRF-TOKEN=".length);
+        if (csrfToken && !["GET", "HEAD", "OPTIONS"].includes(req.method)) {
+          req.headers["x-csrf-token"] = csrfToken;
+        }
+        return req;
+      },
+    },
+  }));
 
   return router;
 };

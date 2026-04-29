@@ -1,7 +1,15 @@
 function formatSessionUser(dbUser, sessionUser = {}, roleConst = sessionUser.roleConst, groups = sessionUser.groups, edProfile = sessionUser.edProfile) {
+  const safeEdProfile = edProfile?.ED
+    ? {
+        ED: {
+          id: edProfile.ED.id ? String(edProfile.ED.id) : undefined,
+          classeId: edProfile.ED.classeId,
+        },
+      }
+    : null;
+
   return {
     id: dbUser.id,
-    o365Id: dbUser.o365Id,
     edId: dbUser.edId,
     email: dbUser.o365Email,
     o365Email: dbUser.o365Email,
@@ -10,8 +18,8 @@ function formatSessionUser(dbUser, sessionUser = {}, roleConst = sessionUser.rol
     lastName: dbUser.lastName,
     role: dbUser.role,
     roleConst,
-    groups,
-    edProfile,
+    groups: Array.isArray(groups) ? groups.map(group => ({ name: group.name })) : [],
+    edProfile: safeEdProfile,
     avatar: dbUser.o365AvatarB64,
     edPhotoUrl: dbUser.edPhotoUrl,
     class: dbUser.class

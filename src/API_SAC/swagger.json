@@ -1,604 +1,1110 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "SAC – API Gestion Présences NFC",
-    "description": "API REST pour la gestion des présences via NFC (élèves, professeurs, administration)",
-    "version": "2.0.0"
+    "title": "SAC - API Gestion Presences NFC",
+    "description": "API REST de Saintonge Access Control. Swagger UI reutilise automatiquement la session Express courante; pas de bouton Authorize necessaire. Chaque operation affiche son role minimum dans son resume et sa description.",
+    "version": "2.1.0"
   },
   "host": "localhost:3000",
   "basePath": "/api",
-  "schemes": ["http"],
-  "consumes": ["application/json"],
-  "produces": ["application/json"],
-
-  "securityDefinitions": {
-    "oauth2": {
-      "type": "oauth2",
-      "flow": "implicit",
-      "authorizationUrl": "/api/o365/login",
-      "scopes": {
-        "user": "Utilisateur authentifié"
-      }
-    }
-  },
-
+  "schemes": [
+    "http"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "x-role-hierarchy": [
+    "none",
+    "student",
+    "teacher",
+    "staff",
+    "admin"
+  ],
   "paths": {
+    "/o365/login": {
+      "get": {
+        "tags": [
+          "O365"
+        ],
+        "summary": "[PUBLIC] Demarrer la connexion Office 365",
+        "x-min-role": "none",
+        "responses": {
+          "302": {
+            "description": "Redirection vers Microsoft"
+          }
+        },
+        "description": "Acces: public, aucune session requise."
+      }
+    },
+    "/o365/redirect": {
+      "get": {
+        "tags": [
+          "O365"
+        ],
+        "summary": "[PUBLIC] Callback Office 365",
+        "description": "Acces: public, aucune session requise.\n\nTraite le code OAuth Microsoft, cree ou met a jour la session utilisateur, puis redirige vers le frontend.",
+        "x-min-role": "none",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "query",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Redirection vers le frontend"
+          },
+          "500": {
+            "description": "Erreur pendant le login"
+          }
+        }
+      }
+    },
+    "/o365/logout": {
+      "get": {
+        "tags": [
+          "O365"
+        ],
+        "summary": "[PUBLIC] Deconnecter l'utilisateur",
+        "x-min-role": "none",
+        "responses": {
+          "302": {
+            "description": "Session detruite puis redirection vers le frontend"
+          }
+        },
+        "description": "Acces: public, aucune session requise."
+      }
+    },
+    "/documentation": {
+      "get": {
+        "tags": [
+          "Documentation"
+        ],
+        "summary": "[ADMIN] Interface Swagger UI",
+        "x-min-role": "admin",
+        "responses": {
+          "200": {
+            "description": "Swagger UI"
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/responses/Forbidden"
+          }
+        },
+        "description": "Role minimum: admin."
+      }
+    },
     "/system/test": {
       "get": {
-        "summary": "Healthcheck",
+        "tags": [
+          "System"
+        ],
+        "summary": "[STUDENT+] Healthcheck API",
+        "x-min-role": "student",
+        "x-role-note": "Route protegee par le middleware global require_access(STUDENT).",
         "responses": {
           "200": {
             "description": "API OK",
-            "schema": { "$ref": "#/definitions/MessageResponse" }
+            "schema": {
+              "$ref": "#/definitions/MessageResponse"
+            }
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/responses/Forbidden"
           }
         },
-        "tags": ["System"]
+        "description": "Role minimum: eleve ou plus."
       }
     },
-
     "/user/me": {
       "get": {
-        "summary": "Profil utilisateur connecté",
-        "security": [{ "oauth2": ["user"] }],
+        "tags": [
+          "User"
+        ],
+        "summary": "[STUDENT+] Profil utilisateur connecte",
+        "x-min-role": "student",
         "responses": {
           "200": {
-            "schema": { "$ref": "#/definitions/User" }
-          }
-        },
-        "tags": ["User"]
-      }
-    },
-
-    "/sessions/today": {
-      "get": {
-        "summary": "Sessions du jour pour l'utilisateur",
-        "security": [{ "oauth2": ["user"] }],
-        "responses": {
-          "200": {
+            "description": "Profil courant",
             "schema": {
-              "type": "array",
-              "items": { "$ref": "#/definitions/CourseSession" }
+              "$ref": "#/definitions/UserMe"
             }
-          }
-        },
-        "tags": ["Sessions"]
-      }
-    },
-
-    "/sessions/{sessionId}": {
-      "get": {
-        "summary": "Détail d'une session",
-        "parameters": [
-          {
-            "name": "sessionId",
-            "in": "path",
-            "required": true,
-            "type": "integer"
-          }
-        ],
-        "security": [{ "oauth2": ["user"] }],
-        "responses": {
-          "200": {
-            "schema": { "$ref": "#/definitions/CourseSession" }
-          }
-        },
-        "tags": ["Sessions"]
-      }
-    },
-
-    "/nfc/scan": {
-      "post": {
-        "summary": "Scanner NFC (élève ou prof)",
-        "description": "Valide la présence automatiquement selon le cours importé actuellement en cours dans la salle NFC. L'enseignant affecté au cours doit valider sa présence avant les élèves. Les élèves et enseignants doivent fournir une signature manuscrite en base64.",
-        "security": [{ "oauth2": ["user"] }],
-        "parameters": [
-          {
-            "in": "body",
-            "name": "body",
-            "required": true,
-            "schema": { "$ref": "#/definitions/NfcScanRequest" }
-          }
-        ],
-        "responses": {
-          "200": {
-            "schema": { "$ref": "#/definitions/ScanResponse" }
           },
-          "400": { "description": "Requête invalide" },
-          "401": { "description": "Utilisateur non authentifié" },
-          "403": { "description": "Refusé" },
-          "404": { "description": "Salle inconnue" }
-        },
-        "tags": ["NFC"]
-      }
-    },
-
-    "/nfc/scan/prepare": {
-      "post": {
-        "summary": "Préparer un scan NFC",
-        "description": "Vérifie le cours, le rôle, l'ordre de validation et si la présence est déjà enregistrée avant d'afficher la signature côté frontend.",
-        "security": [{ "oauth2": ["user"] }],
-        "parameters": [
-          {
-            "in": "body",
-            "name": "body",
-            "required": true,
-            "schema": { "$ref": "#/definitions/NfcPrepareRequest" }
-          }
-        ],
-        "responses": {
-          "200": {
-            "schema": { "$ref": "#/definitions/ScanResponse" }
+          "401": {
+            "$ref": "#/responses/Unauthorized"
           },
-          "400": { "description": "Requête invalide" },
-          "401": { "description": "Utilisateur non authentifié" },
-          "403": { "description": "Refusé ou présence déjà enregistrée" },
-          "404": { "description": "Salle inconnue" }
-        },
-        "tags": ["NFC"]
-      }
-    },
-
-    "/nfc/scan/finalize/prepare": {
-      "post": {
-        "summary": "Préparer la validation finale d'un appel",
-        "description": "Route enseignant appelée après un second scan NFC. Retourne le résumé de l'appel à confirmer avant envoi EcoleDirecte.",
-        "security": [{ "oauth2": ["user"] }],
-        "parameters": [
-          {
-            "in": "body",
-            "name": "body",
-            "required": true,
-            "schema": { "$ref": "#/definitions/NfcPrepareRequest" }
-          }
-        ],
-        "responses": {
-          "200": { "schema": { "$ref": "#/definitions/FinalizePrepareResponse" } },
-          "403": { "description": "Refusé" },
-          "404": { "description": "Salle ou session introuvable" }
-        },
-        "tags": ["NFC"]
-      }
-    },
-
-    "/nfc/scan/finalize": {
-      "post": {
-        "summary": "Valider définitivement l'appel",
-        "description": "Envoie les absences à EcoleDirecte avec l'horaire du cours, puis génère le PDF d'émargement de la session.",
-        "security": [{ "oauth2": ["user"] }],
-        "parameters": [
-          {
-            "in": "body",
-            "name": "body",
-            "required": true,
-            "schema": {
-              "type": "object",
-              "required": ["sessionId"],
-              "properties": {
-                "sessionId": { "type": "integer" }
-              }
-            }
-          }
-        ],
-        "responses": {
-          "200": { "schema": { "$ref": "#/definitions/FinalizeResponse" } },
-          "400": { "description": "Requête invalide" },
-          "403": { "description": "Refusé" },
-          "404": { "description": "Session introuvable" }
-        },
-        "tags": ["NFC"]
-      }
-    },
-
-    "/attendance/session/{sessionId}": {
-      "get": {
-        "summary": "Liste des présences (prof)",
-        "security": [{ "oauth2": ["user"] }],
-        "parameters": [
-          {
-            "name": "sessionId",
-            "in": "path",
-            "required": true,
-            "type": "integer"
-          }
-        ],
-        "responses": {
-          "200": {
-            "schema": {
-              "type": "array",
-              "items": { "$ref": "#/definitions/AttendanceRecord" }
-            }
-          }
-        },
-        "tags": ["Attendance"]
-      }
-    },
-
-    "/attendance/session/{sessionId}/validate": {
-      "post": {
-        "summary": "Validation manuelle des présences (prof)",
-        "description": "Permet au prof de corriger les absences",
-        "security": [{ "oauth2": ["user"] }],
-        "parameters": [
-          {
-            "name": "sessionId",
-            "in": "path",
-            "required": true,
-            "type": "integer"
+          "403": {
+            "$ref": "#/responses/Forbidden"
           },
-          {
-            "in": "body",
-            "name": "body",
-            "schema": {
-              "type": "array",
-              "items": { "$ref": "#/definitions/AttendanceUpdate" }
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "schema": { "$ref": "#/definitions/MessageResponse" }
+          "404": {
+            "$ref": "#/responses/NotFound"
           }
         },
-        "tags": ["Attendance"]
+        "description": "Role minimum: eleve ou plus."
       }
     },
-
-    "/attendance/me": {
-      "get": {
-        "summary": "Historique personnel",
-        "security": [{ "oauth2": ["user"] }],
-        "responses": {
-          "200": {
-            "schema": {
-              "type": "array",
-              "items": { "$ref": "#/definitions/AttendanceRecord" }
-            }
-          }
-        },
-        "tags": ["Attendance"]
-      }
-    },
-
     "/classes/me": {
       "get": {
-        "summary": "Classe de l'élève ou classes du prof",
-        "security": [{ "oauth2": ["user"] }],
+        "tags": [
+          "Classes"
+        ],
+        "summary": "[STUDENT+] Classe de l'eleve connecte",
+        "description": "Role minimum: eleve ou plus.\n\nRetourne les informations de classe du compte eleve connecte.",
+        "x-min-role": "student",
+        "x-role-note": "La route est accessible a partir du role student, mais le code retourne 403 si l'utilisateur n'est pas un eleve.",
         "responses": {
           "200": {
+            "description": "Classe de l'eleve",
             "schema": {
-              "type": "array",
-              "items": { "$ref": "#/definitions/Class" }
+              "$ref": "#/definitions/ClassMeResponse"
+            }
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/sessions/today": {
+      "get": {
+        "tags": [
+          "Sessions"
+        ],
+        "summary": "[STUDENT+] Cours visibles pour l'utilisateur connecte",
+        "description": "Role minimum: eleve ou plus.\n\nRetourne les cours du jour, de la semaine ou du mois selon le role: eleve pour sa classe, enseignant pour ses cours, staff/admin pour tous les cours.",
+        "x-min-role": "student",
+        "parameters": [
+          {
+            "$ref": "#/parameters/DateQuery"
+          },
+          {
+            "$ref": "#/parameters/ViewQuery"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Liste des cours",
+            "schema": {
+              "$ref": "#/definitions/SessionsResponse"
+            }
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/sessions/staff": {
+      "get": {
+        "tags": [
+          "Sessions"
+        ],
+        "summary": "[STAFF+] Vue staff des cours et statistiques",
+        "description": "Role minimum: personnel ou admin.\n\nVue filtrable par classe, salle, enseignant, matiere et periode.",
+        "x-min-role": "staff",
+        "parameters": [
+          {
+            "$ref": "#/parameters/DateQuery"
+          },
+          {
+            "$ref": "#/parameters/ViewQuery"
+          },
+          {
+            "name": "classId",
+            "in": "query",
+            "type": "integer",
+            "required": false
+          },
+          {
+            "name": "roomId",
+            "in": "query",
+            "type": "integer",
+            "required": false
+          },
+          {
+            "name": "teacherId",
+            "in": "query",
+            "type": "integer",
+            "required": false
+          },
+          {
+            "name": "subject",
+            "in": "query",
+            "type": "string",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cours et statistiques staff",
+            "schema": {
+              "$ref": "#/definitions/StaffSessionsResponse"
+            }
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/sessions/{sessionId}": {
+      "get": {
+        "tags": [
+          "Sessions"
+        ],
+        "summary": "[STUDENT+] Detail d'une session de cours",
+        "x-min-role": "student",
+        "x-role-note": "Acces ensuite limite par le code: admin/staff tout voir, enseignant uniquement ses cours, eleve uniquement sa classe.",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SessionIdPath"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Detail de la session",
+            "schema": {
+              "$ref": "#/definitions/CourseSessionDetail"
+            }
+          },
+          "400": {
+            "$ref": "#/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        },
+        "description": "Role minimum: eleve ou plus."
+      }
+    },
+    "/sessions/{sessionId}/pdf": {
+      "get": {
+        "tags": [
+          "Sessions"
+        ],
+        "summary": "[TEACHER+] Generer le PDF d'emargement d'une session",
+        "description": "Role minimum: enseignant ou plus.\n\nDisponible pour l'enseignant affecte a cette session.",
+        "produces": [
+          "application/pdf"
+        ],
+        "x-min-role": "teacher",
+        "x-role-note": "Le code verifie aussi que l'enseignant connecte est affecte au cours.",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SessionIdPath"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "PDF d'emargement",
+            "schema": {
+              "type": "file"
+            }
+          },
+          "400": {
+            "$ref": "#/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/nfc/scan/prepare": {
+      "post": {
+        "tags": [
+          "NFC"
+        ],
+        "summary": "[STUDENT+] Preparer un scan NFC",
+        "description": "Role minimum: eleve ou plus.\n\nVerifie la salle, le cours actif, le role, l'ordre de validation et l'existence d'une presence avant d'afficher la signature cote frontend.",
+        "x-min-role": "student",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/NfcPrepareRequest"
             }
           }
-        },
-        "tags": ["Classes"]
-      }
-    },
-
-    "/admin/stats": {
-      "get": {
-        "summary": "Statistiques globales",
-        "security": [{ "oauth2": ["user"] }],
+        ],
         "responses": {
           "200": {
-            "schema": { "$ref": "#/definitions/Stats" }
+            "description": "Scan possible",
+            "schema": {
+              "$ref": "#/definitions/ScanResponse"
+            }
+          },
+          "400": {
+            "$ref": "#/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/responses/NotFound"
           }
-        },
-        "tags": ["Admin"]
+        }
       }
     },
-
+    "/nfc/scan": {
+      "post": {
+        "tags": [
+          "NFC"
+        ],
+        "summary": "[STUDENT+] Enregistrer un scan NFC signe",
+        "description": "Role minimum: eleve ou plus.\n\nEnregistre la presence eleve ou enseignant apres signature manuscrite base64. Les eleves ne peuvent valider qu'apres la validation enseignant.",
+        "x-min-role": "student",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/NfcScanRequest"
+            }
+          },
+          {
+            "name": "x-device-fingerprint",
+            "in": "header",
+            "type": "string",
+            "required": false,
+            "description": "Fingerprint navigateur SHA-256 calcule cote frontend."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Presence enregistree",
+            "schema": {
+              "$ref": "#/definitions/ScanResponse"
+            }
+          },
+          "400": {
+            "$ref": "#/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/nfc/scan/finalize/prepare": {
+      "post": {
+        "tags": [
+          "NFC"
+        ],
+        "summary": "[TEACHER+] Preparer la validation finale d'un appel",
+        "description": "Role minimum: enseignant ou plus.\n\nAppelee apres un second scan NFC enseignant. Retourne le resume a confirmer avant l'envoi EcoleDirecte.",
+        "x-min-role": "teacher",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/NfcPrepareRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resume de finalisation",
+            "schema": {
+              "$ref": "#/definitions/FinalizePrepareResponse"
+            }
+          },
+          "400": {
+            "$ref": "#/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/nfc/scan/finalize": {
+      "post": {
+        "tags": [
+          "NFC"
+        ],
+        "summary": "[TEACHER+] Valider definitivement l'appel",
+        "description": "Role minimum: enseignant ou plus.\n\nEnvoie l'appel a EcoleDirecte, genere le PDF de session et declenche les envois mail prevus par le workflow.",
+        "x-min-role": "teacher",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/FinalizeRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Appel finalise",
+            "schema": {
+              "$ref": "#/definitions/FinalizeResponse"
+            }
+          },
+          "400": {
+            "$ref": "#/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/attendance/pdf/day": {
+      "get": {
+        "tags": [
+          "Attendance"
+        ],
+        "summary": "[TEACHER+] PDF journalier d'une classe",
+        "description": "Role minimum: enseignant ou plus.\n\nGenere un seul PDF contenant les feuilles d'emargement de toutes les sessions d'une classe sur une journee.",
+        "produces": [
+          "application/pdf"
+        ],
+        "x-min-role": "teacher",
+        "parameters": [
+          {
+            "name": "classId",
+            "in": "query",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "$ref": "#/parameters/DateQuery"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "PDF journalier",
+            "schema": {
+              "type": "file"
+            }
+          },
+          "400": {
+            "$ref": "#/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        }
+      }
+    },
     "/admin/users": {
       "get": {
-        "summary": "Lister les utilisateurs",
-        "security": [{ "oauth2": ["user"] }],
+        "tags": [
+          "Admin"
+        ],
+        "summary": "[ADMIN] Lister les utilisateurs",
+        "x-min-role": "admin",
         "parameters": [
           {
             "name": "role",
             "in": "query",
+            "required": false,
             "type": "string",
-            "enum": ["student", "teacher", "staff"]
+            "enum": [
+              "student",
+              "teacher",
+              "staff",
+              "admin"
+            ]
           }
         ],
         "responses": {
           "200": {
+            "description": "Utilisateurs",
             "schema": {
               "type": "array",
-              "items": { "$ref": "#/definitions/User" }
+              "items": {
+                "$ref": "#/definitions/User"
+              }
             }
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/responses/Forbidden"
           }
         },
-        "tags": ["Admin"]
+        "description": "Role minimum: admin."
       }
     },
-
     "/admin/users/{userId}/role": {
       "patch": {
-        "summary": "Modifier le rôle d’un utilisateur",
-        "security": [{ "oauth2": ["user"] }],
+        "tags": [
+          "Admin"
+        ],
+        "summary": "[ADMIN] Modifier le role d'un utilisateur",
+        "x-min-role": "admin",
         "parameters": [
           {
-            "name": "userId",
-            "in": "path",
-            "required": true,
-            "type": "integer"
+            "$ref": "#/parameters/UserIdPath"
           },
           {
             "in": "body",
             "name": "body",
+            "required": true,
             "schema": {
-              "type": "object",
-              "properties": {
-                "role": {
-                  "type": "string",
-                  "enum": ["student", "teacher", "staff"]
-                }
-              }
+              "$ref": "#/definitions/RoleUpdateRequest"
             }
-          }
-        ],
-        "responses": {
-          "200": { "$ref": "#/definitions/MessageResponse" }
-        },
-        "tags": ["Admin"]
-      }
-    },
-
-    "/admin/sessions": {
-      "post": {
-        "summary": "Créer une session de cours",
-        "security": [{ "oauth2": ["user"] }],
-        "parameters": [
-          {
-            "in": "body",
-            "name": "body",
-            "schema": { "$ref": "#/definitions/CourseSession" }
-          }
-        ],
-        "responses": {
-          "200": { "$ref": "#/definitions/CourseSession" }
-        },
-        "tags": ["Admin"]
-      }
-    },
-
-    "/admin/sessions/{sessionId}": {
-      "patch": {
-        "summary": "Modifier une session (heure, salle, prof)",
-        "security": [{ "oauth2": ["user"] }],
-        "parameters": [
-          {
-            "name": "sessionId",
-            "in": "path",
-            "required": true,
-            "type": "integer"
-          },
-          {
-            "in": "body",
-            "name": "body",
-            "schema": { "$ref": "#/definitions/CourseSession" }
-          }
-        ],
-        "responses": {
-          "200": { "$ref": "#/definitions/CourseSession" }
-        },
-        "tags": ["Admin"]
-      },
-
-      "delete": {
-        "summary": "Supprimer une session",
-        "security": [{ "oauth2": ["user"] }],
-        "parameters": [
-          {
-            "name": "sessionId",
-            "in": "path",
-            "required": true,
-            "type": "integer"
-          }
-        ],
-        "responses": {
-          "200": { "$ref": "#/definitions/MessageResponse" }
-        },
-        "tags": ["Admin"]
-      }
-    },
-
-    "/admin/attendance/override": {
-      "post": {
-        "summary": "Forcer une présence (correction manuelle)",
-        "description": "Corrige une erreur de scan ou ajoute une présence manquante",
-        "security": [{ "oauth2": ["user"] }],
-        "parameters": [
-          {
-            "in": "body",
-            "name": "body",
-            "schema": {
-              "type": "object",
-              "required": ["sessionId", "studentId", "status"],
-              "properties": {
-                "sessionId": { "type": "integer" },
-                "studentId": { "type": "integer" },
-                "status": {
-                  "type": "string",
-                  "enum": ["present", "late", "absent", "excused"]
-                },
-                "reason": { "type": "string" }
-              }
-            }
-          }
-        ],
-        "responses": {
-          "200": { "$ref": "#/definitions/MessageResponse" }
-        },
-        "tags": ["Admin"]
-      }
-    },
-
-    "/admin/attendance/reset/{sessionId}": {
-      "post": {
-        "summary": "Réinitialiser toutes les présences d'une session",
-        "security": [{ "oauth2": ["user"] }],
-        "parameters": [
-          {
-            "name": "sessionId",
-            "in": "path",
-            "required": true,
-            "type": "integer"
-          }
-        ],
-        "responses": {
-          "200": { "$ref": "#/definitions/MessageResponse" }
-        },
-        "tags": ["Admin"]
-      }
-    },
-
-    "/admin/nfc/logs": {
-      "get": {
-        "summary": "Logs des scans NFC",
-        "security": [{ "oauth2": ["user"] }],
-        "parameters": [
-          {
-            "name": "userId",
-            "in": "query",
-            "type": "integer"
-          },
-          {
-            "name": "from",
-            "in": "query",
-            "type": "string",
-            "format": "date-time"
           }
         ],
         "responses": {
           "200": {
+            "description": "Utilisateur modifie",
+            "schema": {
+              "$ref": "#/definitions/User"
+            }
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        },
+        "description": "Role minimum: admin."
+      }
+    },
+    "/admin/sessions": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "[ADMIN] Creer une session de cours",
+        "x-min-role": "admin",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/CourseSessionInput"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Session creee",
+            "schema": {
+              "$ref": "#/definitions/CourseSession"
+            }
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        },
+        "description": "Role minimum: admin."
+      }
+    },
+    "/admin/sessions/{id}": {
+      "patch": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "[ADMIN] Modifier une session de cours",
+        "x-min-role": "admin",
+        "parameters": [
+          {
+            "$ref": "#/parameters/AdminSessionIdPath"
+          },
+          {
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/CourseSessionInput"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Session modifiee",
+            "schema": {
+              "$ref": "#/definitions/CourseSession"
+            }
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        },
+        "description": "Role minimum: admin."
+      },
+      "delete": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "[ADMIN] Supprimer une session de cours",
+        "x-min-role": "admin",
+        "parameters": [
+          {
+            "$ref": "#/parameters/AdminSessionIdPath"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Session supprimee",
+            "schema": {
+              "$ref": "#/definitions/MessageResponse"
+            }
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        },
+        "description": "Role minimum: admin."
+      }
+    },
+    "/admin/attendance/override": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "[ADMIN] Forcer une presence",
+        "x-min-role": "admin",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/AdminAttendanceOverrideRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Presence corrigee",
+            "schema": {
+              "$ref": "#/definitions/MessageResponse"
+            }
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        },
+        "description": "Role minimum: admin."
+      }
+    },
+    "/admin/attendance/reset/{sessionId}": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "[ADMIN] Reinitialiser les presences d'une session",
+        "x-min-role": "admin",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SessionIdPath"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Session reset",
+            "schema": {
+              "$ref": "#/definitions/MessageResponse"
+            }
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        },
+        "description": "Role minimum: admin."
+      }
+    },
+    "/admin/nfc/logs": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "[ADMIN] Lister les derniers scans NFC",
+        "x-min-role": "admin",
+        "responses": {
+          "200": {
+            "description": "100 derniers logs NFC",
             "schema": {
               "type": "array",
-              "items": { "$ref": "#/definitions/NfcScan" }
-            }
-          }
-        },
-        "tags": ["Admin"]
-      }
-    },
-
-    "/admin/nfc/reassign": {
-      "post": {
-        "summary": "Associer un badge NFC à un utilisateur",
-        "security": [{ "oauth2": ["user"] }],
-        "parameters": [
-          {
-            "in": "body",
-            "name": "body",
-            "schema": {
-              "type": "object",
-              "properties": {
-                "nfcUid": { "type": "string" },
-                "userId": { "type": "integer" }
+              "items": {
+                "$ref": "#/definitions/NfcScan"
               }
             }
-          }
-        ],
-        "responses": {
-          "200": { "$ref": "#/definitions/MessageResponse" }
-        },
-        "tags": ["Admin"]
-      }
-    },
-
-    "/admin/classes/{classId}/students": {
-      "post": {
-        "summary": "Ajouter un élève à une classe",
-        "security": [{ "oauth2": ["user"] }],
-        "parameters": [
-          {
-            "name": "classId",
-            "in": "path",
-            "required": true,
-            "type": "integer"
           },
-          {
-            "in": "body",
-            "name": "body",
-            "schema": {
-              "type": "object",
-              "properties": {
-                "userId": { "type": "integer" }
-              }
-            }
-          }
-        ],
-        "responses": {
-          "200": { "$ref": "#/definitions/MessageResponse" }
-        },
-        "tags": ["Admin"]
-      }
-    },
-
-    "/admin/classes/{classId}/students/{userId}": {
-      "delete": {
-        "summary": "Retirer un élève d’une classe",
-        "security": [{ "oauth2": ["user"] }],
-        "parameters": [
-          {
-            "name": "classId",
-            "in": "path",
-            "required": true,
-            "type": "integer"
+          "401": {
+            "$ref": "#/responses/Unauthorized"
           },
-          {
-            "name": "userId",
-            "in": "path",
-            "required": true,
-            "type": "integer"
+          "403": {
+            "$ref": "#/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
           }
-        ],
-        "responses": {
-          "200": { "$ref": "#/definitions/MessageResponse" }
         },
-        "tags": ["Admin"]
+        "description": "Role minimum: admin."
       }
     }
   },
-
-  "definitions": {
-    "MessageResponse": {
-      "type": "object",
-      "properties": {
-        "message": { "type": "string" }
+  "parameters": {
+    "DateQuery": {
+      "name": "date",
+      "in": "query",
+      "required": false,
+      "type": "string",
+      "format": "date",
+      "description": "Date ISO yyyy-mm-dd. Par defaut: aujourd'hui."
+    },
+    "ViewQuery": {
+      "name": "view",
+      "in": "query",
+      "required": false,
+      "type": "string",
+      "enum": [
+        "day",
+        "week",
+        "month"
+      ],
+      "default": "day"
+    },
+    "SessionIdPath": {
+      "name": "sessionId",
+      "in": "path",
+      "required": true,
+      "type": "integer"
+    },
+    "AdminSessionIdPath": {
+      "name": "id",
+      "in": "path",
+      "required": true,
+      "type": "integer"
+    },
+    "UserIdPath": {
+      "name": "userId",
+      "in": "path",
+      "required": true,
+      "type": "integer"
+    }
+  },
+  "responses": {
+    "BadRequest": {
+      "description": "Requete invalide",
+      "schema": {
+        "$ref": "#/definitions/ErrorResponse"
       }
     },
-
-    "User": {
+    "Unauthorized": {
+      "description": "Utilisateur non authentifie",
+      "schema": {
+        "$ref": "#/definitions/ErrorResponse"
+      }
+    },
+    "Forbidden": {
+      "description": "Role insuffisant ou action refusee",
+      "schema": {
+        "$ref": "#/definitions/ErrorResponse"
+      }
+    },
+    "NotFound": {
+      "description": "Ressource introuvable",
+      "schema": {
+        "$ref": "#/definitions/ErrorResponse"
+      }
+    },
+    "InternalError": {
+      "description": "Erreur serveur",
+      "schema": {
+        "$ref": "#/definitions/ErrorResponse"
+      }
+    }
+  },
+  "definitions": {
+    "ErrorResponse": {
       "type": "object",
       "properties": {
-        "id": { "type": "integer" },
-        "email": { "type": "string" },
-        "firstName": { "type": "string" },
-        "lastName": { "type": "string" },
-        "role": {
-          "type": "string",
-          "enum": ["student", "teacher", "staff"]
+        "error": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
         }
       }
     },
-
+    "MessageResponse": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "Role": {
+      "type": "string",
+      "enum": [
+        "student",
+        "teacher",
+        "staff",
+        "admin"
+      ]
+    },
+    "User": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "firstName": {
+          "type": "string"
+        },
+        "lastName": {
+          "type": "string"
+        },
+        "role": {
+          "$ref": "#/definitions/Role"
+        },
+        "o365Email": {
+          "type": "string"
+        },
+        "edEmail": {
+          "type": "string"
+        },
+        "edId": {
+          "type": "string"
+        },
+        "avatar": {
+          "type": "string"
+        },
+        "classId": {
+          "type": "integer"
+        }
+      }
+    },
+    "UserMe": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/User"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "class": {
+              "$ref": "#/definitions/Class"
+            },
+            "roleConst": {
+              "type": "string",
+              "enum": [
+                "STUDENT",
+                "TEACHER",
+                "STAFF",
+                "ADMIN"
+              ]
+            }
+          }
+        }
+      ]
+    },
     "Class": {
       "type": "object",
       "properties": {
-        "id": { "type": "integer" },
-        "code": { "type": "string" },
-        "name": { "type": "string" }
+        "id": {
+          "type": "integer"
+        },
+        "code": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "edId": {
+          "type": "string"
+        }
       }
     },
-
+    "ClassMeResponse": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "code": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "edId": {
+          "type": "string"
+        },
+        "students": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/User"
+          }
+        }
+      }
+    },
+    "Room": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "code": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "nfcUid": {
+          "type": "string"
+        }
+      }
+    },
     "CourseSession": {
       "type": "object",
       "properties": {
-        "id": { "type": "integer" },
-        "classId": { "type": "integer" },
-        "roomId": { "type": "integer" },
-        "teacherId": { "type": "integer" },
+        "id": {
+          "type": "integer"
+        },
+        "label": {
+          "type": "string"
+        },
+        "matiere": {
+          "type": "string"
+        },
+        "codeMatiere": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "classId": {
+          "type": "integer"
+        },
+        "roomId": {
+          "type": "integer"
+        },
+        "teacherId": {
+          "type": "integer"
+        },
         "startTime": {
           "type": "string",
           "format": "date-time"
@@ -609,179 +1115,601 @@
         }
       }
     },
-
+    "CourseSessionInput": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "matiere": {
+          "type": "string"
+        },
+        "codeMatiere": {
+          "type": "string"
+        },
+        "color": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "classId": {
+          "type": "integer"
+        },
+        "roomId": {
+          "type": "integer"
+        },
+        "teacherId": {
+          "type": "integer"
+        },
+        "startTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "endTime": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "AttendanceStats": {
+      "type": "object",
+      "properties": {
+        "totalStudents": {
+          "type": "integer"
+        },
+        "presentCount": {
+          "type": "integer"
+        },
+        "absentCount": {
+          "type": "integer"
+        },
+        "presencePercent": {
+          "type": "integer"
+        }
+      }
+    },
     "AttendanceRecord": {
       "type": "object",
       "properties": {
-        "sessionId": { "type": "integer" },
-        "userId": { "type": "integer" },
+        "id": {
+          "type": "integer"
+        },
+        "sessionId": {
+          "type": "integer"
+        },
+        "userId": {
+          "type": "integer"
+        },
+        "studentId": {
+          "type": "integer"
+        },
         "status": {
           "type": "string",
-          "enum": ["present", "absent"]
+          "enum": [
+            "present",
+            "absent"
+          ]
         },
-        "signature": { "type": "string" },
+        "signature": {
+          "type": "string"
+        },
         "scannedAt": {
           "type": "string",
           "format": "date-time"
+        },
+        "user": {
+          "$ref": "#/definitions/User"
         }
       }
     },
-
-    "AttendanceUpdate": {
+    "AttendanceSummary": {
       "type": "object",
       "properties": {
-        "userId": { "type": "integer" },
         "status": {
+          "type": "string"
+        },
+        "scannedAt": {
           "type": "string",
-          "enum": ["present", "absent"]
+          "format": "date-time"
+        },
+        "hasSignature": {
+          "type": "boolean"
         }
       }
     },
-
-    "/attendance/pdf/day": {
-      "get": {
-        "summary": "PDF journalier d'une classe",
-        "description": "Génère un seul PDF contenant toutes les feuilles d'émargement des sessions d'une classe pour une journée.",
-        "security": [{ "oauth2": ["user"] }],
-        "parameters": [
-          {
-            "name": "classId",
-            "in": "query",
-            "required": true,
-            "type": "integer"
-          },
-          {
-            "name": "date",
-            "in": "query",
-            "required": false,
-            "type": "string",
-            "format": "date"
+    "Finalization": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "sentToEdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "sentByUserId": {
+          "type": "integer"
+        },
+        "pdfFilename": {
+          "type": "string"
+        }
+      }
+    },
+    "CourseSessionSummary": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/CourseSession"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "class": {
+              "$ref": "#/definitions/Class"
+            },
+            "room": {
+              "$ref": "#/definitions/Room"
+            },
+            "teacher": {
+              "$ref": "#/definitions/User"
+            },
+            "attendance": {
+              "$ref": "#/definitions/AttendanceSummary"
+            },
+            "isFinalized": {
+              "type": "boolean"
+            },
+            "finalization": {
+              "$ref": "#/definitions/Finalization"
+            },
+            "stats": {
+              "$ref": "#/definitions/AttendanceStats"
+            }
           }
-        ],
-        "responses": {
-          "200": { "description": "PDF" },
-          "404": { "description": "Aucune session" }
-        },
-        "tags": ["Attendance"]
-      }
+        }
+      ]
     },
-
-    "NfcScan": {
+    "CourseSessionDetail": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/CourseSessionSummary"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "horaire": {
+              "type": "string"
+            },
+            "currentUserAttendance": {
+              "$ref": "#/definitions/AttendanceRecord"
+            },
+            "attendance": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/AttendanceRecord"
+              }
+            },
+            "canGeneratePdf": {
+              "type": "boolean"
+            }
+          }
+        }
+      ]
+    },
+    "SessionsResponse": {
       "type": "object",
       "properties": {
-        "id": { "type": "integer" },
-        "nfcUid": { "type": "string" },
-        "roomId": { "type": "integer" },
-        "userId": { "type": "integer" },
-        "sessionId": { "type": "integer" },
-        "eventType": {
+        "date": {
           "type": "string",
-          "enum": ["room_scan", "system_event"]
+          "format": "date"
         },
-        "comment": { "type": "string" },
-        "scannedAt": {
+        "view": {
           "type": "string",
-          "format": "date-time"
+          "enum": [
+            "day",
+            "week",
+            "month"
+          ]
         },
-        "ipAddress": { "type": "string" },
-        "UserAgent": { "type": "string" },
-        "deviceFingerprint": {
-          "type": "string",
-          "description": "SHA-256 du fingerprint navigateur envoye via l'en-tete x-device-fingerprint."
+        "range": {
+          "$ref": "#/definitions/DateRange"
+        },
+        "sessions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/CourseSessionSummary"
+          }
         }
       }
     },
-
-    "NfcScanRequest": {
+    "DateRange": {
       "type": "object",
-      "required": ["nfcUid"],
+      "properties": {
+        "start": {
+          "type": "string",
+          "format": "date"
+        },
+        "end": {
+          "type": "string",
+          "format": "date"
+        }
+      }
+    },
+    "StaffAggregate": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "sessions": {
+          "type": "integer"
+        },
+        "finalizedSessions": {
+          "type": "integer"
+        },
+        "expectedStudents": {
+          "type": "integer"
+        },
+        "presentCount": {
+          "type": "integer"
+        },
+        "absentCount": {
+          "type": "integer"
+        },
+        "presencePercent": {
+          "type": "integer"
+        }
+      }
+    },
+    "StaffSummary": {
+      "type": "object",
+      "properties": {
+        "global": {
+          "$ref": "#/definitions/StaffAggregate"
+        },
+        "byClass": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/StaffAggregate"
+          }
+        },
+        "byTeacher": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/StaffAggregate"
+          }
+        },
+        "bySubject": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/StaffAggregate"
+          }
+        },
+        "byRoom": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/StaffAggregate"
+          }
+        }
+      }
+    },
+    "StaffSessionsResponse": {
+      "type": "object",
+      "properties": {
+        "date": {
+          "type": "string",
+          "format": "date"
+        },
+        "view": {
+          "type": "string",
+          "enum": [
+            "day",
+            "week",
+            "month"
+          ]
+        },
+        "range": {
+          "$ref": "#/definitions/DateRange"
+        },
+        "filters": {
+          "type": "object",
+          "properties": {
+            "classId": {
+              "type": "integer"
+            },
+            "roomId": {
+              "type": "integer"
+            },
+            "teacherId": {
+              "type": "integer"
+            },
+            "subject": {
+              "type": "string"
+            }
+          }
+        },
+        "options": {
+          "type": "object",
+          "properties": {
+            "classes": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Class"
+              }
+            },
+            "rooms": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/Room"
+              }
+            },
+            "teachers": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/User"
+              }
+            },
+            "subjects": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": {
+          "$ref": "#/definitions/StaffSummary"
+        },
+        "sessions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/CourseSessionSummary"
+          }
+        }
+      }
+    },
+    "NfcPrepareRequest": {
+      "type": "object",
+      "required": [
+        "nfcUid"
+      ],
       "properties": {
         "nfcUid": {
           "type": "string",
-          "description": "UID NFC de la salle, par exemple ROOM_123"
+          "description": "UID NFC de la salle, par exemple ROOM_123."
+        }
+      }
+    },
+    "NfcScanRequest": {
+      "type": "object",
+      "required": [
+        "nfcUid",
+        "signature"
+      ],
+      "properties": {
+        "nfcUid": {
+          "type": "string",
+          "description": "UID NFC de la salle, par exemple ROOM_123."
         },
         "signature": {
           "type": "string",
-          "description": "Image de signature manuscrite au format data URL base64 PNG/JPEG. Obligatoire pour les élèves et enseignants."
+          "description": "Image de signature manuscrite en data URL base64 PNG/JPEG."
         }
       }
     },
-
-    "NfcPrepareRequest": {
-      "type": "object",
-      "required": ["nfcUid"],
-      "properties": {
-        "nfcUid": {
-          "type": "string",
-          "description": "UID NFC de la salle, par exemple ROOM_123"
-        }
-      }
-    },
-
     "ScanResponse": {
       "type": "object",
       "properties": {
-        "status": { "type": "string" },
-        "sessionId": { "type": "integer" },
-        "message": { "type": "string" },
-        "room": { "type": "string" },
+        "status": {
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "integer"
+        },
+        "message": {
+          "type": "string"
+        },
+        "room": {
+          "type": "string"
+        },
         "role": {
-          "type": "string",
-          "enum": ["student", "teacher", "staff", "admin"]
+          "$ref": "#/definitions/Role"
         }
       }
     },
-
     "FinalizePrepareResponse": {
       "type": "object",
       "properties": {
-        "status": { "type": "string" },
-        "message": { "type": "string" },
-        "sessionId": { "type": "integer" },
-        "className": { "type": "string" },
-        "courseLabel": { "type": "string" },
-        "horaire": { "type": "string" },
-        "presentCount": { "type": "integer" },
-        "absentCount": { "type": "integer" },
-        "totalStudents": { "type": "integer" }
-      }
-    },
-
-    "FinalizeResponse": {
-      "type": "object",
-      "properties": {
-        "status": { "type": "string" },
-        "message": { "type": "string" },
-        "sessionId": { "type": "integer" },
-        "pdf": {
-          "type": "object",
-          "properties": {
-            "filename": { "type": "string" },
-            "contentType": { "type": "string" },
-            "contentBase64": { "type": "string" }
-          }
+        "status": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "integer"
+        },
+        "className": {
+          "type": "string"
+        },
+        "courseLabel": {
+          "type": "string"
+        },
+        "horaire": {
+          "type": "string"
+        },
+        "presentCount": {
+          "type": "integer"
+        },
+        "absentCount": {
+          "type": "integer"
+        },
+        "totalStudents": {
+          "type": "integer"
         }
       }
     },
-
-    "Stats": {
+    "FinalizeRequest": {
+      "type": "object",
+      "required": [
+        "sessionId"
+      ],
+      "properties": {
+        "sessionId": {
+          "type": "integer"
+        }
+      }
+    },
+    "FinalizeResponse": {
       "type": "object",
       "properties": {
-        "totalStudents": { "type": "integer" },
-        "present": { "type": "integer" },
-        "absent": { "type": "integer" },
-        "late": { "type": "integer" }
+        "status": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "integer"
+        },
+        "pdf": {
+          "type": "object",
+          "properties": {
+            "filename": {
+              "type": "string"
+            },
+            "contentType": {
+              "type": "string"
+            },
+            "contentBase64": {
+              "type": "string"
+            }
+          }
+        },
+        "ed": {
+          "type": "object",
+          "description": "Resultat brut ou resume de l'envoi EcoleDirecte selon le workflow."
+        }
+      }
+    },
+    "RoleUpdateRequest": {
+      "type": "object",
+      "required": [
+        "role"
+      ],
+      "properties": {
+        "role": {
+          "$ref": "#/definitions/Role"
+        }
+      }
+    },
+    "AdminAttendanceOverrideRequest": {
+      "type": "object",
+      "required": [
+        "sessionId",
+        "studentId",
+        "status"
+      ],
+      "properties": {
+        "sessionId": {
+          "type": "integer"
+        },
+        "studentId": {
+          "type": "integer",
+          "description": "ID utilisateur de l eleve a corriger. Le backend le mappe sur AttendanceRecord.userId."
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "present",
+            "absent"
+          ]
+        }
+      }
+    },
+    "NfcScan": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "nfcUid": {
+          "type": "string"
+        },
+        "roomId": {
+          "type": "integer"
+        },
+        "userId": {
+          "type": "integer"
+        },
+        "sessionId": {
+          "type": "integer"
+        },
+        "eventType": {
+          "type": "string",
+          "enum": [
+            "room_scan",
+            "system_event"
+          ]
+        },
+        "comment": {
+          "type": "string"
+        },
+        "scannedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "ipAddress": {
+          "type": "string"
+        },
+        "userAgent": {
+          "type": "string"
+        },
+        "deviceFingerprint": {
+          "type": "string",
+          "description": "SHA-256 du fingerprint navigateur envoye via x-device-fingerprint."
+        }
       }
     }
   },
-
   "tags": [
-    { "name": "System" },
-    { "name": "User" },
-    { "name": "Sessions" },
-    { "name": "NFC" },
-    { "name": "Attendance" },
-    { "name": "Classes" },
-    { "name": "Admin" }
+    {
+      "name": "O365"
+    },
+    {
+      "name": "Documentation"
+    },
+    {
+      "name": "System"
+    },
+    {
+      "name": "User"
+    },
+    {
+      "name": "Classes"
+    },
+    {
+      "name": "Sessions"
+    },
+    {
+      "name": "NFC"
+    },
+    {
+      "name": "Attendance"
+    },
+    {
+      "name": "Admin"
+    }
   ]
 }

@@ -1,0 +1,203 @@
+<section class="min-h-full bg-neutral-100 px-4 py-6 text-neutral-950 sm:px-8">
+  <div class="mx-auto w-full max-w-7xl">
+    <div class="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+      <div>
+        <h2 class="text-2xl font-semibold">Administration</h2>
+        <p class="text-sm text-neutral-500">Gestion des utilisateurs, cours, corrections et logs NFC</p>
+      </div>
+
+      <div class="flex flex-wrap gap-2">
+        <button id="admin-system-test" type="button" class="border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-800 transition hover:bg-neutral-50">
+          <i class="fa-solid fa-heart-pulse mr-2" aria-hidden="true"></i>Test API
+        </button>
+        <a href="/api/documentation" target="_blank" rel="noopener" class="border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-800 transition hover:bg-neutral-50">
+          <i class="fa-solid fa-book mr-2" aria-hidden="true"></i>Swagger
+        </a>
+        <button type="button" data-admin-tab="users" class="admin-tab border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-800 transition hover:bg-neutral-50">
+          <i class="fa-solid fa-users mr-2" aria-hidden="true"></i>Utilisateurs
+        </button>
+        <button type="button" data-admin-tab="sessions" class="admin-tab border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-800 transition hover:bg-neutral-50">
+          <i class="fa-solid fa-calendar-days mr-2" aria-hidden="true"></i>Sessions
+        </button>
+        <button type="button" data-admin-tab="attendance" class="admin-tab border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-800 transition hover:bg-neutral-50">
+          <i class="fa-solid fa-user-check mr-2" aria-hidden="true"></i>Corrections
+        </button>
+        <button type="button" data-admin-tab="nfc" class="admin-tab border border-neutral-300 bg-white px-3 py-2 text-sm font-medium text-neutral-800 transition hover:bg-neutral-50">
+          <i class="fa-solid fa-wifi mr-2" aria-hidden="true"></i>Logs NFC
+        </button>
+      </div>
+    </div>
+
+    <div id="admin-alert" class="mt-5 hidden border px-4 py-3 text-sm"></div>
+
+    <section data-admin-panel="users" class="admin-panel mt-5">
+      <div class="grid gap-4 xl:grid-cols-[320px_1fr]">
+        <form id="admin-users-filter" class="border border-neutral-200 bg-white p-4 shadow-sm">
+          <h3 class="text-lg font-semibold">Filtrer les utilisateurs</h3>
+          <label class="mt-4 block">
+            <span class="text-xs font-semibold uppercase text-neutral-500">Rôle</span>
+            <select id="admin-users-role" class="mt-1 w-full border border-neutral-300 bg-white px-3 py-2 text-sm">
+              <option value="">Tous</option>
+              <option value="student">Élèves</option>
+              <option value="teacher">Enseignants</option>
+              <option value="staff">Personnels</option>
+              <option value="admin">Admins</option>
+            </select>
+          </label>
+          <button type="submit" class="mt-4 inline-flex items-center gap-2 border border-[#624292] bg-[#624292] px-3 py-2 text-sm font-medium text-white transition hover:bg-[#52357f]">
+            <i class="fa-solid fa-filter" aria-hidden="true"></i>
+            <span>Afficher</span>
+          </button>
+        </form>
+
+        <div class="border border-neutral-200 bg-white p-4 shadow-sm">
+          <div class="flex items-center justify-between gap-3">
+            <h3 class="text-lg font-semibold">Utilisateurs</h3>
+            <button id="admin-users-refresh" type="button" class="inline-flex items-center gap-2 border border-neutral-300 bg-white px-3 py-2 text-sm font-medium transition hover:bg-neutral-50">
+              <i class="fa-solid fa-rotate-right" aria-hidden="true"></i>
+              <span>Actualiser</span>
+            </button>
+          </div>
+          <div id="admin-users-list" class="mt-4 overflow-x-auto"></div>
+        </div>
+      </div>
+    </section>
+
+    <section data-admin-panel="sessions" class="admin-panel mt-5 hidden">
+      <div class="grid gap-4 xl:grid-cols-[360px_1fr]">
+        <form id="admin-session-form" class="border border-neutral-200 bg-white p-4 shadow-sm">
+          <h3 id="admin-session-form-title" class="text-lg font-semibold">Créer une session</h3>
+          <input id="admin-session-id" type="hidden" />
+          <div class="mt-4 grid gap-3">
+            <label>
+              <span class="text-xs font-semibold uppercase text-neutral-500">Libellé</span>
+              <input id="admin-session-label" class="mt-1 w-full border border-neutral-300 px-3 py-2 text-sm" />
+            </label>
+            <label>
+              <span class="text-xs font-semibold uppercase text-neutral-500">Matière</span>
+              <input id="admin-session-subject" class="mt-1 w-full border border-neutral-300 px-3 py-2 text-sm" />
+            </label>
+            <label>
+              <span class="text-xs font-semibold uppercase text-neutral-500">Classe</span>
+              <select id="admin-session-class" required class="mt-1 w-full border border-neutral-300 bg-white px-3 py-2 text-sm"></select>
+            </label>
+            <label>
+              <span class="text-xs font-semibold uppercase text-neutral-500">Salle</span>
+              <select id="admin-session-room" required class="mt-1 w-full border border-neutral-300 bg-white px-3 py-2 text-sm"></select>
+            </label>
+            <label>
+              <span class="text-xs font-semibold uppercase text-neutral-500">Enseignant</span>
+              <select id="admin-session-teacher" required class="mt-1 w-full border border-neutral-300 bg-white px-3 py-2 text-sm"></select>
+            </label>
+            <div class="grid gap-3 sm:grid-cols-2">
+              <label>
+                <span class="text-xs font-semibold uppercase text-neutral-500">Début</span>
+                <input id="admin-session-start" type="datetime-local" required class="mt-1 w-full border border-neutral-300 px-3 py-2 text-sm" />
+              </label>
+              <label>
+                <span class="text-xs font-semibold uppercase text-neutral-500">Fin</span>
+                <input id="admin-session-end" type="datetime-local" required class="mt-1 w-full border border-neutral-300 px-3 py-2 text-sm" />
+              </label>
+            </div>
+            <label>
+              <span class="text-xs font-semibold uppercase text-neutral-500">Statut</span>
+              <select id="admin-session-status" class="mt-1 w-full border border-neutral-300 bg-white px-3 py-2 text-sm">
+                <option value="scheduled">Planifié</option>
+                <option value="ongoing">En cours</option>
+                <option value="completed">Terminé</option>
+                <option value="cancelled">Annulé</option>
+              </select>
+            </label>
+          </div>
+          <div class="mt-4 flex flex-wrap gap-2">
+            <button type="submit" class="inline-flex items-center gap-2 border border-[#624292] bg-[#624292] px-3 py-2 text-sm font-medium text-white transition hover:bg-[#52357f]">
+              <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>
+              <span>Enregistrer</span>
+            </button>
+            <button id="admin-session-cancel" type="button" class="inline-flex items-center gap-2 border border-neutral-300 bg-white px-3 py-2 text-sm font-medium transition hover:bg-neutral-50">
+              <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+              <span>Annuler</span>
+            </button>
+          </div>
+        </form>
+
+        <div class="border border-neutral-200 bg-white p-4 shadow-sm">
+          <div class="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+            <div>
+              <h3 class="text-lg font-semibold">Sessions</h3>
+              <p class="text-sm text-neutral-500">Vue utilisée aussi pour alimenter les listes classe/salle/prof</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <input id="admin-sessions-date" type="date" class="border border-neutral-300 bg-white px-3 py-2 text-sm" />
+              <select id="admin-sessions-view" class="border border-neutral-300 bg-white px-3 py-2 text-sm">
+                <option value="day">Jour</option>
+                <option value="week">Semaine</option>
+                <option value="month">Mois</option>
+              </select>
+              <button id="admin-sessions-refresh" type="button" class="inline-flex items-center gap-2 border border-neutral-300 bg-white px-3 py-2 text-sm font-medium transition hover:bg-neutral-50">
+                <i class="fa-solid fa-rotate-right" aria-hidden="true"></i>
+                <span>Actualiser</span>
+              </button>
+            </div>
+          </div>
+          <div id="admin-sessions-list" class="mt-4 space-y-3"></div>
+        </div>
+      </div>
+    </section>
+
+    <section data-admin-panel="attendance" class="admin-panel mt-5 hidden">
+      <div class="grid gap-4 xl:grid-cols-2">
+        <form id="admin-attendance-override" class="border border-neutral-200 bg-white p-4 shadow-sm">
+          <h3 class="text-lg font-semibold">Forcer une présence</h3>
+          <div class="mt-4 grid gap-3">
+            <label>
+              <span class="text-xs font-semibold uppercase text-neutral-500">Session ID</span>
+              <input id="admin-override-session" type="number" required class="mt-1 w-full border border-neutral-300 px-3 py-2 text-sm" />
+            </label>
+            <label>
+              <span class="text-xs font-semibold uppercase text-neutral-500">Utilisateur / élève ID</span>
+              <input id="admin-override-student" type="number" required class="mt-1 w-full border border-neutral-300 px-3 py-2 text-sm" />
+            </label>
+            <label>
+              <span class="text-xs font-semibold uppercase text-neutral-500">Statut</span>
+              <select id="admin-override-status" class="mt-1 w-full border border-neutral-300 bg-white px-3 py-2 text-sm">
+                <option value="present">Présent</option>
+                <option value="absent">Absent</option>
+              </select>
+            </label>
+          </div>
+          <button type="submit" class="mt-4 inline-flex items-center gap-2 border border-[#624292] bg-[#624292] px-3 py-2 text-sm font-medium text-white transition hover:bg-[#52357f]">
+            <i class="fa-solid fa-user-check" aria-hidden="true"></i>
+            <span>Corriger</span>
+          </button>
+        </form>
+
+        <form id="admin-attendance-reset" class="border border-red-200 bg-white p-4 shadow-sm">
+          <h3 class="text-lg font-semibold text-red-800">Réinitialiser une session</h3>
+          <p class="mt-1 text-sm text-neutral-500">Supprime toutes les présences d'une session.</p>
+          <label class="mt-4 block">
+            <span class="text-xs font-semibold uppercase text-neutral-500">Session ID</span>
+            <input id="admin-reset-session" type="number" required class="mt-1 w-full border border-neutral-300 px-3 py-2 text-sm" />
+          </label>
+          <button type="submit" class="mt-4 inline-flex items-center gap-2 border border-red-700 bg-red-700 px-3 py-2 text-sm font-medium text-white transition hover:bg-red-800">
+            <i class="fa-solid fa-trash-can" aria-hidden="true"></i>
+            <span>Réinitialiser</span>
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <section data-admin-panel="nfc" class="admin-panel mt-5 hidden">
+      <div class="border border-neutral-200 bg-white p-4 shadow-sm">
+        <div class="flex items-center justify-between gap-3">
+          <h3 class="text-lg font-semibold">Logs NFC</h3>
+          <button id="admin-nfc-refresh" type="button" class="inline-flex items-center gap-2 border border-neutral-300 bg-white px-3 py-2 text-sm font-medium transition hover:bg-neutral-50">
+            <i class="fa-solid fa-rotate-right" aria-hidden="true"></i>
+            <span>Actualiser</span>
+          </button>
+        </div>
+        <div id="admin-nfc-list" class="mt-4 overflow-x-auto"></div>
+      </div>
+    </section>
+  </div>
+</section>

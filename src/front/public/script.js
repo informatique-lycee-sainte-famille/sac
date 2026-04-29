@@ -173,6 +173,8 @@
       const mobileUserInfo = byId("mobile-user-info");
       const studentOnlyLinks = document.querySelectorAll("[data-student-only-link]");
       const courseLinks = document.querySelectorAll("[data-course-link]");
+      const staffLinks = document.querySelectorAll("[data-staff-link]");
+      const adminLinks = document.querySelectorAll("[data-admin-link]");
 
       authSidebars.forEach(sidebar => {
         sidebar.classList.toggle("hidden", !data);
@@ -182,6 +184,12 @@
       });
       courseLinks.forEach(link => {
         link.classList.toggle("hidden", !["student", "teacher"].includes(data?.role));
+      });
+      staffLinks.forEach(link => {
+        link.classList.toggle("hidden", !["staff", "admin"].includes(data?.role));
+      });
+      adminLinks.forEach(link => {
+        link.classList.toggle("hidden", data?.role !== "admin");
       });
 
       if (!data) {
@@ -319,15 +327,81 @@
 
     function setNfcResult(message, type = "info") {
       const result = document.getElementById("nfc-result");
-      if (!result) return;
       const colors = {
         info: "#ffffff",
         success: "#bbf7d0",
         error: "#fecaca",
       };
 
-      result.style.color = colors[type] || colors.info;
-      result.innerText = message || "";
+      if (result) {
+        result.style.color = colors[type] || colors.info;
+        result.innerText = message || "";
+      }
+
+      showNfcResultModal(message, type);
+    }
+
+    function closeNfcResultModal() {
+      const modal = document.getElementById("nfc-result-modal");
+      if (!modal) return;
+
+      modal.classList.add("hidden");
+      modal.classList.remove("flex");
+      modal.setAttribute("aria-hidden", "true");
+    }
+
+    function showNfcResultModal(message, type = "info") {
+      const modal = document.getElementById("nfc-result-modal");
+      const box = document.getElementById("nfc-result-box");
+      const icon = document.getElementById("nfc-result-icon");
+      const iconSymbol = icon?.querySelector("i");
+      const title = document.getElementById("nfc-result-title");
+      const text = document.getElementById("nfc-result-message");
+      const closeButton = document.getElementById("nfc-result-close");
+
+      if (!modal || !box || !icon || !title || !text || !closeButton) return;
+
+      const variants = {
+        info: {
+          title: "Traitement en cours",
+          box: "border-white bg-white text-neutral-950",
+          icon: "bg-[#624292] text-white",
+          symbol: "fa-solid fa-spinner fa-spin",
+          button: "hidden",
+        },
+        success: {
+          title: "Validation réussie",
+          box: "border-emerald-300 bg-emerald-50 text-emerald-950",
+          icon: "bg-emerald-600 text-white",
+          symbol: "fa-solid fa-circle-check",
+          button: "inline-flex border-emerald-800 bg-emerald-800 hover:bg-emerald-900 focus:ring-emerald-300",
+        },
+        error: {
+          title: "Validation refusée",
+          box: "border-red-300 bg-red-50 text-red-950",
+          icon: "bg-red-700 text-white",
+          symbol: "fa-solid fa-circle-xmark",
+          button: "inline-flex border-red-800 bg-red-800 hover:bg-red-900 focus:ring-red-300",
+        },
+      };
+      const variant = variants[type] || variants.info;
+
+      box.className = `w-full max-w-2xl border-4 p-6 text-center shadow-2xl sm:p-10 ${variant.box}`;
+      icon.className = `mx-auto flex h-20 w-20 items-center justify-center rounded-full text-4xl sm:h-24 sm:w-24 sm:text-5xl ${variant.icon}`;
+      if (iconSymbol) iconSymbol.className = variant.symbol;
+      title.innerText = variant.title;
+      text.innerText = message || "";
+      closeButton.className = `mt-8 items-center justify-center px-6 py-3 text-base font-semibold text-white transition focus:outline-none focus:ring-4 ${variant.button}`;
+      closeButton.classList.toggle("hidden", type === "info");
+
+      if (closeButton.dataset.bound !== "true") {
+        closeButton.dataset.bound = "true";
+        closeButton.addEventListener("click", closeNfcResultModal);
+      }
+
+      modal.classList.remove("hidden");
+      modal.classList.add("flex");
+      modal.setAttribute("aria-hidden", "false");
     }
 
     function getNfcFromUrl() {
@@ -424,6 +498,7 @@
         headers: {
           "Content-Type": "application/json",
           "x-device-fingerprint": deviceFingerprint,
+          "x-csrf-token": getCookie("XSRF-TOKEN"),
         },
         body: JSON.stringify(body),
       });
@@ -435,6 +510,14 @@
       }
 
       return data;
+    }
+
+    function getCookie(name) {
+      return document.cookie
+        .split(";")
+        .map(cookie => cookie.trim())
+        .find(cookie => cookie.startsWith(`${name}=`))
+        ?.slice(name.length + 1) || "";
     }
 
     async function getDeviceFingerprint() {
@@ -616,6 +699,9 @@
         }
 
         const needsSignature = ["student", "teacher"].includes(prepareResult.role);
+        if (needsSignature) {
+          closeNfcResultModal();
+        }
         const signature = needsSignature ? await captureSignature() : null;
         const result = await sendNfc(pendingNfc, signature);
         sessionStorage.removeItem("pendingNfcUid");
@@ -656,6 +742,14 @@
         }
 
         if (initialContent === "my-courses" && !["student", "teacher"].includes(user.role)) {
+          initialContent = "home";
+        }
+
+        if (initialContent === "staff-courses" && !["staff", "admin"].includes(user.role)) {
+          initialContent = "home";
+        }
+
+        if (initialContent === "admin" && user.role !== "admin") {
           initialContent = "home";
         }
 
