@@ -1,3 +1,4 @@
+// ./prisma/schema.prisma
 generator client {
   provider = "prisma-client-js"
   output   = "../generated/prisma"
@@ -69,6 +70,7 @@ model User {
 
   attendance AttendanceRecord[]
   nfcScans   NfcScan[]
+  businessLogs BusinessLog[]
 }
 
 model Room {
@@ -184,4 +186,24 @@ model BrowserSession {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model BusinessLog {
+  id         Int      @id @default(autoincrement())
+  event      String
+  message    String
+  level      String   @default("INFO")
+  userId     Int?
+  entityType String?
+  entityId   String?
+  metadata   Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([event])
+  @@index([userId, createdAt])
 }
