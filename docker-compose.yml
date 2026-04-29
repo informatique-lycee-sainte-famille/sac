@@ -26,21 +26,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    environment:
-      ENV: dev
-      ECOLEDIRECTE_API_BASE_URL: https://api.ecoledirecte.com/v3
-      ECOLEDIRECTE_APIP_BASE_URL: https://apip.ecoledirecte.com/v3
-      ECOLEDIRECTE_IDENTIFIANT: <votre_identifiant>
-      ECOLEDIRECTE_MDP: <votre_mot_de_passe>
-      ECOLEDIRECTE_API_VERSION: 4.98.0
-      AZURE_CLIENT_ID: <votre_client_id>
-      AZURE_TENANT_ID: <votre_tenant_id>
-      AZURE_CLIENT_SECRET: <votre_client_secret>
-      AZURE_REDIRECT_URI: http://localhost:3000/api/o365/redirect
-      SESSION_SECRET: <votre_cle_de_session>
-      EXTERNAL_DOMAIN: https://<votre_domaine_externe>
-      DATABASE_URL: "postgresql://sac_user:sac_password@localhost:5432/sac_db"
-      LAN_SUBNET: <votre_sous_reseau_lan format CIDR>
+    env_file:
+      - .env
 
 volumes:
   sac_pgdata:
