@@ -229,12 +229,12 @@ async function importUsers() {
       classId = classEntity?.id || null;
     }
 
+    const edPhotoFromImport = s.photo?.startsWith("//") ? `https:${s.photo}` : null;
     const newData = {
       firstName: s.prenom,
       lastName: normalizeSoft(s.nom),
       role: "student",
       edEmail: s.email || null,
-      edPhotoUrl: s.photo?.startsWith("//") ? `https:${s.photo}` : null,
       classId,
     };
 
@@ -245,7 +245,9 @@ async function importUsers() {
         firstName: true,
         lastName: true,
         role: true,
+        edEmail: true,
         edPhotoUrl: true,
+        edPhotoB64: true,
         classId: true,
       },
     });
@@ -255,15 +257,25 @@ async function importUsers() {
         data: {
           edId,
           ...newData,
+          edPhotoUrl: edPhotoFromImport,
         },
       });
       studentsCreated++;
     } else {
+      const nextEdPhotoUrl = (existing.edPhotoUrl !== null || existing.edPhotoB64)
+        ? (existing.edPhotoB64 ? null : edPhotoFromImport)
+        : existing.edPhotoUrl;
+
+      if (existing.edPhotoUrl !== null || existing.edPhotoB64) {
+        newData.edPhotoUrl = nextEdPhotoUrl;
+      }
+
       const hasChanged =
         existing.firstName !== newData.firstName ||
         existing.lastName !== newData.lastName ||
         existing.role !== newData.role ||
-        existing.edPhotoUrl !== newData.edPhotoUrl ||
+        existing.edEmail !== newData.edEmail ||
+        existing.edPhotoUrl !== nextEdPhotoUrl ||
         existing.classId !== newData.classId;
 
       if (hasChanged) {

@@ -128,7 +128,7 @@
       return (
         data?.avatar ||
         data?.o365AvatarB64 ||
-        data?.edPhotoUrl ||
+        data?.edPhotoB64 ||
         data?.edAvatarUrl ||
         data?.edProfile?.photoUrl ||
         data?.edProfile?.photo ||
@@ -139,7 +139,7 @@
 
     function getEdAvatarSrc(data) {
       return (
-        data?.edPhotoUrl ||
+        data?.edPhotoB64 ||
         data?.edAvatarUrl ||
         data?.edProfile?.photoUrl ||
         data?.edProfile?.photo ||
@@ -943,7 +943,7 @@
           initialContent = "home";
         }
 
-        if (initialContent === "staff-courses" && !["staff", "admin"].includes(user.role)) {
+        if (["staff-courses", "staff-classes", "staff-teachers", "business-logs"].includes(initialContent) && !["staff", "admin"].includes(user.role)) {
           initialContent = "home";
         }
 

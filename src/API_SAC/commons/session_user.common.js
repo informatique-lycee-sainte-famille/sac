@@ -22,7 +22,7 @@ function format_session_user(dbUser, sessionUser = {}, roleConst = sessionUser.r
     groups: Array.isArray(groups) ? groups.map(group => ({ name: group.name })) : [],
     edProfile: safeEdProfile,
     avatar: dbUser.o365AvatarB64,
-    edPhotoUrl: dbUser.edPhotoUrl,
+    edPhotoB64: dbUser.edPhotoB64,
     class: dbUser.class
       ? {
           id: dbUser.class.id,

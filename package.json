@@ -5,7 +5,8 @@
   "main": "src/API_SAC/app.server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "nodemon"
+    "start": "nodemon",
+    "ed:photos": "node src/scripts/auto/download_ed_student_photo.script.js"
   },
   "repository": {
     "type": "git",
