@@ -6,7 +6,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "nodemon",
-    "ed:photos": "node src/scripts/auto/download_ed_student_photo.script.js"
+    "ed:photos": "node src/scripts/auto/download_ed_student_photo.script.js",
+    "db:migrate:deploy": "prisma migrate deploy --schema src/prisma/schema.prisma"
   },
   "repository": {
     "type": "git",

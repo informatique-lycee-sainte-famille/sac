@@ -28,5 +28,5 @@ COPY --from=build /app /app
 # Expose the port your app runs on
 EXPOSE 3000
 
-# Command to run the server
-CMD [ "node", "API_SAC/app.server.js" ]
+# Apply database migrations, then run the server
+CMD [ "sh", "-c", "npx prisma migrate deploy --schema prisma/schema.prisma && node API_SAC/app.server.js" ]
