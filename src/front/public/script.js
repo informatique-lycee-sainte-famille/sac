@@ -1,15 +1,19 @@
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/sw.js");
+      navigator.serviceWorker.register("/sw.js").catch(() => undefined);
     }
 
-    // window.addEventListener("DOMContentLoaded", () => {
-    //   ensurePWAUsage();
-    // });
     const appState = {
       user: null,
     };
+    let deferredInstallPrompt = null;
     const USER_PLACEHOLDER_AVATAR =
       "/ressources/ensemble_scolaire_lyce_sainte_famille_saintonge_formation_logo_512x512.png";
+
+    window.addEventListener("beforeinstallprompt", event => {
+      event.preventDefault();
+      deferredInstallPrompt = event;
+      document.getElementById("pwa-install-direct")?.classList.remove("hidden");
+    });
 
     function byId(id) {
       return document.getElementById(id);
@@ -44,6 +48,79 @@
         .replaceAll(">", "&gt;")
         .replaceAll('"', "&quot;")
         .replaceAll("'", "&#039;");
+    }
+
+    function isPwaInstalled() {
+      return (
+        window.matchMedia?.("(display-mode: standalone)")?.matches ||
+        window.navigator.standalone === true ||
+        document.referrer.startsWith("android-app://")
+      );
+    }
+
+    function getInstallHelp() {
+      const ua = navigator.userAgent || "";
+      const isIos = /iPhone|iPad|iPod/i.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+      const isAndroid = /Android/i.test(ua);
+      const isWindows = /Windows/i.test(ua);
+      const isMac = /Macintosh|Mac OS X/i.test(ua);
+
+      if (isIos) {
+        return "Sur iPhone/iPad: ouvrez le bouton Partager dans Safari, puis touchez Ajouter a l'ecran d'accueil.";
+      }
+      if (isAndroid) {
+        return "Sur Android: ouvrez le menu du navigateur, puis choisissez Installer l'application ou Ajouter a l'ecran d'accueil.";
+      }
+      if (isWindows || isMac) {
+        return "Sur ordinateur: utilisez l'icone d'installation dans la barre d'adresse Chrome/Edge, ou le menu du navigateur.";
+      }
+      return "Installez l'application depuis le menu de votre navigateur pour que les prochains scans NFC s'ouvrent plus naturellement.";
+    }
+
+    function showPwaInstallBubble() {
+      if (isPwaInstalled() || document.getElementById("pwa-install-bubble")) return;
+
+      const bubble = document.createElement("aside");
+      bubble.id = "pwa-install-bubble";
+      bubble.className = "fixed right-3 top-3 z-[9997] w-[min(360px,calc(100vw-24px))] border border-[#624292]/30 bg-white p-4 text-neutral-950 shadow-2xl";
+      bubble.innerHTML = `
+        <div class="flex items-start gap-3">
+          <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#624292] text-white">
+            <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+          </div>
+          <div class="min-w-0 flex-1">
+            <p class="text-sm font-semibold">Installation conseillee</p>
+            <p class="mt-1 text-sm text-neutral-600">L'usage sera plus simple et fluide si vous installez la PWA.</p>
+            <p id="pwa-install-help" class="mt-2 hidden text-xs leading-relaxed text-neutral-500">${escapeHtml(getInstallHelp())}</p>
+            <div class="mt-3 flex flex-wrap gap-2">
+              <button id="pwa-install-info" type="button" class="inline-flex items-center gap-2 border border-neutral-300 bg-white px-3 py-1.5 text-xs font-medium hover:bg-neutral-50">
+                <i class="fa-solid fa-circle-question" aria-hidden="true"></i>
+                <span>Comment ?</span>
+              </button>
+              <button id="pwa-install-direct" type="button" class="${deferredInstallPrompt ? "" : "hidden"} inline-flex items-center gap-2 border border-[#624292] bg-[#624292] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#52357f]">
+                <i class="fa-solid fa-download" aria-hidden="true"></i>
+                <span>Installer</span>
+              </button>
+            </div>
+          </div>
+          <button id="pwa-install-close" type="button" class="text-neutral-400 hover:text-neutral-800" aria-label="Fermer">
+            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+          </button>
+        </div>
+      `;
+      document.body.appendChild(bubble);
+
+      bubble.querySelector("#pwa-install-info")?.addEventListener("click", () => {
+        bubble.querySelector("#pwa-install-help")?.classList.toggle("hidden");
+      });
+      bubble.querySelector("#pwa-install-close")?.addEventListener("click", () => bubble.remove());
+      bubble.querySelector("#pwa-install-direct")?.addEventListener("click", async () => {
+        if (!deferredInstallPrompt) return;
+        deferredInstallPrompt.prompt();
+        await deferredInstallPrompt.userChoice.catch(() => undefined);
+        deferredInstallPrompt = null;
+        bubble.remove();
+      });
     }
 
     function getUserAvatarSrc(data) {
@@ -645,21 +722,97 @@
       return callNfcApi("/api/nfc/scan", { nfcUid, signature });
     }
 
+    function confirmFinalizeAttendance(summary) {
+      return new Promise(resolve => {
+        document.getElementById("finalize-confirm-modal")?.remove();
+        const modal = document.createElement("div");
+        const total = Number(summary.totalStudents || 0);
+        const present = Number(summary.presentCount || 0);
+        const percent = total > 0 ? Math.round((present / total) * 100) : 0;
+
+        modal.id = "finalize-confirm-modal";
+        modal.className = "fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 p-4";
+        modal.innerHTML = `
+          <section class="w-full max-w-xl border border-white/20 bg-white text-neutral-950 shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="finalize-confirm-title">
+            <div class="bg-[#624292] px-5 py-4 text-white">
+              <div class="flex items-start justify-between gap-4">
+                <div>
+                  <p class="text-xs font-semibold uppercase tracking-wide text-white/75">Validation definitive</p>
+                  <h2 id="finalize-confirm-title" class="mt-1 text-2xl font-semibold">Envoyer l'appel</h2>
+                </div>
+                <button type="button" data-finalize-cancel class="text-white/80 hover:text-white" aria-label="Annuler">
+                  <i class="fa-solid fa-xmark text-xl" aria-hidden="true"></i>
+                </button>
+              </div>
+            </div>
+            <div class="p-5">
+              <p class="text-sm text-neutral-600">Cette action valide la session, envoie l'appel a EcoleDirecte, genere le PDF et declenche l'envoi mail prevu.</p>
+              <div class="mt-5 grid gap-3 sm:grid-cols-2">
+                <div class="border border-neutral-200 bg-neutral-50 p-3">
+                  <p class="text-xs font-semibold uppercase text-neutral-500">Classe</p>
+                  <p class="mt-1 break-words text-base font-semibold">${escapeHtml(summary.className || "Non renseignee")}</p>
+                </div>
+                <div class="border border-neutral-200 bg-neutral-50 p-3">
+                  <p class="text-xs font-semibold uppercase text-neutral-500">Horaire</p>
+                  <p class="mt-1 break-words text-base font-semibold">${escapeHtml(summary.horaire || "Non renseigne")}</p>
+                </div>
+                <div class="border border-neutral-200 bg-neutral-50 p-3 sm:col-span-2">
+                  <p class="text-xs font-semibold uppercase text-neutral-500">Cours</p>
+                  <p class="mt-1 break-words text-base font-semibold">${escapeHtml(summary.courseLabel || "Cours")}</p>
+                </div>
+              </div>
+              <div class="mt-5 grid gap-3 sm:grid-cols-3">
+                <div class="border border-emerald-200 bg-emerald-50 p-3 text-emerald-900">
+                  <p class="text-xs font-semibold uppercase">Presents</p>
+                  <p class="mt-1 text-2xl font-bold">${escapeHtml(present)}/${escapeHtml(total)}</p>
+                </div>
+                <div class="border border-red-200 bg-red-50 p-3 text-red-900">
+                  <p class="text-xs font-semibold uppercase">Absents</p>
+                  <p class="mt-1 text-2xl font-bold">${escapeHtml(summary.absentCount || 0)}</p>
+                </div>
+                <div class="border border-[#624292]/20 bg-[#624292]/10 p-3 text-[#43236f]">
+                  <p class="text-xs font-semibold uppercase">Presence</p>
+                  <p class="mt-1 text-2xl font-bold">${escapeHtml(percent)}%</p>
+                </div>
+              </div>
+              <div class="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <button type="button" data-finalize-cancel class="inline-flex justify-center border border-neutral-300 bg-white px-4 py-2 text-sm font-medium hover:bg-neutral-50">
+                  Annuler
+                </button>
+                <button type="button" data-finalize-confirm class="inline-flex items-center justify-center gap-2 border border-[#624292] bg-[#624292] px-4 py-2 text-sm font-semibold text-white hover:bg-[#52357f]">
+                  <i class="fa-solid fa-paper-plane" aria-hidden="true"></i>
+                  <span>Valider et envoyer</span>
+                </button>
+              </div>
+            </div>
+          </section>
+        `;
+
+        const finish = value => {
+          modal.remove();
+          resolve(value);
+        };
+
+        modal.querySelectorAll("[data-finalize-cancel]").forEach(button => {
+          button.addEventListener("click", () => finish(false));
+        });
+        modal.querySelector("[data-finalize-confirm]")?.addEventListener("click", () => finish(true));
+        modal.addEventListener("click", event => {
+          if (event.target === modal) finish(false);
+        });
+        document.body.appendChild(modal);
+      });
+    }
+
     async function finalizeNfc(nfcUid) {
       setNfcResult("Preparation de la validation finale...", "info");
       const summary = await callNfcApi("/api/nfc/scan/finalize/prepare", { nfcUid });
 
-      const confirmed = window.confirm(
-        `Envoyer l'appel a EcoleDirecte ?\n\n` +
-        `Classe: ${summary.className}\n` +
-        `Cours: ${summary.courseLabel || "N/A"}\n` +
-        `Horaire: ${summary.horaire}\n` +
-        `Presents: ${summary.presentCount}/${summary.totalStudents}\n` +
-        `Absents: ${summary.absentCount}`
-      );
+      closeNfcResultModal();
+      const confirmed = await confirmFinalizeAttendance(summary);
 
       if (!confirmed) {
-        return { message: "Validation finale annulee." };
+        return { cancelled: true, message: "Validation finale annulee." };
       }
 
       setNfcResult("Envoi de l'appel et generation du PDF...", "info");
@@ -672,6 +825,7 @@
 
       if (!pendingNfc) return;
 
+      showPwaInstallBubble();
       window.SACComponents?.setScanNavigationEnabled(true);
       await window.SACComponents?.loadContent("scan", "#content-slot", {
         app: window.SACApp,
@@ -694,7 +848,7 @@
         if (prepareResult.canFinalize) {
           const result = await finalizeNfc(pendingNfc);
           sessionStorage.removeItem("pendingNfcUid");
-          setNfcResult(result.message || "Validation finale terminee.", "success");
+          setNfcResult(result.message || "Validation finale terminee.", result.cancelled ? "info" : "success");
           return;
         }
 

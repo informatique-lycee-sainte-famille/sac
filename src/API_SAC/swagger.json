@@ -24,94 +24,26 @@
     "admin"
   ],
   "paths": {
-    "/o365/login": {
-      "get": {
+    "/admin/attendance/override": {
+      "post": {
         "tags": [
-          "O365"
+          "Admin"
         ],
-        "summary": "[PUBLIC] Demarrer la connexion Office 365",
-        "x-min-role": "none",
-        "responses": {
-          "302": {
-            "description": "Redirection vers Microsoft"
-          }
-        },
-        "description": "Acces: public, aucune session requise."
-      }
-    },
-    "/o365/redirect": {
-      "get": {
-        "tags": [
-          "O365"
-        ],
-        "summary": "[PUBLIC] Callback Office 365",
-        "description": "Acces: public, aucune session requise.\n\nTraite le code OAuth Microsoft, cree ou met a jour la session utilisateur, puis redirige vers le frontend.",
-        "x-min-role": "none",
+        "summary": "[ADMIN] Forcer une presence",
+        "x-min-role": "admin",
         "parameters": [
           {
-            "name": "code",
-            "in": "query",
+            "in": "body",
+            "name": "body",
             "required": true,
-            "type": "string"
+            "schema": {
+              "$ref": "#/definitions/AdminAttendanceOverrideRequest"
+            }
           }
         ],
-        "responses": {
-          "302": {
-            "description": "Redirection vers le frontend"
-          },
-          "500": {
-            "description": "Erreur pendant le login"
-          }
-        }
-      }
-    },
-    "/o365/logout": {
-      "get": {
-        "tags": [
-          "O365"
-        ],
-        "summary": "[PUBLIC] Deconnecter l'utilisateur",
-        "x-min-role": "none",
-        "responses": {
-          "302": {
-            "description": "Session detruite puis redirection vers le frontend"
-          }
-        },
-        "description": "Acces: public, aucune session requise."
-      }
-    },
-    "/documentation": {
-      "get": {
-        "tags": [
-          "Documentation"
-        ],
-        "summary": "[ADMIN] Interface Swagger UI",
-        "x-min-role": "admin",
         "responses": {
           "200": {
-            "description": "Swagger UI"
-          },
-          "401": {
-            "$ref": "#/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/responses/Forbidden"
-          }
-        },
-        "description": "Role minimum: admin."
-      }
-    },
-    "/system/test": {
-      "get": {
-        "tags": [
-          "System"
-        ],
-        "summary": "[STUDENT+] Healthcheck API",
-        "x-min-role": "student",
-        "x-role-note": "Route protegee par le middleware global require_access(STUDENT).",
-        "responses": {
-          "200": {
-            "description": "API OK",
+            "description": "Presence corrigee",
             "schema": {
               "$ref": "#/definitions/MessageResponse"
             }
@@ -121,168 +53,21 @@
           },
           "403": {
             "$ref": "#/responses/Forbidden"
-          }
-        },
-        "description": "Role minimum: eleve ou plus."
-      }
-    },
-    "/user/me": {
-      "get": {
-        "tags": [
-          "User"
-        ],
-        "summary": "[STUDENT+] Profil utilisateur connecte",
-        "x-min-role": "student",
-        "responses": {
-          "200": {
-            "description": "Profil courant",
-            "schema": {
-              "$ref": "#/definitions/UserMe"
-            }
-          },
-          "401": {
-            "$ref": "#/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/responses/Forbidden"
-          },
-          "404": {
-            "$ref": "#/responses/NotFound"
-          }
-        },
-        "description": "Role minimum: eleve ou plus."
-      }
-    },
-    "/classes/me": {
-      "get": {
-        "tags": [
-          "Classes"
-        ],
-        "summary": "[STUDENT+] Classe de l'eleve connecte",
-        "description": "Role minimum: eleve ou plus.\n\nRetourne les informations de classe du compte eleve connecte.",
-        "x-min-role": "student",
-        "x-role-note": "La route est accessible a partir du role student, mais le code retourne 403 si l'utilisateur n'est pas un eleve.",
-        "responses": {
-          "200": {
-            "description": "Classe de l'eleve",
-            "schema": {
-              "$ref": "#/definitions/ClassMeResponse"
-            }
-          },
-          "401": {
-            "$ref": "#/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/responses/Forbidden"
-          },
-          "404": {
-            "$ref": "#/responses/NotFound"
-          }
-        }
-      }
-    },
-    "/sessions/today": {
-      "get": {
-        "tags": [
-          "Sessions"
-        ],
-        "summary": "[STUDENT+] Cours visibles pour l'utilisateur connecte",
-        "description": "Role minimum: eleve ou plus.\n\nRetourne les cours du jour, de la semaine ou du mois selon le role: eleve pour sa classe, enseignant pour ses cours, staff/admin pour tous les cours.",
-        "x-min-role": "student",
-        "parameters": [
-          {
-            "$ref": "#/parameters/DateQuery"
-          },
-          {
-            "$ref": "#/parameters/ViewQuery"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Liste des cours",
-            "schema": {
-              "$ref": "#/definitions/SessionsResponse"
-            }
-          },
-          "401": {
-            "$ref": "#/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/responses/Forbidden"
           },
           "500": {
             "$ref": "#/responses/InternalError"
           }
-        }
+        },
+        "description": "Role minimum: admin."
       }
     },
-    "/sessions/staff": {
-      "get": {
+    "/admin/attendance/reset/{sessionId}": {
+      "post": {
         "tags": [
-          "Sessions"
+          "Admin"
         ],
-        "summary": "[STAFF+] Vue staff des cours et statistiques",
-        "description": "Role minimum: personnel ou admin.\n\nVue filtrable par classe, salle, enseignant, matiere et periode.",
-        "x-min-role": "staff",
-        "parameters": [
-          {
-            "$ref": "#/parameters/DateQuery"
-          },
-          {
-            "$ref": "#/parameters/ViewQuery"
-          },
-          {
-            "name": "classId",
-            "in": "query",
-            "type": "integer",
-            "required": false
-          },
-          {
-            "name": "roomId",
-            "in": "query",
-            "type": "integer",
-            "required": false
-          },
-          {
-            "name": "teacherId",
-            "in": "query",
-            "type": "integer",
-            "required": false
-          },
-          {
-            "name": "subject",
-            "in": "query",
-            "type": "string",
-            "required": false
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Cours et statistiques staff",
-            "schema": {
-              "$ref": "#/definitions/StaffSessionsResponse"
-            }
-          },
-          "401": {
-            "$ref": "#/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/responses/Forbidden"
-          },
-          "500": {
-            "$ref": "#/responses/InternalError"
-          }
-        }
-      }
-    },
-    "/sessions/{sessionId}": {
-      "get": {
-        "tags": [
-          "Sessions"
-        ],
-        "summary": "[STUDENT+] Detail d'une session de cours",
-        "x-min-role": "student",
-        "x-role-note": "Acces ensuite limite par le code: admin/staff tout voir, enseignant uniquement ses cours, eleve uniquement sa classe.",
+        "summary": "[ADMIN] Reinitialiser les presences d'une session",
+        "x-min-role": "admin",
         "parameters": [
           {
             "$ref": "#/parameters/SessionIdPath"
@@ -290,317 +75,38 @@
         ],
         "responses": {
           "200": {
-            "description": "Detail de la session",
+            "description": "Session reset",
             "schema": {
-              "$ref": "#/definitions/CourseSessionDetail"
+              "$ref": "#/definitions/MessageResponse"
             }
-          },
-          "400": {
-            "$ref": "#/responses/BadRequest"
           },
           "401": {
             "$ref": "#/responses/Unauthorized"
           },
           "403": {
             "$ref": "#/responses/Forbidden"
-          },
-          "404": {
-            "$ref": "#/responses/NotFound"
           },
           "500": {
             "$ref": "#/responses/InternalError"
           }
         },
-        "description": "Role minimum: eleve ou plus."
+        "description": "Role minimum: admin."
       }
     },
-    "/sessions/{sessionId}/pdf": {
-      "get": {
-        "tags": [
-          "Sessions"
-        ],
-        "summary": "[TEACHER+] Generer le PDF d'emargement d'une session",
-        "description": "Role minimum: enseignant ou plus.\n\nDisponible pour l'enseignant affecte a cette session.",
-        "produces": [
-          "application/pdf"
-        ],
-        "x-min-role": "teacher",
-        "x-role-note": "Le code verifie aussi que l'enseignant connecte est affecte au cours.",
-        "parameters": [
-          {
-            "$ref": "#/parameters/SessionIdPath"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "PDF d'emargement",
-            "schema": {
-              "type": "file"
-            }
-          },
-          "400": {
-            "$ref": "#/responses/BadRequest"
-          },
-          "401": {
-            "$ref": "#/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/responses/Forbidden"
-          },
-          "404": {
-            "$ref": "#/responses/NotFound"
-          },
-          "500": {
-            "$ref": "#/responses/InternalError"
-          }
-        }
-      }
-    },
-    "/nfc/scan/prepare": {
-      "post": {
-        "tags": [
-          "NFC"
-        ],
-        "summary": "[STUDENT+] Preparer un scan NFC",
-        "description": "Role minimum: eleve ou plus.\n\nVerifie la salle, le cours actif, le role, l'ordre de validation et l'existence d'une presence avant d'afficher la signature cote frontend.",
-        "x-min-role": "student",
-        "parameters": [
-          {
-            "in": "body",
-            "name": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/NfcPrepareRequest"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Scan possible",
-            "schema": {
-              "$ref": "#/definitions/ScanResponse"
-            }
-          },
-          "400": {
-            "$ref": "#/responses/BadRequest"
-          },
-          "401": {
-            "$ref": "#/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/responses/Forbidden"
-          },
-          "404": {
-            "$ref": "#/responses/NotFound"
-          }
-        }
-      }
-    },
-    "/nfc/scan": {
-      "post": {
-        "tags": [
-          "NFC"
-        ],
-        "summary": "[STUDENT+] Enregistrer un scan NFC signe",
-        "description": "Role minimum: eleve ou plus.\n\nEnregistre la presence eleve ou enseignant apres signature manuscrite base64. Les eleves ne peuvent valider qu'apres la validation enseignant.",
-        "x-min-role": "student",
-        "parameters": [
-          {
-            "in": "body",
-            "name": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/NfcScanRequest"
-            }
-          },
-          {
-            "name": "x-device-fingerprint",
-            "in": "header",
-            "type": "string",
-            "required": false,
-            "description": "Fingerprint navigateur SHA-256 calcule cote frontend."
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Presence enregistree",
-            "schema": {
-              "$ref": "#/definitions/ScanResponse"
-            }
-          },
-          "400": {
-            "$ref": "#/responses/BadRequest"
-          },
-          "401": {
-            "$ref": "#/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/responses/Forbidden"
-          },
-          "404": {
-            "$ref": "#/responses/NotFound"
-          }
-        }
-      }
-    },
-    "/nfc/scan/finalize/prepare": {
-      "post": {
-        "tags": [
-          "NFC"
-        ],
-        "summary": "[TEACHER+] Preparer la validation finale d'un appel",
-        "description": "Role minimum: enseignant ou plus.\n\nAppelee apres un second scan NFC enseignant. Retourne le resume a confirmer avant l'envoi EcoleDirecte.",
-        "x-min-role": "teacher",
-        "parameters": [
-          {
-            "in": "body",
-            "name": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/NfcPrepareRequest"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Resume de finalisation",
-            "schema": {
-              "$ref": "#/definitions/FinalizePrepareResponse"
-            }
-          },
-          "400": {
-            "$ref": "#/responses/BadRequest"
-          },
-          "401": {
-            "$ref": "#/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/responses/Forbidden"
-          },
-          "404": {
-            "$ref": "#/responses/NotFound"
-          }
-        }
-      }
-    },
-    "/nfc/scan/finalize": {
-      "post": {
-        "tags": [
-          "NFC"
-        ],
-        "summary": "[TEACHER+] Valider definitivement l'appel",
-        "description": "Role minimum: enseignant ou plus.\n\nEnvoie l'appel a EcoleDirecte, genere le PDF de session et declenche les envois mail prevus par le workflow.",
-        "x-min-role": "teacher",
-        "parameters": [
-          {
-            "in": "body",
-            "name": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/FinalizeRequest"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Appel finalise",
-            "schema": {
-              "$ref": "#/definitions/FinalizeResponse"
-            }
-          },
-          "400": {
-            "$ref": "#/responses/BadRequest"
-          },
-          "401": {
-            "$ref": "#/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/responses/Forbidden"
-          },
-          "404": {
-            "$ref": "#/responses/NotFound"
-          },
-          "500": {
-            "$ref": "#/responses/InternalError"
-          }
-        }
-      }
-    },
-    "/attendance/pdf/day": {
-      "get": {
-        "tags": [
-          "Attendance"
-        ],
-        "summary": "[TEACHER+] PDF journalier d'une classe",
-        "description": "Role minimum: enseignant ou plus.\n\nGenere un seul PDF contenant les feuilles d'emargement de toutes les sessions d'une classe sur une journee.",
-        "produces": [
-          "application/pdf"
-        ],
-        "x-min-role": "teacher",
-        "parameters": [
-          {
-            "name": "classId",
-            "in": "query",
-            "required": true,
-            "type": "integer"
-          },
-          {
-            "$ref": "#/parameters/DateQuery"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "PDF journalier",
-            "schema": {
-              "type": "file"
-            }
-          },
-          "400": {
-            "$ref": "#/responses/BadRequest"
-          },
-          "401": {
-            "$ref": "#/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/responses/Forbidden"
-          },
-          "404": {
-            "$ref": "#/responses/NotFound"
-          },
-          "500": {
-            "$ref": "#/responses/InternalError"
-          }
-        }
-      }
-    },
-    "/admin/users": {
+    "/admin/nfc/logs": {
       "get": {
         "tags": [
           "Admin"
         ],
-        "summary": "[ADMIN] Lister les utilisateurs",
+        "summary": "[ADMIN] Lister les derniers scans NFC",
         "x-min-role": "admin",
-        "parameters": [
-          {
-            "name": "role",
-            "in": "query",
-            "required": false,
-            "type": "string",
-            "enum": [
-              "student",
-              "teacher",
-              "staff",
-              "admin"
-            ]
-          }
-        ],
         "responses": {
           "200": {
-            "description": "Utilisateurs",
+            "description": "100 derniers logs NFC",
             "schema": {
               "type": "array",
               "items": {
-                "$ref": "#/definitions/User"
+                "$ref": "#/definitions/NfcScan"
               }
             }
           },
@@ -609,49 +115,52 @@
           },
           "403": {
             "$ref": "#/responses/Forbidden"
-          }
-        },
-        "description": "Role minimum: admin."
-      }
-    },
-    "/admin/users/{userId}/role": {
-      "patch": {
-        "tags": [
-          "Admin"
-        ],
-        "summary": "[ADMIN] Modifier le role d'un utilisateur",
-        "x-min-role": "admin",
-        "parameters": [
-          {
-            "$ref": "#/parameters/UserIdPath"
-          },
-          {
-            "in": "body",
-            "name": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/RoleUpdateRequest"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Utilisateur modifie",
-            "schema": {
-              "$ref": "#/definitions/User"
-            }
-          },
-          "401": {
-            "$ref": "#/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/responses/Forbidden"
           },
           "500": {
             "$ref": "#/responses/InternalError"
           }
         },
         "description": "Role minimum: admin."
+      }
+    },
+    "/admin/rooms": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "[ADMIN] Lister les salles NFC",
+        "description": "Rôle minimum: admin. Retourne les salles avec leur UID NFC pour programmer les cartes NFC.",
+        "responses": {
+          "200": {
+            "description": "Liste des salles",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer"
+                  },
+                  "code": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "nfcUid": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Non authentifié"
+          },
+          "403": {
+            "description": "Admin requis"
+          }
+        }
       }
     },
     "/admin/sessions": {
@@ -761,89 +270,34 @@
         "description": "Role minimum: admin."
       }
     },
-    "/admin/attendance/override": {
-      "post": {
-        "tags": [
-          "Admin"
-        ],
-        "summary": "[ADMIN] Forcer une presence",
-        "x-min-role": "admin",
-        "parameters": [
-          {
-            "in": "body",
-            "name": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/AdminAttendanceOverrideRequest"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Presence corrigee",
-            "schema": {
-              "$ref": "#/definitions/MessageResponse"
-            }
-          },
-          "401": {
-            "$ref": "#/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/responses/Forbidden"
-          },
-          "500": {
-            "$ref": "#/responses/InternalError"
-          }
-        },
-        "description": "Role minimum: admin."
-      }
-    },
-    "/admin/attendance/reset/{sessionId}": {
-      "post": {
-        "tags": [
-          "Admin"
-        ],
-        "summary": "[ADMIN] Reinitialiser les presences d'une session",
-        "x-min-role": "admin",
-        "parameters": [
-          {
-            "$ref": "#/parameters/SessionIdPath"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Session reset",
-            "schema": {
-              "$ref": "#/definitions/MessageResponse"
-            }
-          },
-          "401": {
-            "$ref": "#/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/responses/Forbidden"
-          },
-          "500": {
-            "$ref": "#/responses/InternalError"
-          }
-        },
-        "description": "Role minimum: admin."
-      }
-    },
-    "/admin/nfc/logs": {
+    "/admin/users": {
       "get": {
         "tags": [
           "Admin"
         ],
-        "summary": "[ADMIN] Lister les derniers scans NFC",
+        "summary": "[ADMIN] Lister les utilisateurs",
         "x-min-role": "admin",
+        "parameters": [
+          {
+            "name": "role",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "enum": [
+              "student",
+              "teacher",
+              "staff",
+              "admin"
+            ]
+          }
+        ],
         "responses": {
           "200": {
-            "description": "100 derniers logs NFC",
+            "description": "Utilisateurs",
             "schema": {
               "type": "array",
               "items": {
-                "$ref": "#/definitions/NfcScan"
+                "$ref": "#/definitions/User"
               }
             }
           },
@@ -852,12 +306,598 @@
           },
           "403": {
             "$ref": "#/responses/Forbidden"
+          }
+        },
+        "description": "Role minimum: admin."
+      }
+    },
+    "/admin/users/{userId}/role": {
+      "patch": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "[ADMIN] Modifier le role d'un utilisateur",
+        "x-min-role": "admin",
+        "parameters": [
+          {
+            "$ref": "#/parameters/UserIdPath"
+          },
+          {
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/RoleUpdateRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Utilisateur modifie",
+            "schema": {
+              "$ref": "#/definitions/User"
+            }
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/responses/Forbidden"
           },
           "500": {
             "$ref": "#/responses/InternalError"
           }
         },
         "description": "Role minimum: admin."
+      }
+    },
+    "/attendance/pdf/day": {
+      "get": {
+        "tags": [
+          "Attendance"
+        ],
+        "summary": "[TEACHER+] PDF journalier d'une classe",
+        "description": "Role minimum: enseignant ou plus.\n\nGenere un seul PDF contenant les feuilles d'emargement de toutes les sessions d'une classe sur une journee.",
+        "produces": [
+          "application/pdf"
+        ],
+        "x-min-role": "teacher",
+        "parameters": [
+          {
+            "name": "classId",
+            "in": "query",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "$ref": "#/parameters/DateQuery"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "PDF journalier",
+            "schema": {
+              "type": "file"
+            }
+          },
+          "400": {
+            "$ref": "#/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/classes/me": {
+      "get": {
+        "tags": [
+          "Classes"
+        ],
+        "summary": "[STUDENT+] Classe de l'eleve connecte",
+        "description": "Role minimum: eleve ou plus.\n\nRetourne les informations de classe du compte eleve connecte.",
+        "x-min-role": "student",
+        "x-role-note": "La route est accessible a partir du role student, mais le code retourne 403 si l'utilisateur n'est pas un eleve.",
+        "responses": {
+          "200": {
+            "description": "Classe de l'eleve",
+            "schema": {
+              "$ref": "#/definitions/ClassMeResponse"
+            }
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/documentation": {
+      "get": {
+        "tags": [
+          "Documentation"
+        ],
+        "summary": "[ADMIN] Interface Swagger UI",
+        "x-min-role": "admin",
+        "responses": {
+          "200": {
+            "description": "Swagger UI"
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/responses/Forbidden"
+          }
+        },
+        "description": "Role minimum: admin."
+      }
+    },
+    "/nfc/scan": {
+      "post": {
+        "tags": [
+          "NFC"
+        ],
+        "summary": "[STUDENT+] Enregistrer un scan NFC signe",
+        "description": "Role minimum: eleve ou plus.\n\nEnregistre la presence eleve ou enseignant apres signature manuscrite base64. Les eleves ne peuvent valider qu'apres la validation enseignant.",
+        "x-min-role": "student",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/NfcScanRequest"
+            }
+          },
+          {
+            "name": "x-device-fingerprint",
+            "in": "header",
+            "type": "string",
+            "required": false,
+            "description": "Fingerprint navigateur SHA-256 calcule cote frontend."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Presence enregistree",
+            "schema": {
+              "$ref": "#/definitions/ScanResponse"
+            }
+          },
+          "400": {
+            "$ref": "#/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/nfc/scan/finalize": {
+      "post": {
+        "tags": [
+          "NFC"
+        ],
+        "summary": "[TEACHER+] Valider definitivement l'appel",
+        "description": "Role minimum: enseignant ou plus.\n\nEnvoie l'appel a EcoleDirecte, genere le PDF de session et declenche les envois mail prevus par le workflow.",
+        "x-min-role": "teacher",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/FinalizeRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Appel finalise",
+            "schema": {
+              "$ref": "#/definitions/FinalizeResponse"
+            }
+          },
+          "400": {
+            "$ref": "#/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/nfc/scan/finalize/prepare": {
+      "post": {
+        "tags": [
+          "NFC"
+        ],
+        "summary": "[TEACHER+] Preparer la validation finale d'un appel",
+        "description": "Role minimum: enseignant ou plus.\n\nAppelee apres un second scan NFC enseignant. Retourne le resume a confirmer avant l'envoi EcoleDirecte.",
+        "x-min-role": "teacher",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/NfcPrepareRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resume de finalisation",
+            "schema": {
+              "$ref": "#/definitions/FinalizePrepareResponse"
+            }
+          },
+          "400": {
+            "$ref": "#/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/nfc/scan/prepare": {
+      "post": {
+        "tags": [
+          "NFC"
+        ],
+        "summary": "[STUDENT+] Preparer un scan NFC",
+        "description": "Role minimum: eleve ou plus.\n\nVerifie la salle, le cours actif, le role, l'ordre de validation et l'existence d'une presence avant d'afficher la signature cote frontend.",
+        "x-min-role": "student",
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/NfcPrepareRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scan possible",
+            "schema": {
+              "$ref": "#/definitions/ScanResponse"
+            }
+          },
+          "400": {
+            "$ref": "#/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/o365/login": {
+      "get": {
+        "tags": [
+          "O365"
+        ],
+        "summary": "[PUBLIC] Demarrer la connexion Office 365",
+        "x-min-role": "none",
+        "responses": {
+          "302": {
+            "description": "Redirection vers Microsoft"
+          }
+        },
+        "description": "Acces: public, aucune session requise."
+      }
+    },
+    "/o365/logout": {
+      "get": {
+        "tags": [
+          "O365"
+        ],
+        "summary": "[PUBLIC] Deconnecter l'utilisateur",
+        "x-min-role": "none",
+        "responses": {
+          "302": {
+            "description": "Session detruite puis redirection vers le frontend"
+          }
+        },
+        "description": "Acces: public, aucune session requise."
+      }
+    },
+    "/o365/redirect": {
+      "get": {
+        "tags": [
+          "O365"
+        ],
+        "summary": "[PUBLIC] Callback Office 365",
+        "description": "Acces: public, aucune session requise.\n\nTraite le code OAuth Microsoft, cree ou met a jour la session utilisateur, puis redirige vers le frontend.",
+        "x-min-role": "none",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "query",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Redirection vers le frontend"
+          },
+          "500": {
+            "description": "Erreur pendant le login"
+          }
+        }
+      }
+    },
+    "/sessions/staff": {
+      "get": {
+        "tags": [
+          "Sessions"
+        ],
+        "summary": "[STAFF+] Vue staff des cours et statistiques",
+        "description": "Role minimum: personnel ou admin.\n\nVue filtrable par classe, salle, enseignant, matiere et periode.",
+        "x-min-role": "staff",
+        "parameters": [
+          {
+            "$ref": "#/parameters/DateQuery"
+          },
+          {
+            "$ref": "#/parameters/ViewQuery"
+          },
+          {
+            "name": "classId",
+            "in": "query",
+            "type": "integer",
+            "required": false
+          },
+          {
+            "name": "roomId",
+            "in": "query",
+            "type": "integer",
+            "required": false
+          },
+          {
+            "name": "teacherId",
+            "in": "query",
+            "type": "integer",
+            "required": false
+          },
+          {
+            "name": "subject",
+            "in": "query",
+            "type": "string",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cours et statistiques staff",
+            "schema": {
+              "$ref": "#/definitions/StaffSessionsResponse"
+            }
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/sessions/today": {
+      "get": {
+        "tags": [
+          "Sessions"
+        ],
+        "summary": "[STUDENT+] Cours visibles pour l'utilisateur connecte",
+        "description": "Role minimum: eleve ou plus.\n\nRetourne les cours du jour, de la semaine ou du mois selon le role: eleve pour sa classe, enseignant pour ses cours, staff/admin pour tous les cours.",
+        "x-min-role": "student",
+        "parameters": [
+          {
+            "$ref": "#/parameters/DateQuery"
+          },
+          {
+            "$ref": "#/parameters/ViewQuery"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Liste des cours",
+            "schema": {
+              "$ref": "#/definitions/SessionsResponse"
+            }
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/sessions/{sessionId}": {
+      "get": {
+        "tags": [
+          "Sessions"
+        ],
+        "summary": "[STUDENT+] Detail d'une session de cours",
+        "x-min-role": "student",
+        "x-role-note": "Acces ensuite limite par le code: admin/staff tout voir, enseignant uniquement ses cours, eleve uniquement sa classe.",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SessionIdPath"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Detail de la session",
+            "schema": {
+              "$ref": "#/definitions/CourseSessionDetail"
+            }
+          },
+          "400": {
+            "$ref": "#/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        },
+        "description": "Role minimum: eleve ou plus."
+      }
+    },
+    "/sessions/{sessionId}/pdf": {
+      "get": {
+        "tags": [
+          "Sessions"
+        ],
+        "summary": "[TEACHER+] Generer le PDF d'emargement d'une session",
+        "description": "Role minimum: enseignant ou plus.\n\nDisponible pour l'enseignant affecte a cette session.",
+        "produces": [
+          "application/pdf"
+        ],
+        "x-min-role": "teacher",
+        "x-role-note": "Le code verifie aussi que l'enseignant connecte est affecte au cours.",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SessionIdPath"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "PDF d'emargement",
+            "schema": {
+              "type": "file"
+            }
+          },
+          "400": {
+            "$ref": "#/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/system/test": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "[STUDENT+] Healthcheck API",
+        "x-min-role": "student",
+        "x-role-note": "Route protegee par le middleware global require_access(STUDENT).",
+        "responses": {
+          "200": {
+            "description": "API OK",
+            "schema": {
+              "$ref": "#/definitions/MessageResponse"
+            }
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/responses/Forbidden"
+          }
+        },
+        "description": "Role minimum: eleve ou plus."
+      }
+    },
+    "/user/me": {
+      "get": {
+        "tags": [
+          "User"
+        ],
+        "summary": "[STUDENT+] Profil utilisateur connecte",
+        "x-min-role": "student",
+        "responses": {
+          "200": {
+            "description": "Profil courant",
+            "schema": {
+              "$ref": "#/definitions/UserMe"
+            }
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/responses/NotFound"
+          }
+        },
+        "description": "Role minimum: eleve ou plus."
       }
     }
   },

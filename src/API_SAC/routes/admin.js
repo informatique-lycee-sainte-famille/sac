@@ -119,6 +119,24 @@ router.patch("/users/:userId/role", async (req, res) => {
   res.json(user);
 });
 
+// ROOMS
+router.get("/rooms", async (req, res) => {
+  const rooms = await prisma.room.findMany({
+    orderBy: [
+      { name: "asc" },
+      { code: "asc" },
+    ],
+    select: {
+      id: true,
+      code: true,
+      name: true,
+      nfcUid: true,
+    },
+  });
+
+  res.json(rooms);
+});
+
 // SESSION CRUD
 router.post("/sessions", async (req, res) => {
   const parsed = parseSessionPayload(req.body);

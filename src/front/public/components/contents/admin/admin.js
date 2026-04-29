@@ -2,6 +2,7 @@ const state = {
   activeTab: "users",
   users: [],
   sessions: [],
+  rooms: [],
   options: {
     classes: [],
     rooms: [],
@@ -60,6 +61,44 @@ function showAlert(message, type = "success") {
       : "border-emerald-200 bg-emerald-50 text-emerald-800"
   }`;
   alert.innerText = message;
+}
+
+function confirmAdminAction({ title, message, confirmLabel = "Confirmer", danger = false }) {
+  return new Promise(resolve => {
+    document.getElementById("admin-confirm-modal")?.remove();
+    const modal = document.createElement("div");
+    modal.id = "admin-confirm-modal";
+    modal.className = "fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 p-4";
+    modal.innerHTML = `
+      <section class="w-full max-w-md border border-neutral-200 bg-white text-neutral-950 shadow-2xl" role="dialog" aria-modal="true">
+        <div class="${danger ? "bg-red-700" : "bg-[#624292]"} px-5 py-4 text-white">
+          <div class="flex items-start justify-between gap-4">
+            <h2 class="text-xl font-semibold">${escapeHtml(title)}</h2>
+            <button type="button" data-admin-confirm-cancel class="text-white/80 hover:text-white" aria-label="Annuler">
+              <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+            </button>
+          </div>
+        </div>
+        <div class="p-5">
+          <p class="text-sm leading-relaxed text-neutral-600">${escapeHtml(message)}</p>
+          <div class="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <button type="button" data-admin-confirm-cancel class="border border-neutral-300 bg-white px-4 py-2 text-sm font-medium hover:bg-neutral-50">Annuler</button>
+            <button type="button" data-admin-confirm-ok class="border ${danger ? "border-red-700 bg-red-700 hover:bg-red-800" : "border-[#624292] bg-[#624292] hover:bg-[#52357f]"} px-4 py-2 text-sm font-semibold text-white">${escapeHtml(confirmLabel)}</button>
+          </div>
+        </div>
+      </section>
+    `;
+    const finish = value => {
+      modal.remove();
+      resolve(value);
+    };
+    modal.querySelectorAll("[data-admin-confirm-cancel]").forEach(button => button.addEventListener("click", () => finish(false)));
+    modal.querySelector("[data-admin-confirm-ok]")?.addEventListener("click", () => finish(true));
+    modal.addEventListener("click", event => {
+      if (event.target === modal) finish(false);
+    });
+    document.body.appendChild(modal);
+  });
 }
 
 function getCookie(name) {
@@ -197,6 +236,167 @@ function fillOptions() {
   }
 }
 
+function selectedNfcRoom() {
+  const roomId = document.getElementById("admin-nfc-room")?.value;
+  return state.rooms.find(room => String(room.id) === String(roomId)) || null;
+}
+
+function updateNfcCardUrl() {
+  const domainInput = document.getElementById("admin-nfc-domain");
+  const uidInput = document.getElementById("admin-nfc-uid");
+  const urlOutput = document.getElementById("admin-nfc-url");
+  if (!domainInput || !uidInput || !urlOutput) return;
+
+  const domain = (domainInput.value || window.location.origin).replace(/\/+$/, "");
+  const uid = uidInput.value.trim();
+  urlOutput.value = uid ? `${domain}/?nfc=${encodeURIComponent(uid)}` : "";
+}
+
+function canUseWebNfc() {
+  return typeof window !== "undefined" && "NDEFReader" in window && window.isSecureContext;
+}
+
+function canLockWebNfc() {
+  return canUseWebNfc() && typeof NDEFReader.prototype.makeReadOnly === "function";
+}
+
+function setWebNfcStatus(message, type = "info") {
+  const target = document.getElementById("admin-nfc-web-status");
+  if (!target) return;
+
+  const classes = {
+    info: "border-neutral-200 bg-neutral-50 text-neutral-600",
+    success: "border-emerald-200 bg-emerald-50 text-emerald-900",
+    warning: "border-amber-200 bg-amber-50 text-amber-900",
+    error: "border-red-200 bg-red-50 text-red-900",
+  };
+
+  target.className = `mt-4 border p-3 text-sm ${classes[type] || classes.info}`;
+  target.innerText = message;
+}
+
+function refreshWebNfcUi() {
+  const supported = canUseWebNfc();
+  const canLock = canLockWebNfc();
+  document.getElementById("admin-nfc-web-write")?.classList.toggle("hidden", !supported);
+  document.getElementById("admin-nfc-web-lock")?.classList.toggle("hidden", !canLock);
+  document.getElementById("admin-nfc-web-help")?.classList.toggle("hidden", !supported);
+  document.getElementById("admin-nfc-web-unavailable")?.classList.toggle("hidden", supported);
+
+  if (!window.isSecureContext) {
+    setWebNfcStatus("L'ecriture NFC directe exige HTTPS ou localhost.", "warning");
+    return;
+  }
+
+  setWebNfcStatus(
+    supported
+      ? "Ecriture directe disponible sur ce navigateur. Preparez une carte NDEF vierge ou reinscriptible."
+      : "Ecriture directe non supportee ici. Utilisez NFC Tools pour programmer la carte.",
+    supported ? "success" : "warning"
+  );
+}
+
+function getGeneratedNfcUrl() {
+  updateNfcCardUrl();
+  return document.getElementById("admin-nfc-url")?.value || "";
+}
+
+async function writeNfcCard() {
+  const url = getGeneratedNfcUrl();
+  if (!url) {
+    showAlert("Aucune URL NFC a ecrire.", "error");
+    return;
+  }
+  if (!canUseWebNfc()) {
+    showAlert("L'ecriture NFC directe n'est pas disponible sur ce navigateur.", "error");
+    return;
+  }
+
+  const confirmed = await confirmAdminAction({
+    title: "Ecrire la carte NFC",
+    message: `SAC va ecrire cette URL dans la carte NFC: ${url}. Approchez une carte NDEF vierge ou reinscriptible apres validation.`,
+    confirmLabel: "Ecrire",
+  });
+  if (!confirmed) return;
+
+  try {
+    setWebNfcStatus("Permission NFC en attente, puis approchez la carte du telephone...", "info");
+    const ndef = new NDEFReader();
+    await ndef.write({
+      records: [
+        {
+          recordType: "url",
+          data: url,
+        },
+      ],
+    });
+    setWebNfcStatus("Carte NFC ecrite. Scannez-la pour tester avant verrouillage definitif.", "success");
+    showAlert("Carte NFC ecrite.");
+  } catch (error) {
+    setWebNfcStatus(error.message || "Ecriture NFC impossible.", "error");
+    showAlert(error.message || "Ecriture NFC impossible.", "error");
+  }
+}
+
+async function lockNfcCard() {
+  if (!canLockWebNfc()) {
+    showAlert("Le verrouillage NFC direct n'est pas disponible sur ce navigateur.", "error");
+    return;
+  }
+
+  const firstConfirm = await confirmAdminAction({
+    title: "Verrouillage definitif irreversible",
+    message: "Avez-vous teste la carte avec succes ? Ce verrouillage met la carte en lecture seule permanente, sans mot de passe de deblocage.",
+    confirmLabel: "Oui, continuer",
+    danger: true,
+  });
+  if (!firstConfirm) return;
+
+  const secondConfirm = await confirmAdminAction({
+    title: "Derniere confirmation",
+    message: "Apres cette operation, la carte ne pourra probablement plus etre modifiee. Approchez uniquement la carte correcte.",
+    confirmLabel: "Verrouiller definitivement",
+    danger: true,
+  });
+  if (!secondConfirm) return;
+
+  try {
+    setWebNfcStatus("Permission NFC en attente, puis approchez la carte a verrouiller definitivement...", "warning");
+    const ndef = new NDEFReader();
+    await ndef.makeReadOnly();
+    setWebNfcStatus("Carte NFC verrouillee definitivement en lecture seule.", "success");
+    showAlert("Carte NFC verrouillee definitivement.");
+  } catch (error) {
+    setWebNfcStatus(error.message || "Verrouillage NFC impossible.", "error");
+    showAlert(error.message || "Verrouillage NFC impossible.", "error");
+  }
+}
+
+function renderNfcRooms() {
+  const select = document.getElementById("admin-nfc-room");
+  const domainInput = document.getElementById("admin-nfc-domain");
+  if (domainInput && !domainInput.value) domainInput.value = window.location.origin;
+  if (!select) return;
+
+  select.innerHTML = state.rooms.length
+    ? state.rooms.map(room => {
+        const label = `${room.name || room.code || `Salle #${room.id}`} - ${room.nfcUid}`;
+        return optionHtml(room.id, label);
+      }).join("")
+    : `<option value="">Aucune salle</option>`;
+
+  const room = selectedNfcRoom();
+  const uidInput = document.getElementById("admin-nfc-uid");
+  if (uidInput && room) uidInput.value = room.nfcUid || "";
+  updateNfcCardUrl();
+  refreshWebNfcUi();
+}
+
+async function loadNfcRooms() {
+  state.rooms = await api("/api/admin/rooms");
+  renderNfcRooms();
+}
+
 function renderSessions() {
   const target = document.getElementById("admin-sessions-list");
   if (!target) return;
@@ -231,7 +431,13 @@ function renderSessions() {
   });
   document.querySelectorAll("[data-delete-session]").forEach(button => {
     button.addEventListener("click", async () => {
-      if (!window.confirm("Supprimer cette session ?")) return;
+      const confirmed = await confirmAdminAction({
+        title: "Supprimer la session",
+        message: "Supprimer cette session et ses informations associees ?",
+        confirmLabel: "Supprimer",
+        danger: true,
+      });
+      if (!confirmed) return;
       try {
         await api(`/api/admin/sessions/${encodeURIComponent(button.dataset.deleteSession)}`, { method: "DELETE" });
         showAlert("Session supprimée.");
@@ -332,7 +538,13 @@ async function submitOverride(event) {
 async function submitReset(event) {
   event.preventDefault();
   const sessionId = document.getElementById("admin-reset-session").value;
-  if (!window.confirm(`Réinitialiser toutes les présences de la session #${sessionId} ?`)) return;
+  const confirmed = await confirmAdminAction({
+    title: "Réinitialiser les présences",
+    message: `Réinitialiser toutes les présences de la session #${sessionId} ?`,
+    confirmLabel: "Réinitialiser",
+    danger: true,
+  });
+  if (!confirmed) return;
 
   try {
     await api(`/api/admin/attendance/reset/${encodeURIComponent(sessionId)}`, { method: "POST" });
@@ -398,6 +610,7 @@ export async function init() {
       if (state.activeTab === "users") await loadUsers().catch(error => showAlert(error.message, "error"));
       if (state.activeTab === "sessions") await loadSessions().catch(error => showAlert(error.message, "error"));
       if (state.activeTab === "nfc") await loadNfcLogs().catch(error => showAlert(error.message, "error"));
+      if (state.activeTab === "nfc-cards") await loadNfcRooms().catch(error => showAlert(error.message, "error"));
     });
   });
 
@@ -412,6 +625,31 @@ export async function init() {
   document.getElementById("admin-attendance-override")?.addEventListener("submit", submitOverride);
   document.getElementById("admin-attendance-reset")?.addEventListener("submit", submitReset);
   document.getElementById("admin-nfc-refresh")?.addEventListener("click", () => loadNfcLogs().catch(error => showAlert(error.message, "error")));
+  document.getElementById("admin-nfc-refresh-rooms")?.addEventListener("click", () => loadNfcRooms().catch(error => showAlert(error.message, "error")));
+  document.getElementById("admin-nfc-domain")?.addEventListener("input", updateNfcCardUrl);
+  document.getElementById("admin-nfc-uid")?.addEventListener("input", updateNfcCardUrl);
+  document.getElementById("admin-nfc-room")?.addEventListener("change", () => {
+    const room = selectedNfcRoom();
+    const uidInput = document.getElementById("admin-nfc-uid");
+    if (uidInput && room) uidInput.value = room.nfcUid || "";
+    updateNfcCardUrl();
+  });
+  document.getElementById("admin-nfc-copy-url")?.addEventListener("click", async () => {
+    const value = document.getElementById("admin-nfc-url")?.value || "";
+    if (!value) {
+      showAlert("Aucune URL NFC a copier.", "error");
+      return;
+    }
+    try {
+      if (!navigator.clipboard) throw new Error("Presse-papiers indisponible.");
+      await navigator.clipboard.writeText(value);
+      showAlert("URL NFC copiee.");
+    } catch (error) {
+      showAlert("Copie automatique impossible, selectionnez l'URL manuellement.", "error");
+    }
+  });
+  document.getElementById("admin-nfc-web-write")?.addEventListener("click", writeNfcCard);
+  document.getElementById("admin-nfc-web-lock")?.addEventListener("click", lockNfcCard);
   document.getElementById("admin-system-test")?.addEventListener("click", async () => {
     try {
       const result = await api("/api/system/test");
@@ -423,6 +661,7 @@ export async function init() {
 
   const dateInput = document.getElementById("admin-sessions-date");
   if (dateInput) dateInput.value = toIsoDate();
+  refreshWebNfcUi();
   setActiveTab("users");
   await loadUsers().catch(error => showAlert(error.message, "error"));
 }
