@@ -12,5 +12,5 @@
     "src/generated/**",
     "node_modules"
   ],
-  "exec": "node src/API_SAC/app.js"
+  "exec": "node src/API_SAC/app.server.js"
 }

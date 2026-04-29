@@ -1,0 +1,70 @@
+<!-- ./front/public/components/contents/scan/scan.content.html -->
+<section class="hero-bg relative flex min-h-full flex-1 items-center justify-center px-4 py-12 sm:px-8 sm:py-14">
+  <div class="relative z-10 flex w-full max-w-[830px] flex-col items-center border-4 border-white/90 bg-black/5 px-4 py-16 text-center shadow-2xl sm:px-10">
+    <h2 id="auth-card-title" class="max-w-full text-2xl font-light leading-tight tracking-normal text-white sm:text-4xl md:text-[40px]">
+      Bienvenue sur Saintonge Access Control
+    </h2>
+    <p id="auth-card-subtitle" class="mt-4 max-w-full text-lg font-light leading-snug text-white sm:text-3xl">
+      Votre nouvel outil de gestion d'appel automatisé
+    </p>
+
+    <div id="user-info-slot"></div>
+
+    <div class="mt-8 flex w-full flex-col items-center gap-3 sm:mt-9 sm:w-auto sm:flex-row">
+      <button
+        onclick="location.href='/api/o365/login'"
+        id="login-btn"
+        class="hidden min-h-14 w-full max-w-sm items-center justify-center gap-6 border-4 border-black bg-neutral-200 px-4 py-2 text-xl text-neutral-950 transition hover:bg-white focus:outline-none focus:ring-4 focus:ring-white/50 sm:w-auto sm:max-w-none sm:text-2xl"
+      >
+        <span class="grid h-8 w-8 shrink-0 grid-cols-2 grid-rows-2 gap-0.5 sm:h-9 sm:w-9">
+          <span class="bg-[#f25022]"></span>
+          <span class="bg-[#7fba00]"></span>
+          <span class="bg-[#00a4ef]"></span>
+          <span class="bg-[#ffb900]"></span>
+        </span>
+        <span class="min-w-0 text-center leading-tight">Se connecter avec Office 365</span>
+      </button>
+
+      <button
+        onclick="location.href='/api/o365/logout'"
+        id="scan-logout-btn"
+        class="hidden min-h-11 border border-white/60 bg-white/15 px-5 py-2 text-sm font-semibold uppercase tracking-wide text-white transition hover:bg-white/25 focus:outline-none focus:ring-4 focus:ring-white/40"
+      >
+        Déconnexion
+      </button>
+    </div>
+
+    <div id="nfc-result" class="mt-6 min-h-6 max-w-2xl text-base font-medium leading-snug text-white"></div>
+    <pre id="info" class="sr-only">Not loaded</pre>
+  </div>
+
+  <div id="nfc-result-modal" class="fixed inset-0 z-[9998] hidden items-center justify-center bg-black/75 p-4" aria-hidden="true">
+    <div id="nfc-result-box" class="w-full max-w-2xl border-4 border-white bg-white p-6 text-center text-neutral-950 shadow-2xl sm:p-10">
+      <div id="nfc-result-icon" class="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-neutral-100 text-4xl sm:h-24 sm:w-24 sm:text-5xl">
+        <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+      </div>
+      <p id="nfc-result-title" class="mt-6 text-3xl font-semibold leading-tight sm:text-5xl">Scan NFC</p>
+      <p id="nfc-result-message" class="mt-4 break-words text-xl font-medium leading-snug sm:text-3xl"></p>
+      <button
+        id="nfc-result-close"
+        type="button"
+        class="mt-8 hidden border border-neutral-950 bg-neutral-950 px-6 py-3 text-base font-semibold text-white transition hover:bg-neutral-800 focus:outline-none focus:ring-4 focus:ring-neutral-400"
+      >
+        Fermer
+      </button>
+    </div>
+  </div>
+
+  <div id="signature-modal" class="fixed inset-0 z-[9999] hidden items-center justify-center overflow-y-auto bg-black/75 p-4" aria-hidden="true">
+    <div id="signature-box" class="w-full max-w-xl rounded-lg bg-slate-800 p-4 text-white shadow-2xl sm:p-5">
+      <h2 class="text-2xl font-semibold">Signature</h2>
+      <p class="mt-1 text-sm text-slate-300">Signez pour valider votre présence.</p>
+      <canvas id="signature-canvas" class="mt-4 rounded border border-slate-300"></canvas>
+      <div id="signature-actions" class="mt-4 grid grid-cols-1 gap-2 sm:flex sm:justify-end">
+        <button type="button" id="signature-clear" class="rounded bg-slate-600 px-4 py-2 text-sm font-semibold hover:bg-slate-500">Effacer</button>
+        <button type="button" id="signature-cancel" class="rounded bg-slate-700 px-4 py-2 text-sm font-semibold hover:bg-slate-600">Annuler</button>
+        <button type="button" id="signature-submit" class="rounded bg-emerald-600 px-4 py-2 text-sm font-semibold hover:bg-emerald-500">Valider</button>
+      </div>
+    </div>
+  </div>
+</section>
