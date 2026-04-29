@@ -29,4 +29,4 @@ COPY --from=build /app /app
 EXPOSE 3000
 
 # Command to run the server
-CMD [ "node", "API_SAC/app.js" ]
+CMD [ "node", "API_SAC/app.server.js" ]
