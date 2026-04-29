@@ -2,13 +2,14 @@
 
 require("./commons/env");
 const networkFilter = require("./middlewares/network_filter");
+const csrfProtection = require("./middlewares/csrf_protection");
+const rateLimit = require("./middlewares/rate_limit");
+const securityHeaders = require("./middlewares/security_headers");
 const { prisma } = require("./commons/prisma");
 const express = require("express");
 const cron = require('node-cron');
-const bodyParser = require("body-parser");
 const path = require("path");
 const session = require("express-session");
-const swaggerUi = require('swagger-ui-express');
 const ipaddr = require('ipaddr.js');
 const swaggerDocument = require('./swagger.json');
 const { sessionOptions } = require("./commons/sessionConfig");
@@ -27,25 +28,54 @@ const userRoutes = require("./routes/user");
 const app = express();
 const port = process.env.PORT || 3000;
 const env = process.env.ENV || 'dev';
-const allowedPaths = ['/api/o365', '/api/documentation'];
 const lanSubnetValues = (process.env.LAN_SUBNETS || process.env.LAN_SUBNET || "")
   .split(",")
   .map(subnet => subnet.trim())
   .filter(Boolean);
 const LAN_SUBNETS = lanSubnetValues.map(subnet => ipaddr.parseCIDR(subnet));
-const trustProxy = process.env.TRUST_PROXY || "loopback, linklocal, uniquelocal";
+const trustProxy = process.env.TRUST_PROXY || "loopback";
+const apiRateLimit = rateLimit({
+  windowMs: 1000,
+  max: Number(process.env.API_RATE_LIMIT_PER_SECOND || 10),
+  keyGenerator: req => `api:${req.session?.user?.id || req.ip}`,
+  message: "Trop de requetes API, veuillez patienter.",
+});
+const staticRateLimit = rateLimit({
+  windowMs: 1000,
+  max: Number(process.env.STATIC_RATE_LIMIT_PER_SECOND || 100),
+  keyGenerator: req => `static:${req.ip}`,
+  message: "Trop de requetes statiques, veuillez patienter.",
+});
 
 app.set('trust proxy', trustProxy);
-app.use(bodyParser.json({ limit: "1mb" }));
+app.disable("x-powered-by");
+app.use(securityHeaders);
 app.use(session(sessionOptions));
 
 const require_access = require("./middlewares/require_access");
 const { ROLES } = require("./commons/constants");
 
+app.use("/api", apiRateLimit);
+app.use(express.json({ limit: "1mb", type: "application/json" }));
+app.use(csrfProtection);
 app.use("/api/o365", o365Routes);
 // Serve static files from the React frontend app
+app.use((req, res, next) => {
+  if (req.path.startsWith("/api/")) return next();
+  return staticRateLimit(req, res, next);
+});
+app.get("/.well-known/assetlinks.json", (req, res) => {
+  res.sendFile(path.join(__dirname, "../front/public/.well-known/assetlinks.json"));
+});
 app.use(express.static(path.join(__dirname, "../front/public"),
-  { extensions: ['html', 'json', 'png', 'svg', 'js', 'css'], dotfiles: 'allow' }));
+  {
+    extensions: ['html', 'json', 'png', 'svg', 'js', 'css'],
+    dotfiles: 'ignore',
+    index: "index.html",
+    setHeaders: (res) => {
+      res.setHeader("X-Content-Type-Options", "nosniff");
+    },
+  }));
 
 // Default: at least logged-in user (student)
 app.use(require_access({ minRole: ROLES.STUDENT }));
@@ -75,6 +105,20 @@ app.use(
     port,
   })
 );
+
+app.use((err, req, res, next) => {
+  console.error("Unhandled request error:", err.message);
+  if (res.headersSent) return next(err);
+
+  if (req.path.startsWith("/api/")) {
+    return res.status(500).json({
+      error: "INTERNAL_SERVER_ERROR",
+      message: "Erreur serveur.",
+    });
+  }
+
+  return res.status(500).send("Erreur serveur.");
+});
 
 
 // 🧹 Cleanup expired sessions every hour

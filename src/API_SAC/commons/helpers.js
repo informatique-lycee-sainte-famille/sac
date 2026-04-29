@@ -105,7 +105,7 @@ async function fetchData(url, bodyData = "{}", retries = 0) {
       const newToken = extractTokenFromOutput(output);
       if (newToken) {
         TOKEN = newToken;
-        console.log(`🔁 Nouveau token extrait : ${TOKEN}`);
+        console.log("🔁 Nouveau token extrait.");
       } else {
         console.error("⚠️  Impossible d’extraire le nouveau token du script.");
         throw new Error("Token non trouvé dans la sortie de login.js");

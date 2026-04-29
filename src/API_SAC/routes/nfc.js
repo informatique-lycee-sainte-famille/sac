@@ -45,7 +45,6 @@ router.post("/scan/finalize", require_access({ minRole: ROLES.TEACHER }), async 
 
     return res.status(500).json({
       error: "Erreur serveur NFC",
-      message: err.message,
     });
   }
 });

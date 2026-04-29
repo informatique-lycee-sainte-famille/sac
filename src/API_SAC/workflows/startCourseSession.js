@@ -20,7 +20,14 @@ function getSessionUser(req) {
 }
 
 function getNfcUid(req) {
-  return req.body?.nfcUid || req.query?.nfcUid || req.query?.nfc || null;
+  const nfcUid = req.body?.nfcUid || req.query?.nfcUid || req.query?.nfc || null;
+  if (!nfcUid || typeof nfcUid !== "string") return null;
+
+  const value = nfcUid.trim();
+  if (value.length < 2 || value.length > 120) return null;
+  if (!/^[A-Za-z0-9:_-]+$/.test(value)) return null;
+
+  return value;
 }
 
 function getSignature(req) {
@@ -74,6 +81,9 @@ function response(status, code, message, extra = {}) {
 }
 
 async function logNfcScan(req, { nfcUid, roomId, userId, sessionId = null }) {
+  const deviceFingerprint = String(req.headers["x-device-fingerprint"] || req.headers["x-device-id"] || "").slice(0, 128) || null;
+  const userAgent = String(req.headers["user-agent"] || "").slice(0, 500) || null;
+
   await prisma.nfcScan.create({
     data: {
       nfcUid,
@@ -81,8 +91,8 @@ async function logNfcScan(req, { nfcUid, roomId, userId, sessionId = null }) {
       userId,
       sessionId,
       ipAddress: req.ip,
-      UserAgent: req.headers["user-agent"],
-      deviceFingerprint: req.headers["x-device-fingerprint"] || req.headers["x-device-id"] || null,
+      UserAgent: userAgent,
+      deviceFingerprint,
     },
   });
 }

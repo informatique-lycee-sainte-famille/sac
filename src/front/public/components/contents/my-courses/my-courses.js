@@ -1,5 +1,6 @@
 const state = {
   selectedDate: toIsoDate(new Date()),
+  view: "day",
 };
 
 function escapeHtml(value) {
@@ -19,15 +20,13 @@ function toIsoDate(value) {
   return `${year}-${month}-${day}`;
 }
 
-function shiftDate(days) {
+function shiftPeriod(direction) {
   const date = new Date(`${state.selectedDate}T12:00:00`);
-  date.setDate(date.getDate() + days);
-  state.selectedDate = toIsoDate(date);
-}
-
-function setRelativeDate(days) {
-  const date = new Date();
-  date.setDate(date.getDate() + days);
+  if (state.view === "month") {
+    date.setMonth(date.getMonth() + direction);
+  } else {
+    date.setDate(date.getDate() + (state.view === "week" ? 7 : 1) * direction);
+  }
   state.selectedDate = toIsoDate(date);
 }
 
@@ -47,6 +46,77 @@ function formatDate(value = new Date()) {
     month: "long",
     year: "numeric",
   }).format(new Date(`${toIsoDate(value)}T12:00:00`));
+}
+
+function periodBounds() {
+  const date = new Date(`${state.selectedDate}T12:00:00`);
+  if (state.view === "month") {
+    const start = new Date(date.getFullYear(), date.getMonth(), 1, 12);
+    const end = new Date(date.getFullYear(), date.getMonth() + 1, 0, 12);
+    return { start, end };
+  }
+
+  if (state.view === "week") {
+    const start = new Date(date);
+    const day = start.getDay() || 7;
+    start.setDate(start.getDate() - day + 1);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    return { start, end };
+  }
+
+  return { start: date, end: date };
+}
+
+function formatShortDate(value) {
+  return new Intl.DateTimeFormat("fr-FR", {
+    weekday: "short",
+    day: "2-digit",
+    month: "2-digit",
+  }).format(new Date(value));
+}
+
+function formatPeriodLabel() {
+  if (state.view === "day") return formatDate(state.selectedDate);
+
+  const { start, end } = periodBounds();
+  if (state.view === "week") {
+    return `Semaine du ${formatShortDate(start)} au ${formatShortDate(end)}`;
+  }
+
+  return new Intl.DateTimeFormat("fr-FR", {
+    month: "long",
+    year: "numeric",
+  }).format(start);
+}
+
+function syncViewControls() {
+  document.querySelectorAll("[data-period-view]").forEach(button => {
+    const isActive = button.dataset.periodView === state.view;
+    button.classList.toggle("bg-[#624292]", isActive);
+    button.classList.toggle("text-white", isActive);
+    button.classList.toggle("bg-white", !isActive);
+    button.classList.toggle("text-neutral-800", !isActive);
+  });
+
+  const prevLabel = document.getElementById("my-courses-prev-label");
+  const nextLabel = document.getElementById("my-courses-next-label");
+  const currentLabel = document.getElementById("my-courses-current-label");
+  const labels = {
+    day: ["Veille", "Aujourd'hui", "Lendemain"],
+    week: ["Semaine préc.", "Cette semaine", "Semaine suiv."],
+    month: ["Mois préc.", "Ce mois-ci", "Mois suiv."],
+  };
+  if (prevLabel) prevLabel.innerText = labels[state.view][0];
+  if (currentLabel) currentLabel.innerText = labels[state.view][1];
+  if (nextLabel) nextLabel.innerText = labels[state.view][2];
+
+  const dayPdf = document.getElementById("my-courses-day-pdf");
+  if (dayPdf) {
+    dayPdf.classList.toggle("hidden", window.SACApp?.user?.role !== "teacher");
+    dayPdf.classList.toggle("inline-flex", window.SACApp?.user?.role === "teacher");
+    dayPdf.removeAttribute("href");
+  }
 }
 
 function formatDateTime(value) {
@@ -123,6 +193,9 @@ function renderSession(session) {
   const color = session.color || "#624292";
   const userRole = window.SACApp?.user?.role;
   const isTeacher = userRole === "teacher";
+  const periodDate = state.view === "day"
+    ? ""
+    : `<span class="bg-neutral-100 px-2 py-1 text-xs font-medium text-neutral-700">${escapeHtml(formatShortDate(session.startTime))}</span>`;
   const pdfButton = userRole === "teacher"
     ? `<a
         href="/api/sessions/${session.id}/pdf"
@@ -149,6 +222,7 @@ function renderSession(session) {
         </div>
 
         <div class="flex flex-wrap gap-2 text-xs">
+          ${periodDate}
           <span class="bg-neutral-100 px-2 py-1 text-neutral-700">${escapeHtml(formatStatus(session.status))}</span>
           <span class="${attendanceClass(session.attendance, session.isFinalized)} px-2 py-1">${escapeHtml(formatAttendance(session.attendance, session.isFinalized))}</span>
         </div>
@@ -353,7 +427,8 @@ async function loadCourses() {
   if (!target) return;
 
   if (calendar) calendar.value = state.selectedDate;
-  if (dateTarget) dateTarget.innerText = formatDate(state.selectedDate);
+  if (dateTarget) dateTarget.innerText = formatPeriodLabel();
+  syncViewControls();
 
   target.innerHTML = `
     <div class="border border-neutral-200 bg-white p-5 shadow-sm">
@@ -362,7 +437,7 @@ async function loadCourses() {
   `;
 
   try {
-    const response = await fetch(`/api/sessions/today?date=${encodeURIComponent(state.selectedDate)}`);
+    const response = await fetch(`/api/sessions/today?date=${encodeURIComponent(state.selectedDate)}&view=${encodeURIComponent(state.view)}`);
     const payload = await response.json().catch(() => ({}));
     const data = Array.isArray(payload) ? payload : payload.sessions;
 
@@ -371,17 +446,20 @@ async function loadCourses() {
     }
 
     if (!Array.isArray(data) || data.length === 0) {
+      syncDayPdfLink([]);
       target.innerHTML = `
         <div class="border border-neutral-200 bg-white p-5 shadow-sm">
-          <p class="text-sm text-neutral-600">Aucun cours trouvé pour cette date.</p>
+          <p class="text-sm text-neutral-600">Aucun cours trouvé pour cette période.</p>
         </div>
       `;
       return;
     }
 
+    syncDayPdfLink(data);
     target.innerHTML = data.map(renderSession).join("");
     bindCourseActions();
   } catch (error) {
+    syncDayPdfLink([]);
     target.innerHTML = `
       <div class="border border-red-200 bg-red-50 p-5 text-red-800 shadow-sm">
         <p class="text-sm font-medium">${escapeHtml(error.message)}</p>
@@ -390,28 +468,35 @@ async function loadCourses() {
   }
 }
 
+function syncDayPdfLink(sessions) {
+  const dayPdf = document.getElementById("my-courses-day-pdf");
+  if (!dayPdf || window.SACApp?.user?.role !== "teacher") return;
+
+  const classId = sessions.find(session => session.class?.id)?.class?.id;
+  if (state.view !== "day" || !classId) {
+    dayPdf.removeAttribute("href");
+    dayPdf.classList.add("pointer-events-none", "opacity-50");
+    return;
+  }
+
+  dayPdf.href = `/api/attendance/pdf/day?classId=${encodeURIComponent(classId)}&date=${encodeURIComponent(state.selectedDate)}`;
+  dayPdf.classList.remove("pointer-events-none", "opacity-50");
+}
+
 export async function init() {
   const refreshButton = document.getElementById("my-courses-refresh");
   const calendar = document.getElementById("my-courses-calendar");
 
   document.getElementById("my-courses-prev")?.addEventListener("click", async () => {
-    shiftDate(-1);
+    shiftPeriod(-1);
     await loadCourses();
   });
   document.getElementById("my-courses-next")?.addEventListener("click", async () => {
-    shiftDate(1);
-    await loadCourses();
-  });
-  document.getElementById("my-courses-yesterday")?.addEventListener("click", async () => {
-    setRelativeDate(-1);
+    shiftPeriod(1);
     await loadCourses();
   });
   document.getElementById("my-courses-today")?.addEventListener("click", async () => {
-    setRelativeDate(0);
-    await loadCourses();
-  });
-  document.getElementById("my-courses-tomorrow")?.addEventListener("click", async () => {
-    setRelativeDate(1);
+    state.selectedDate = toIsoDate(new Date());
     await loadCourses();
   });
   calendar?.addEventListener("change", async () => {
@@ -419,6 +504,13 @@ export async function init() {
       state.selectedDate = calendar.value;
       await loadCourses();
     }
+  });
+
+  document.querySelectorAll("[data-period-view]").forEach(button => {
+    button.addEventListener("click", async () => {
+      state.view = button.dataset.periodView || "day";
+      await loadCourses();
+    });
   });
 
   refreshButton?.addEventListener("click", loadCourses);

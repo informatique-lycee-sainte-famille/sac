@@ -50,10 +50,6 @@ router.get("/me", require_access({ minRole: ROLES.STUDENT }), async (req, res) =
             id: true,
             firstName: true,
             lastName: true,
-            edId: true,
-            o365Email: true,
-            edEmail: true,
-            edPhotoUrl: true,
           },
         },
       },
@@ -61,9 +57,10 @@ router.get("/me", require_access({ minRole: ROLES.STUDENT }), async (req, res) =
 
     return res.json(myClass);
   } catch (err) {
+    console.error("Class fetch failed:", err.message);
     return res.status(500).json({
       error: "CLASS_FETCH_FAILED",
-      message: err.message,
+      message: "Erreur lors du chargement de la classe.",
     });
   }
 });

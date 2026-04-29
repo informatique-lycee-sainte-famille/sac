@@ -12,16 +12,36 @@ function getSessionUser(req) {
   return req.session?.user || null;
 }
 
-function getDayBounds(date) {
+function normalizeView(view) {
+  return ["day", "week", "month"].includes(view) ? view : "day";
+}
+
+function getPeriodBounds(date, view = "day") {
   const requestedDay = date
     ? DateTime.fromISO(String(date), { zone: APP_TIMEZONE })
     : DateTime.now().setZone(APP_TIMEZONE);
   const day = requestedDay.isValid ? requestedDay : DateTime.now().setZone(APP_TIMEZONE);
+  const safeView = normalizeView(view);
+  const start = safeView === "week"
+    ? day.startOf("week")
+    : safeView === "month"
+      ? day.startOf("month")
+      : day.startOf("day");
+  const end = safeView === "week"
+    ? day.endOf("week")
+    : safeView === "month"
+      ? day.endOf("month")
+      : day.endOf("day");
 
   return {
     isoDate: day.toISODate(),
-    start: day.startOf("day").toJSDate(),
-    end: day.endOf("day").toJSDate(),
+    view: safeView,
+    start: start.toJSDate(),
+    end: end.toJSDate(),
+    range: {
+      start: start.toISODate(),
+      end: end.toISODate(),
+    },
   };
 }
 
@@ -102,6 +122,125 @@ function getAttendanceStats(session) {
   };
 }
 
+function parseOptionalInt(value) {
+  if (value === undefined || value === null || value === "") return null;
+  const parsed = Number.parseInt(value, 10);
+  return Number.isInteger(parsed) ? parsed : null;
+}
+
+function getCourseLabel(session) {
+  return session.label || session.matiere || session.codeMatiere || "Cours";
+}
+
+function makeEmptyAggregate(id, label) {
+  return {
+    id,
+    label,
+    sessions: 0,
+    finalizedSessions: 0,
+    expectedStudents: 0,
+    presentCount: 0,
+    absentCount: 0,
+    presencePercent: 0,
+  };
+}
+
+function addSessionToAggregate(aggregate, session) {
+  const stats = getAttendanceStats(session);
+  aggregate.sessions += 1;
+  aggregate.finalizedSessions += session.finalization ? 1 : 0;
+  aggregate.expectedStudents += stats.totalStudents;
+  aggregate.presentCount += stats.presentCount;
+  aggregate.absentCount += stats.absentCount;
+  aggregate.presencePercent = aggregate.expectedStudents > 0
+    ? Math.round((aggregate.presentCount / aggregate.expectedStudents) * 100)
+    : 0;
+}
+
+function aggregateBy(sessions, getKey) {
+  const groups = new Map();
+
+  for (const session of sessions) {
+    const { id, label } = getKey(session);
+    const key = String(id || label || "unknown");
+    if (!groups.has(key)) {
+      groups.set(key, makeEmptyAggregate(id, label));
+    }
+
+    addSessionToAggregate(groups.get(key), session);
+  }
+
+  return [...groups.values()].sort((a, b) => b.presencePercent - a.presencePercent || a.label.localeCompare(b.label));
+}
+
+function buildStaffSummary(sessions) {
+  const global = makeEmptyAggregate("global", "Global");
+  sessions.forEach(session => addSessionToAggregate(global, session));
+
+  return {
+    global,
+    byClass: aggregateBy(sessions, session => ({
+      id: session.class?.id,
+      label: session.class?.name || session.class?.code || "Classe inconnue",
+    })),
+    byTeacher: aggregateBy(sessions, session => ({
+      id: session.teacher?.id,
+      label: `${session.teacher?.lastName || ""} ${session.teacher?.firstName || ""}`.trim() || "Enseignant inconnu",
+    })),
+    bySubject: aggregateBy(sessions, session => ({
+      id: session.codeMatiere || session.matiere || session.label || "unknown",
+      label: session.matiere || session.label || session.codeMatiere || "Matiere inconnue",
+    })),
+    byRoom: aggregateBy(sessions, session => ({
+      id: session.room?.id,
+      label: session.room?.name || session.room?.code || "Salle inconnue",
+    })),
+  };
+}
+
+function formatStaffSession(session) {
+  const stats = getAttendanceStats(session);
+
+  return {
+    id: session.id,
+    label: getCourseLabel(session),
+    matiere: session.matiere,
+    codeMatiere: session.codeMatiere,
+    status: session.status,
+    startTime: session.startTime,
+    endTime: session.endTime,
+    class: session.class
+      ? {
+          id: session.class.id,
+          code: session.class.code,
+          name: session.class.name,
+        }
+      : null,
+    room: session.room
+      ? {
+          id: session.room.id,
+          code: session.room.code,
+          name: session.room.name,
+        }
+      : null,
+    teacher: session.teacher
+      ? {
+          id: session.teacher.id,
+          firstName: session.teacher.firstName,
+          lastName: session.teacher.lastName,
+          email: session.teacher.o365Email || session.teacher.edEmail,
+        }
+      : null,
+    finalization: session.finalization
+      ? {
+          sentToEdAt: session.finalization.sentToEdAt,
+          pdfFilename: session.finalization.pdfFilename,
+        }
+      : null,
+    stats,
+  };
+}
+
 function formatHoraire(session) {
   const start = DateTime.fromJSDate(new Date(session.startTime)).setZone(APP_TIMEZONE).toFormat("HH:mm");
   const end = DateTime.fromJSDate(new Date(session.endTime)).setZone(APP_TIMEZONE).toFormat("HH:mm");
@@ -170,7 +309,7 @@ router.get("/today", require_access({ minRole: ROLES.STUDENT }), async (req, res
     }
 
     const userId = Number(sessionUser.id);
-    const { start, end, isoDate } = getDayBounds(req.query.date);
+    const { start, end, isoDate, view, range } = getPeriodBounds(req.query.date, req.query.view);
 
     const dbUser = await prisma.user.findUnique({
       where: { id: userId },
@@ -265,12 +404,137 @@ router.get("/today", require_access({ minRole: ROLES.STUDENT }), async (req, res
 
     return res.json({
       date: isoDate,
+      view,
+      range,
       sessions: sessions.map(session => formatSession(session, dbUser.id)),
     });
   } catch (err) {
     return res.status(500).json({
       error: "SESSION_FETCH_FAILED",
-      message: err.message,
+      message: "Erreur lors du chargement des sessions.",
+    });
+  }
+});
+
+router.get("/staff", require_access({ minRole: ROLES.STAFF }), async (req, res) => {
+  try {
+    const { start, end, isoDate, view, range } = getPeriodBounds(req.query.date, req.query.view);
+    const classId = parseOptionalInt(req.query.classId);
+    const roomId = parseOptionalInt(req.query.roomId);
+    const teacherId = parseOptionalInt(req.query.teacherId);
+    const subject = String(req.query.subject || "").trim();
+
+    const where = {
+      startTime: {
+        gte: start,
+        lte: end,
+      },
+    };
+
+    if (classId) where.classId = classId;
+    if (roomId) where.roomId = roomId;
+    if (teacherId) where.teacherId = teacherId;
+    if (subject) {
+      where.OR = [
+        { matiere: subject },
+        { codeMatiere: subject },
+        { label: subject },
+      ];
+    }
+
+    const [sessions, classes, rooms, teachers, subjectRows] = await Promise.all([
+      prisma.courseSession.findMany({
+        where,
+        include: {
+          class: {
+            include: {
+              users: {
+                where: { role: "student" },
+                select: {
+                  id: true,
+                  role: true,
+                },
+              },
+            },
+          },
+          room: true,
+          teacher: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              o365Email: true,
+              edEmail: true,
+            },
+          },
+          attendance: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  role: true,
+                },
+              },
+            },
+          },
+          finalization: {
+            select: {
+              id: true,
+              sentToEdAt: true,
+              pdfFilename: true,
+            },
+          },
+        },
+        orderBy: [
+          { startTime: "asc" },
+          { endTime: "asc" },
+        ],
+      }),
+      prisma.class.findMany({
+        orderBy: [{ name: "asc" }, { code: "asc" }],
+        select: { id: true, code: true, name: true },
+      }),
+      prisma.room.findMany({
+        orderBy: [{ name: "asc" }, { code: "asc" }],
+        select: { id: true, code: true, name: true },
+      }),
+      prisma.user.findMany({
+        where: { role: "teacher" },
+        orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+        select: { id: true, firstName: true, lastName: true },
+      }),
+      prisma.courseSession.findMany({
+        distinct: ["matiere", "codeMatiere", "label"],
+        orderBy: [{ matiere: "asc" }, { label: "asc" }],
+        select: { matiere: true, codeMatiere: true, label: true },
+      }),
+    ]);
+
+    const subjectOptions = [...new Map(
+      subjectRows
+        .map(row => row.matiere || row.label || row.codeMatiere)
+        .filter(Boolean)
+        .map(value => [value, { id: value, name: value }])
+    ).values()].sort((a, b) => a.name.localeCompare(b.name));
+
+    return res.json({
+      date: isoDate,
+      view,
+      range,
+      filters: { classId, roomId, teacherId, subject },
+      options: {
+        classes,
+        rooms,
+        teachers,
+        subjects: subjectOptions,
+      },
+      summary: buildStaffSummary(sessions),
+      sessions: sessions.map(formatStaffSession),
+    });
+  } catch (err) {
+    return res.status(500).json({
+      error: "STAFF_SESSION_FETCH_FAILED",
+      message: "Erreur lors du chargement des sessions.",
     });
   }
 });
@@ -379,7 +643,7 @@ router.get("/:sessionId", require_access({ minRole: ROLES.STUDENT }), async (req
   } catch (err) {
     return res.status(500).json({
       error: "SESSION_FETCH_FAILED",
-      message: err.message,
+      message: "Erreur lors du chargement des sessions.",
     });
   }
 });
@@ -434,9 +698,10 @@ router.get("/:sessionId/pdf", require_access({ minRole: ROLES.TEACHER }), async 
   } catch (err) {
     return res.status(500).json({
       error: "SESSION_PDF_FAILED",
-      message: err.message,
+      message: "Erreur lors du chargement des sessions.",
     });
   }
 });
 
 module.exports = router;
+

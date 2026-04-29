@@ -14,7 +14,7 @@ export async function init() {
     const rows = students.map(student => `
       <li class="flex items-center justify-between gap-4 border-t border-neutral-100 py-2 text-sm">
         <span>${student.lastName || ""} ${student.firstName || ""}</span>
-        <span class="text-neutral-500">${student.edEmail || student.o365Email || ""}</span>
+        <span class="text-neutral-500">Élève</span>
       </li>
     `).join("");
 

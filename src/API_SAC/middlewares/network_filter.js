@@ -78,13 +78,15 @@ module.exports = function ipFilter({ env, LAN_SUBNETS = [] }) {
       const parsedIp = parseIp(clientIp);
       const isInLan = ipMatchesAnySubnet(parsedIp, LAN_SUBNETS);
 
-      console.log(
-        `IP: ${parsedIp.toString()} | Role: ${role} | LAN: ${isInLan} | ` +
-        `Allowed LANs: ${LAN_SUBNETS.map(formatSubnet).join(", ") || "none"} | ` +
-        `Express chain: ${ipChain.expressIps.join(" -> ") || "none"} | ` +
-        `XFF: ${ipChain.forwardedFor.join(" -> ") || "none"} | ` +
-        `X-Real-IP: ${ipChain.realIp || "none"} | Socket: ${ipChain.socketIp || "none"}`
-      );
+      if (env === "dev" || process.env.NETWORK_FILTER_LOGS === "true") {
+        console.log(
+          `IP: ${parsedIp.toString()} | Role: ${role} | LAN: ${isInLan} | ` +
+          `Allowed LANs: ${LAN_SUBNETS.map(formatSubnet).join(", ") || "none"} | ` +
+          `Express chain: ${ipChain.expressIps.join(" -> ") || "none"} | ` +
+          `XFF: ${ipChain.forwardedFor.join(" -> ") || "none"} | ` +
+          `X-Real-IP: ${ipChain.realIp || "none"} | Socket: ${ipChain.socketIp || "none"}`
+        );
+      }
 
       // 🔒 Define access logic
       const isStudent =

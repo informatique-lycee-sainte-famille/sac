@@ -1,6 +1,7 @@
 // src/API_SAC/routes/o365.js
 
 const sharp = require("sharp");
+const crypto = require("crypto");
 const express = require("express");
 const router = express.Router();
 
@@ -16,10 +17,14 @@ const { getHighestRoleFromGroups, mapToPrismaRole, ROLES } = require("../commons
 // LOGIN
 // =========================
 router.get("/login", async (req, res) => {
+  const state = crypto.randomBytes(24).toString("base64url");
+  req.session.oauthState = state;
+
   const authUrl = await msalClient.getAuthCodeUrl({
     redirectUri: authConfig.redirectUri,
     scopes: authConfig.scopes,
     prompt: "login",
+    state,
   });
 
   res.redirect(authUrl);
@@ -30,6 +35,11 @@ router.get("/login", async (req, res) => {
 // =========================
 router.get("/redirect", async (req, res) => {
   try {
+    if (!req.query.state || req.query.state !== req.session?.oauthState) {
+      return res.status(403).send("Invalid login state");
+    }
+    delete req.session.oauthState;
+
     const tokenResponse = await msalClient.acquireTokenByCode({
       code: req.query.code,
       redirectUri: authConfig.redirectUri,
@@ -197,6 +207,13 @@ router.get("/redirect", async (req, res) => {
     dbUser = await prisma.user.findUnique({
       where: { id: dbUser.id },
       include: { class: true },
+    });
+
+    await new Promise((resolve, reject) => {
+      req.session.regenerate(err => {
+        if (err) reject(err);
+        else resolve();
+      });
     });
 
     req.session.user = formatSessionUser(dbUser, {}, roleConst, userInfo.groups, edProfile);

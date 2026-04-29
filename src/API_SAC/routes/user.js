@@ -24,9 +24,10 @@ router.get("/me", require_access({ minRole: ROLES.STUDENT }), async (req, res) =
     req.session.user = formatSessionUser(user, req.session.user);
     return res.json(req.session.user);
   } catch (err) {
+    console.error("User fetch failed:", err.message);
     return res.status(500).json({
       error: "USER_FETCH_FAILED",
-      message: err.message,
+      message: "Erreur lors du chargement du profil.",
     });
   }
 });

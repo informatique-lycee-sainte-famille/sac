@@ -37,6 +37,23 @@
     <pre id="info" class="sr-only">Not loaded</pre>
   </div>
 
+  <div id="nfc-result-modal" class="fixed inset-0 z-[9998] hidden items-center justify-center bg-black/75 p-4" aria-hidden="true">
+    <div id="nfc-result-box" class="w-full max-w-2xl border-4 border-white bg-white p-6 text-center text-neutral-950 shadow-2xl sm:p-10">
+      <div id="nfc-result-icon" class="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-neutral-100 text-4xl sm:h-24 sm:w-24 sm:text-5xl">
+        <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+      </div>
+      <p id="nfc-result-title" class="mt-6 text-3xl font-semibold leading-tight sm:text-5xl">Scan NFC</p>
+      <p id="nfc-result-message" class="mt-4 break-words text-xl font-medium leading-snug sm:text-3xl"></p>
+      <button
+        id="nfc-result-close"
+        type="button"
+        class="mt-8 hidden border border-neutral-950 bg-neutral-950 px-6 py-3 text-base font-semibold text-white transition hover:bg-neutral-800 focus:outline-none focus:ring-4 focus:ring-neutral-400"
+      >
+        Fermer
+      </button>
+    </div>
+  </div>
+
   <div id="signature-modal" class="fixed inset-0 z-[9999] hidden items-center justify-center overflow-y-auto bg-black/75 p-4" aria-hidden="true">
     <div id="signature-box" class="w-full max-w-xl rounded-lg bg-slate-800 p-4 text-white shadow-2xl sm:p-5">
       <h2 class="text-2xl font-semibold">Signature</h2>
