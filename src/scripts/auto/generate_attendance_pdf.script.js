@@ -126,6 +126,11 @@ function drawCell(doc, x, y, width, height, text, options = {}) {
   doc.fillColor("#000");
 }
 
+function formatNameWithComment(person) {
+  const name = `${person.lastName || ""} ${person.firstName || ""}`.trim();
+  return person.comment ? `${name}\nNote: ${person.comment}` : name;
+}
+
 function drawHeader(doc, data) {
   try {
     doc.image(path.join(__dirname, "../../front/public/ressources/logo1.png"), 40, 20, { width: 70 });
@@ -187,7 +192,7 @@ function drawSessionPage(doc, data, options = {}) {
       y += 24;
     }
 
-    drawCell(doc, startX, y, widths[0], rowHeight, `${student.lastName || ""} ${student.firstName || ""}`.trim());
+    drawCell(doc, startX, y, widths[0], rowHeight, formatNameWithComment(student), { fontSize: student.comment ? 8 : 9 });
     drawCell(doc, startX + widths[0], y, widths[1], rowHeight, formatStatus(student.status), {
       align: "center",
     });
@@ -209,8 +214,7 @@ function drawSessionPage(doc, data, options = {}) {
   doc.fontSize(12).font(doc.sacFonts.bold).text("FORMATEUR / PROFESSEUR", startX, y);
   y += 20;
 
-  const teacherName = `${data.teacher?.lastName || ""} ${data.teacher?.firstName || ""}`.trim();
-  drawCell(doc, startX, y, widths[0], 60, teacherName);
+  drawCell(doc, startX, y, widths[0], 60, formatNameWithComment(data.teacher || {}), { fontSize: data.teacher?.comment ? 8 : 9 });
   drawCell(doc, startX + widths[0], y, widths[1], 60, formatStatus(data.teacher?.status), { align: "center" });
   drawCell(doc, startX + widths[0] + widths[1], y, widths[2], 60, formatScanTime(data.teacher?.scannedAt), { align: "center" });
   doc.rect(startX + widths[0] + widths[1] + widths[2], y, widths[3], 60).stroke();

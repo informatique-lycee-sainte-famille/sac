@@ -3,8 +3,19 @@
   "version": "1.0.0",
   "description": "Saintonge Access Control",
   "main": "src/API_SAC/app.server.js",
+  "bin": {
+    "sac-test-unit": "tests/runners/unit.cli.js",
+    "sac-test-integration": "tests/runners/integration.cli.js",
+    "sac-test-performance": "tests/runners/performance.cli.js"
+  },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "npm run test:unit && npm run test:integration",
+    "test:unit": "node tests/runners/unit.cli.js",
+    "test:integration": "node tests/runners/integration.cli.js",
+    "test:performance": "node tests/runners/performance.cli.js",
+    "test:all": "npm run test:unit && npm run test:integration && npm run test:performance",
+    "security:audit": "npm audit --audit-level=moderate",
+    "quality:syntax": "node tests/runners/syntax.cli.js",
     "start": "nodemon",
     "ed:photos": "node src/scripts/auto/download_ed_student_photo.script.js",
     "db:migrate:deploy": "prisma migrate deploy --schema src/prisma/schema.prisma"

@@ -151,6 +151,18 @@ function alreadyRegisteredResponse(session, role) {
   );
 }
 
+function scanConfirmationPayload(session) {
+  return {
+    sessionId: session.id,
+    room: session.room.code,
+    roomName: session.room.name,
+    className: session.class?.name || session.class?.code,
+    courseLabel: session.label || session.matiere || session.codeMatiere || "Cours",
+    startTime: session.startTime,
+    endTime: session.endTime,
+  };
+}
+
 async function findAttendance(sessionId, userId) {
   return prisma.attendanceRecord.findUnique({
     where: {
@@ -193,9 +205,9 @@ async function validateTeacher(session, userId, scannedAt, signature, dryRun = f
 
   if (dryRun) {
     return response(200, "SIGNATURE_REQUIRED", "Signature requise pour valider la presence.", {
-      sessionId: session.id,
-      room: session.room.code,
+      ...scanConfirmationPayload(session),
       role: "teacher",
+      requiresScanConfirmation: true,
     });
   }
 
@@ -287,9 +299,9 @@ async function validateStudent(session, user, sessionUser, scannedAt, signature,
 
   if (dryRun) {
     return response(200, "SIGNATURE_REQUIRED", "Signature requise pour valider la presence.", {
-      sessionId: session.id,
-      room: session.room.code,
+      ...scanConfirmationPayload(session),
       role: "student",
+      requiresScanConfirmation: true,
     });
   }
 

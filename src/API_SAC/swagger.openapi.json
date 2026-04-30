@@ -795,7 +795,7 @@
           "NFC"
         ],
         "summary": "[STUDENT+] Preparer un scan NFC",
-        "description": "Role minimum: eleve ou plus.\n\nVerifie la salle, le cours actif, le role, l'ordre de validation et l'existence d'une presence avant d'afficher la signature cote frontend.",
+        "description": "Role minimum: eleve ou plus.\n\nVerifie la salle, le cours actif, le role, l'ordre de validation, l'existence d'une presence et retourne le resume du cours/salle a confirmer avant d'afficher la signature cote frontend.",
         "x-min-role": "student",
         "parameters": [
           {
@@ -1006,6 +1006,52 @@
             "description": "Presence ou absence mise a jour",
             "schema": {
               "$ref": "#/definitions/ManualAttendanceResponse"
+            }
+          },
+          "400": {
+            "$ref": "#/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/sessions/{sessionId}/teacher": {
+      "post": {
+        "tags": [
+          "Sessions"
+        ],
+        "summary": "[STAFF+] Affecter un enseignant remplacant",
+        "description": "Role minimum: personnel ou admin.\n\nPermet de remplacer l'enseignant affecte a une session non finalisee, par exemple en cas d'absence ou de remplacement de derniere minute.",
+        "x-min-role": "staff",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SessionIdPath"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/TeacherReplacementRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Enseignant remplace",
+            "schema": {
+              "$ref": "#/definitions/TeacherReplacementResponse"
             }
           },
           "400": {
@@ -1717,6 +1763,10 @@
         "signature": {
           "type": "string"
         },
+        "comment": {
+          "type": "string",
+          "description": "Commentaire ou justification liee a cette presence/absence, notamment pour les validations manuelles."
+        },
         "scannedAt": {
           "type": "string",
           "format": "date-time"
@@ -2079,6 +2129,27 @@
         "room": {
           "type": "string"
         },
+        "roomName": {
+          "type": "string"
+        },
+        "className": {
+          "type": "string"
+        },
+        "courseLabel": {
+          "type": "string"
+        },
+        "startTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "endTime": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "requiresScanConfirmation": {
+          "type": "boolean",
+          "description": "Indique au frontend qu'il doit faire confirmer la salle et le cours avant d'afficher le canvas de signature."
+        },
         "role": {
           "$ref": "#/definitions/Role"
         }
@@ -2211,6 +2282,34 @@
             "present",
             "absent"
           ]
+        },
+        "comment": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Justification/commentaire optionnel, par exemple smartphone indisponible, NFC non supporte ou correction faite par l'enseignant."
+        }
+      }
+    },
+    "TeacherReplacementRequest": {
+      "type": "object",
+      "required": [
+        "teacherId"
+      ],
+      "properties": {
+        "teacherId": {
+          "type": "integer",
+          "description": "ID utilisateur du nouvel enseignant/formateur affecte a la session."
+        }
+      }
+    },
+    "TeacherReplacementResponse": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string"
+        },
+        "session": {
+          "$ref": "#/definitions/CourseSessionDetail"
         }
       }
     },

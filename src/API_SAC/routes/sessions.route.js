@@ -283,6 +283,7 @@ function sessionToPdfData(session, author) {
       status: teacherAttendance?.status === "present" ? "present" : "absent",
       scannedAt: teacherAttendance?.scannedAt || null,
       signature: teacherAttendance?.signature || null,
+      comment: teacherAttendance?.comment || null,
     },
     students: students.map(student => {
       const attendance = attendanceByUser.get(student.id);
@@ -292,6 +293,7 @@ function sessionToPdfData(session, author) {
         status: attendance?.status === "present" ? "present" : "absent",
         scannedAt: attendance?.scannedAt || null,
         signature: attendance?.signature || null,
+        comment: attendance?.comment || null,
       };
     }),
   };
@@ -628,6 +630,9 @@ router.post("/:sessionId/attendance/manual", require_access({ minRole: ROLES.TEA
     const sessionId = Number.parseInt(req.params.sessionId, 10);
     const studentId = Number.parseInt(req.body?.studentId, 10);
     const status = String(req.body?.status || "present").toLowerCase();
+    const comment = typeof req.body?.comment === "string"
+      ? req.body.comment.trim().slice(0, 500) || null
+      : null;
 
     if (!sessionUser?.id) {
       return res.status(401).json({ error: "UNAUTHENTICATED", message: "Utilisateur non authentifie." });
@@ -681,6 +686,7 @@ router.post("/:sessionId/attendance/manual", require_access({ minRole: ROLES.TEA
       update: {
         status,
         signature,
+        comment,
         scannedAt,
       },
       create: {
@@ -688,6 +694,7 @@ router.post("/:sessionId/attendance/manual", require_access({ minRole: ROLES.TEA
         userId: studentId,
         status,
         signature,
+        comment,
         scannedAt,
       },
       include: {
@@ -718,6 +725,7 @@ router.post("/:sessionId/attendance/manual", require_access({ minRole: ROLES.TEA
         metadata: {
           studentId,
           status,
+          comment,
         },
       }
     );
@@ -744,6 +752,97 @@ router.post("/:sessionId/attendance/manual", require_access({ minRole: ROLES.TEA
     return res.status(500).json({
       error: "MANUAL_ATTENDANCE_FAILED",
       message: "Erreur lors de la validation manuelle.",
+    });
+  }
+});
+
+router.post("/:sessionId/teacher", require_access({ minRole: ROLES.STAFF }), async (req, res) => {
+  try {
+    const sessionUser = getSessionUser(req);
+    const sessionId = Number.parseInt(req.params.sessionId, 10);
+    const teacherId = Number.parseInt(req.body?.teacherId, 10);
+
+    if (!sessionUser?.id) {
+      return res.status(401).json({ error: "UNAUTHENTICATED", message: "Utilisateur non authentifie." });
+    }
+
+    if (!Number.isInteger(sessionId) || !Number.isInteger(teacherId)) {
+      return res.status(400).json({ error: "INVALID_TEACHER_REPLACEMENT", message: "Session ou enseignant invalide." });
+    }
+
+    const [session, teacher] = await Promise.all([
+      prisma.courseSession.findUnique({
+        where: { id: sessionId },
+        include: { finalization: true, teacher: true },
+      }),
+      prisma.user.findFirst({
+        where: { id: teacherId, role: "teacher" },
+        select: { id: true, firstName: true, lastName: true, role: true },
+      }),
+    ]);
+
+    if (!session) {
+      return res.status(404).json({ error: "SESSION_NOT_FOUND", message: "Session introuvable." });
+    }
+
+    if (!teacher) {
+      return res.status(404).json({ error: "TEACHER_NOT_FOUND", message: "Enseignant introuvable." });
+    }
+
+    if (session.finalization) {
+      return res.status(403).json({ error: "APPEL_ALREADY_SENT", message: "Appel deja envoye a EcoleDirecte." });
+    }
+
+    const previousTeacherId = session.teacherId;
+    const updated = await prisma.courseSession.update({
+      where: { id: sessionId },
+      data: { teacherId },
+      include: {
+        class: true,
+        room: true,
+        teacher: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            o365Email: true,
+            edEmail: true,
+          },
+        },
+      },
+    });
+
+    await log_business("course_session_teacher_replaced", "Enseignant remplacé sur une session de cours.", {
+      destination: LOG_DESTINATIONS.BOTH,
+      req,
+      userId: Number(sessionUser.id),
+      entityType: "CourseSession",
+      entityId: sessionId,
+      metadata: {
+        previousTeacherId,
+        teacherId,
+      },
+    });
+
+    broadcastAttendanceUpdate(sessionId, {
+      updatedByUserId: Number(sessionUser.id),
+      reason: "teacher_replaced",
+    });
+
+    return res.json({
+      message: "Enseignant remplaçant affecté.",
+      session: updated,
+    });
+  } catch (err) {
+    log_technical(TECHNICAL_LEVELS.ERROR, "Course session teacher replacement failed", {
+      error: err,
+      userId: req.session?.user?.id,
+      sessionId: req.params.sessionId,
+      body: req.body,
+    });
+    return res.status(500).json({
+      error: "TEACHER_REPLACEMENT_FAILED",
+      message: "Erreur lors du remplacement enseignant.",
     });
   }
 });

@@ -218,22 +218,24 @@ async function refreshNextMonthClassSchedule(reason) {
   });
 }
 
-import_ed_data_to_db(['SALLES', 'CLASSES', 'USERS'])
-  .then(() => refreshNextMonthClassSchedule("startup"))
-  .catch(err => {
-    log_technical(TECHNICAL_LEVELS.ERROR, "Initial ED import failed", { error: err });
+if (process.env.CI_SKIP_STARTUP_JOBS !== "true") {
+  import_ed_data_to_db(['SALLES', 'CLASSES', 'USERS'])
+    .then(() => refreshNextMonthClassSchedule("startup"))
+    .catch(err => {
+      log_technical(TECHNICAL_LEVELS.ERROR, "Initial ED import failed", { error: err });
+    });
+
+  cron.schedule('0 6 * * *', () => {
+    import_ed_data_to_db(['SALLES', 'CLASSES', 'USERS'])
+      .then(() => refreshNextMonthClassSchedule("daily cron"))
+      .catch(err => log_technical(TECHNICAL_LEVELS.ERROR, "Daily ED import cron failed", { error: err }));
   });
 
-cron.schedule('0 6 * * *', () => {
-  import_ed_data_to_db(['SALLES', 'CLASSES', 'USERS'])
-    .then(() => refreshNextMonthClassSchedule("daily cron"))
-    .catch(err => log_technical(TECHNICAL_LEVELS.ERROR, "Daily ED import cron failed", { error: err }));
-});
-
-cron.schedule('*/5 * * * *', () => {
-  import_ed_data_to_db(['EDT_CLASSE'])
-    .catch(err => log_technical(TECHNICAL_LEVELS.WARNING, "Frequent EDT import cron failed", { error: err }));
-});
+  cron.schedule('*/5 * * * *', () => {
+    import_ed_data_to_db(['EDT_CLASSE'])
+      .catch(err => log_technical(TECHNICAL_LEVELS.WARNING, "Frequent EDT import cron failed", { error: err }));
+  });
+}
 
 const server = app.listen(port, () => {
   log_technical(TECHNICAL_LEVELS.INFO, `SAC server is running on http://localhost:${port}`);
@@ -245,3 +247,5 @@ server.on("upgrade", (req, socket) => {
     socket.destroy();
   }
 });
+
+module.exports = { app, server };

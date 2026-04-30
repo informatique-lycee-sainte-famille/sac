@@ -908,6 +908,71 @@
       return callNfcApi("/api/nfc/scan", { nfcUid, signature });
     }
 
+    function confirmScanContext(summary) {
+      return new Promise(resolve => {
+        document.getElementById("scan-context-confirm-modal")?.remove();
+        const modal = document.createElement("div");
+
+        modal.id = "scan-context-confirm-modal";
+        modal.className = "fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 p-4";
+        modal.innerHTML = `
+          <section class="w-full max-w-xl border border-white/20 bg-white text-neutral-950 shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="scan-context-confirm-title">
+            <div class="bg-[#624292] px-5 py-4 text-white">
+              <div class="flex items-start justify-between gap-4">
+                <div>
+                  <p class="text-xs font-semibold uppercase tracking-wide text-white/75">Confirmation salle</p>
+                  <h2 id="scan-context-confirm-title" class="mt-1 text-2xl font-semibold">Valider ce cours ?</h2>
+                </div>
+                <button type="button" data-scan-context-cancel class="text-white/80 hover:text-white" aria-label="Annuler">
+                  <i class="fa-solid fa-xmark text-xl" aria-hidden="true"></i>
+                </button>
+              </div>
+            </div>
+            <div class="p-5">
+              <p class="text-sm text-neutral-600">Vérifie que la salle, la classe et le cours correspondent bien avant de signer.</p>
+              <div class="mt-5 grid gap-3 sm:grid-cols-2">
+                <div class="border border-neutral-200 bg-neutral-50 p-3">
+                  <p class="text-xs font-semibold uppercase text-neutral-500">Salle</p>
+                  <p class="mt-1 break-words text-base font-semibold">${escapeHtml(summary.roomName || summary.room || "Non renseignée")}</p>
+                </div>
+                <div class="border border-neutral-200 bg-neutral-50 p-3">
+                  <p class="text-xs font-semibold uppercase text-neutral-500">Classe</p>
+                  <p class="mt-1 break-words text-base font-semibold">${escapeHtml(summary.className || "Non renseignée")}</p>
+                </div>
+                <div class="border border-neutral-200 bg-neutral-50 p-3 sm:col-span-2">
+                  <p class="text-xs font-semibold uppercase text-neutral-500">Cours</p>
+                  <p class="mt-1 break-words text-base font-semibold">${escapeHtml(summary.courseLabel || "Cours")}</p>
+                </div>
+              </div>
+              <div class="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <button type="button" data-scan-context-cancel class="inline-flex justify-center border border-neutral-300 bg-white px-4 py-2 text-sm font-medium hover:bg-neutral-50">
+                  Annuler
+                </button>
+                <button type="button" data-scan-context-confirm class="inline-flex items-center justify-center gap-2 border border-[#624292] bg-[#624292] px-4 py-2 text-sm font-semibold text-white hover:bg-[#52357f]">
+                  <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
+                  <span>Confirmer et signer</span>
+                </button>
+              </div>
+            </div>
+          </section>
+        `;
+
+        const finish = value => {
+          modal.remove();
+          resolve(value);
+        };
+
+        modal.querySelectorAll("[data-scan-context-cancel]").forEach(button => {
+          button.addEventListener("click", () => finish(false));
+        });
+        modal.querySelector("[data-scan-context-confirm]")?.addEventListener("click", () => finish(true));
+        modal.addEventListener("click", event => {
+          if (event.target === modal) finish(false);
+        });
+        document.body.appendChild(modal);
+      });
+    }
+
     function confirmFinalizeAttendance(summary) {
       return new Promise(resolve => {
         document.getElementById("finalize-confirm-modal")?.remove();
@@ -1046,6 +1111,12 @@
         const needsSignature = ["student", "teacher"].includes(prepareResult.role);
         if (needsSignature) {
           closeNfcResultModal();
+          const confirmedScanContext = await confirmScanContext(prepareResult);
+          if (!confirmedScanContext) {
+            sessionStorage.removeItem("pendingNfcUid");
+            setNfcResult("Validation annulée.", "info");
+            return;
+          }
         }
         const signature = needsSignature ? await captureSignature() : null;
         const result = await sendNfc(pendingNfc, signature);

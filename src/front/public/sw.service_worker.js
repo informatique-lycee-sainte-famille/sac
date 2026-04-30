@@ -1,5 +1,5 @@
 // ./front/public/sw.service_worker.js
-const CACHE_NAME = "sac-pwa-v3";
+const CACHE_NAME = "sac-pwa-v4";
 const APP_SHELL = [
   "/",
   "/index.page.html",

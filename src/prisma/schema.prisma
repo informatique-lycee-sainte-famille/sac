@@ -143,6 +143,7 @@ model AttendanceRecord {
 
   status    AttendanceStatus
   signature String?
+  comment   String?
   scannedAt DateTime?
 
   createdAt DateTime @default(now())

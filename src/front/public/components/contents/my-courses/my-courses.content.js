@@ -381,7 +381,17 @@ function studentRows(students, canManageAttendance) {
         <td class="px-2 py-2 text-sm">${escapeHtml(formatDateTime(record?.scannedAt))}</td>
         <td class="px-2 py-2 text-sm">${record?.signature ? "Oui" : "Non"}</td>
         <td class="px-2 py-2">
-          <div class="flex flex-wrap gap-1">
+          <div class="flex min-w-52 flex-col gap-2">
+            <input
+              type="text"
+              data-manual-comment="${escapeHtml(student.id)}"
+              value="${escapeHtml(record?.comment || "")}"
+              maxlength="500"
+              placeholder="Commentaire optionnel"
+              class="${canManage ? "" : "hidden"} w-full border border-neutral-300 px-2 py-1 text-xs"
+            />
+            ${record?.comment ? `<p class="text-xs text-neutral-500">${escapeHtml(record.comment)}</p>` : ""}
+            <div class="flex flex-wrap gap-1">
             <button
               type="button"
               data-manual-attendance="${escapeHtml(student.id)}"
@@ -400,6 +410,7 @@ function studentRows(students, canManageAttendance) {
               <i class="fa-solid fa-xmark" aria-hidden="true"></i>
               Absent
             </button>
+            </div>
           </div>
         </td>
       </tr>
@@ -407,14 +418,14 @@ function studentRows(students, canManageAttendance) {
   }).join("");
 }
 
-async function setManualAttendance(sessionId, studentId, status) {
+async function setManualAttendance(sessionId, studentId, status, comment = "") {
   const response = await fetch(`/api/sessions/${encodeURIComponent(sessionId)}/attendance/manual`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "x-csrf-token": getCookie("XSRF-TOKEN"),
     },
-    body: JSON.stringify({ studentId: Number(studentId), status }),
+    body: JSON.stringify({ studentId: Number(studentId), status, comment }),
   });
   const data = await response.json().catch(() => ({}));
 
@@ -430,12 +441,13 @@ function bindManualAttendanceActions(sessionId) {
     button.addEventListener("click", async () => {
       const studentId = button.dataset.manualAttendance;
       const status = button.dataset.manualStatus;
+      const comment = document.querySelector(`[data-manual-comment="${CSS.escape(studentId)}"]`)?.value || "";
       const originalHtml = button.innerHTML;
       button.disabled = true;
       button.innerHTML = `<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i><span>...</span>`;
 
       try {
-        await setManualAttendance(sessionId, studentId, status);
+        await setManualAttendance(sessionId, studentId, status, comment);
         await loadCourses();
         await openCourseModal(sessionId, { keepExisting: true });
       } catch (error) {
@@ -530,7 +542,7 @@ async function openCourseModal(sessionId, options = {}) {
           <div class="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h3 class="text-base font-semibold">Appel manuel</h3>
-              <p class="text-sm text-neutral-500">À utiliser si un élève n'a pas de téléphone, pas de NFC, ou si le scan échoue.</p>
+              <p class="text-sm text-neutral-500">Suivi live du cours et correction si un élève n'a pas de téléphone, pas de NFC, ou si le scan échoue.</p>
             </div>
             ${data.canManageAttendance ? "" : `<p class="text-sm font-medium text-amber-700">Appel déjà finalisé ou modification indisponible.</p>`}
           </div>

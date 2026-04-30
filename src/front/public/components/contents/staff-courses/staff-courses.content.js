@@ -11,6 +11,7 @@ const state = {
   activeSessionId: null,
   realtimeSocket: null,
   realtimeSubscriptions: new Set(),
+  teacherOptions: [],
 };
 
 function escapeHtml(value) {
@@ -369,7 +370,17 @@ function studentRows(students, canManageAttendance) {
         <td class="px-2 py-2 text-sm">${escapeHtml(formatDateTime(record?.scannedAt))}</td>
         <td class="px-2 py-2 text-sm">${record?.signature ? "Oui" : "Non"}</td>
         <td class="px-2 py-2">
-          <div class="flex flex-wrap gap-1">
+          <div class="flex min-w-52 flex-col gap-2">
+            <input
+              type="text"
+              data-staff-manual-comment="${escapeHtml(student.id)}"
+              value="${escapeHtml(record?.comment || "")}"
+              maxlength="500"
+              placeholder="Commentaire optionnel"
+              class="${canManageAttendance ? "" : "hidden"} w-full border border-neutral-300 px-2 py-1 text-xs"
+            />
+            ${record?.comment ? `<p class="text-xs text-neutral-500">${escapeHtml(record.comment)}</p>` : ""}
+            <div class="flex flex-wrap gap-1">
             <button
               type="button"
               data-staff-manual-attendance="${escapeHtml(student.id)}"
@@ -388,6 +399,7 @@ function studentRows(students, canManageAttendance) {
               <i class="fa-solid fa-xmark" aria-hidden="true"></i>
               Absent
             </button>
+            </div>
           </div>
         </td>
       </tr>
@@ -395,19 +407,37 @@ function studentRows(students, canManageAttendance) {
   }).join("");
 }
 
-async function setManualAttendance(sessionId, studentId, status) {
+async function setManualAttendance(sessionId, studentId, status, comment = "") {
   const response = await fetch(`/api/sessions/${encodeURIComponent(sessionId)}/attendance/manual`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "x-csrf-token": getCookie("XSRF-TOKEN"),
     },
-    body: JSON.stringify({ studentId: Number(studentId), status }),
+    body: JSON.stringify({ studentId: Number(studentId), status, comment }),
   });
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
     throw new Error(data.message || data.error || "Validation manuelle impossible.");
+  }
+
+  return data;
+}
+
+async function setSessionTeacher(sessionId, teacherId) {
+  const response = await fetch(`/api/sessions/${encodeURIComponent(sessionId)}/teacher`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-csrf-token": getCookie("XSRF-TOKEN"),
+    },
+    body: JSON.stringify({ teacherId: Number(teacherId) }),
+  });
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(data.message || data.error || "Remplacement enseignant impossible.");
   }
 
   return data;
@@ -423,12 +453,13 @@ function bindManualAttendanceActions(sessionId) {
     button.addEventListener("click", async () => {
       const studentId = button.dataset.staffManualAttendance;
       const status = button.dataset.staffManualStatus;
+      const comment = document.querySelector(`[data-staff-manual-comment="${CSS.escape(studentId)}"]`)?.value || "";
       const originalHtml = button.innerHTML;
       button.disabled = true;
       button.innerHTML = `<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i><span>...</span>`;
 
       try {
-        await setManualAttendance(sessionId, studentId, status);
+        await setManualAttendance(sessionId, studentId, status, comment);
         await loadStaffCourses();
         await openStaffCourseModal(sessionId, { keepExisting: true });
       } catch (error) {
@@ -438,6 +469,29 @@ function bindManualAttendanceActions(sessionId) {
         button.innerHTML = originalHtml;
       }
     });
+  });
+}
+
+function bindTeacherReplacementAction(sessionId) {
+  document.querySelector("[data-staff-teacher-replace]")?.addEventListener("click", async buttonEvent => {
+    const button = buttonEvent.currentTarget;
+    const teacherId = document.querySelector("[data-staff-replacement-teacher]")?.value;
+    if (!teacherId) return;
+
+    const originalHtml = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = `<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i><span>...</span>`;
+
+    try {
+      await setSessionTeacher(sessionId, teacherId);
+      await loadStaffCourses();
+      await openStaffCourseModal(sessionId, { keepExisting: true });
+    } catch (error) {
+      alert(error.message);
+    } finally {
+      button.disabled = false;
+      button.innerHTML = originalHtml;
+    }
   });
 }
 
@@ -484,6 +538,12 @@ async function openStaffCourseModal(sessionId, options = {}) {
       throw new Error(data.message || data.error || "Impossible de charger le détail du cours.");
     }
 
+    const replacementOptions = state.teacherOptions.map(teacher => `
+      <option value="${escapeHtml(teacher.id)}" ${Number(teacher.id) === Number(data.teacher?.id) ? "selected" : ""}>
+        ${escapeHtml(teacherName(teacher))}
+      </option>
+    `).join("");
+
     modal.innerHTML = `
       <div class="w-full max-w-5xl bg-white p-5 text-neutral-950 shadow-2xl">
         <div class="flex items-start justify-between gap-4">
@@ -516,10 +576,29 @@ async function openStaffCourseModal(sessionId, options = {}) {
         </div>
 
         <div class="mt-5">
+          <div class="border border-[#624292]/25 bg-[#624292]/5 p-4">
+            <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <h3 class="text-base font-semibold">Remplacement formateur</h3>
+                <p class="text-sm text-neutral-500">Permet d'affecter le formateur réellement présent avant finalisation.</p>
+              </div>
+              <div class="flex flex-col gap-2 sm:flex-row">
+                <select data-staff-replacement-teacher class="min-w-64 border border-neutral-300 bg-white px-3 py-2 text-sm">
+                  ${replacementOptions}
+                </select>
+                <button type="button" data-staff-teacher-replace class="${data.finalization ? "hidden" : ""} inline-flex items-center justify-center gap-2 border border-[#624292] bg-[#624292] px-3 py-2 text-sm font-semibold text-white hover:bg-[#52357f]">
+                  <i class="fa-solid fa-user-pen" aria-hidden="true"></i>
+                  Remplacer
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-5">
           <div class="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h3 class="text-base font-semibold">Appel manuel</h3>
-              <p class="text-sm text-neutral-500">Correction disponible pour les personnels/admins tant que l'appel n'est pas finalisé.</p>
+              <h3 class="text-base font-semibold">Suivi live et appel manuel</h3>
+              <p class="text-sm text-neutral-500">Les scans élèves apparaissent presque instantanément. Correction disponible tant que l'appel n'est pas finalisé.</p>
             </div>
             ${data.canManageAttendance ? "" : `<p class="text-sm font-medium text-amber-700">Appel déjà finalisé ou modification indisponible.</p>`}
           </div>
@@ -538,9 +617,11 @@ async function openStaffCourseModal(sessionId, options = {}) {
             </table>
           </div>
         </div>
+        </div>
       </div>
     `;
     bindManualAttendanceActions(data.id);
+    bindTeacherReplacementAction(data.id);
   } catch (error) {
     modal.innerHTML = `
       <div class="w-full max-w-lg bg-white p-5 text-neutral-950 shadow-2xl">
@@ -651,6 +732,7 @@ function renderError(error) {
 }
 
 function populateFilters(options) {
+  state.teacherOptions = options?.teachers || [];
   fillSelect("staff-filter-class", options?.classes || [], state.filters.classId, option => option.name || option.code);
   fillSelect("staff-filter-room", options?.rooms || [], state.filters.roomId, option => option.name || option.code);
   fillSelect("staff-filter-teacher", options?.teachers || [], state.filters.teacherId, teacherName);

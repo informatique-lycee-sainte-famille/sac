@@ -1,0 +1,236 @@
+name: Quality and Security
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+jobs:
+  tests:
+    name: Unit, integration and performance tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate --schema src/prisma/schema.prisma
+
+      - name: Validate Prisma schema
+        run: npx prisma validate --schema src/prisma/schema.prisma
+
+      - name: Syntax smoke check
+        run: npm run quality:syntax
+
+      - name: Run unit tests
+        run: npx --package=. sac-test-unit
+
+      - name: Run integration tests
+        run: npx --package=. sac-test-integration
+
+      - name: Start SAC for performance smoke
+        env:
+          CI_SKIP_STARTUP_JOBS: "true"
+          DATABASE_URL: postgresql://sac:sac@127.0.0.1:5432/sac
+          DEBUG: PRODUCTION
+          ENV: dev
+          PORT: 3000
+          SESSION_SECRET: ci-only-session-secret
+          TRUST_PROXY: loopback
+        run: |
+          node src/API_SAC/app.server.js &
+          echo $! > sac.pid
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:3000/ >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          cat sac.pid | xargs kill || true
+          exit 1
+
+      - name: Run performance smoke test
+        env:
+          LOAD_TEST_URL: http://127.0.0.1:3000/
+          LOAD_TEST_REQUESTS: 10
+          LOAD_TEST_CONCURRENCY: 2
+          LOAD_TEST_MAX_P95_MS: 4000
+        run: npx --package=. sac-test-performance
+
+      - name: Stop SAC performance smoke
+        if: always()
+        run: cat sac.pid | xargs kill || true
+
+  security:
+    name: Dependency, secret and source security scans
+    runs-on: ubuntu-latest
+    env:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: NPM audit
+        run: npm run security:audit
+
+      - name: Secret detection with Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Snyk Open Source scan
+        if: ${{ env.SNYK_TOKEN != '' }}
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ env.SNYK_TOKEN }}
+        with:
+          command: test
+          args: --severity-threshold=high
+
+      - name: Snyk skipped
+        if: ${{ env.SNYK_TOKEN == '' }}
+        run: echo "SNYK_TOKEN is not configured; skipping Snyk scan."
+
+      - name: Trivy filesystem scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: sarif
+          output: trivy-fs-results.sarif
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+
+      - name: Upload Trivy filesystem SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-fs-results.sarif
+
+  image-security:
+    name: Docker image security scan
+    runs-on: ubuntu-latest
+    needs:
+      - tests
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build local Docker image
+        run: docker build -t sac-ci:${{ github.sha }} .
+
+      - name: Trivy image scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: sac-ci:${{ github.sha }}
+          format: sarif
+          output: trivy-image-results.sarif
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+
+      - name: Upload Trivy image SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-image-results.sarif
+
+  zap:
+    name: OWASP ZAP baseline scan
+    runs-on: ubuntu-latest
+    needs:
+      - tests
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: sac
+          POSTGRES_PASSWORD: sac
+          POSTGRES_DB: sac
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U sac -d sac"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate --schema src/prisma/schema.prisma
+
+      - name: Start SAC for ZAP
+        env:
+          CI_SKIP_STARTUP_JOBS: "true"
+          DATABASE_URL: postgresql://sac:sac@127.0.0.1:5432/sac
+          DEBUG: PRODUCTION
+          ENV: dev
+          PORT: 3000
+          SESSION_SECRET: ci-only-session-secret
+          TRUST_PROXY: loopback
+        run: |
+          node src/API_SAC/app.server.js &
+          echo $! > sac.pid
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:3000/ >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          cat sac.pid | xargs kill || true
+          exit 1
+
+      - name: Run OWASP ZAP baseline
+        uses: zaproxy/action-baseline@v0.14.0
+        with:
+          target: http://127.0.0.1:3000/
+          fail_action: true
+          cmd_options: "-a"
+
+      - name: Stop SAC
+        if: always()
+        run: cat sac.pid | xargs kill || true
