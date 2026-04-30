@@ -4,7 +4,7 @@ const sharp = require("sharp");
 const { prisma } = require("../../API_SAC/commons/prisma.common");
 const { LOG_DESTINATIONS, TECHNICAL_LEVELS, log_business, log_technical } = require("../../API_SAC/commons/logger.common");
 
-const DEFAULT_DELAY_MS = 1000;
+const DEFAULT_DELAY_MS = 5000;
 const DEFAULT_LIMIT = 500;
 const DEFAULT_TIMEOUT_MS = 15000;
 
@@ -27,6 +27,43 @@ function normalizeUrl(url) {
   return url;
 }
 
+function buildEdPhotoCookie() {
+  if (process.env.ED_PHOTO_COOKIE) return process.env.ED_PHOTO_COOKIE;
+
+  const ogec = process.env.ED_PHOTO_OGEC_ED_CAS;
+  const token = process.env.ED_PHOTO_TOKEN_ED_CAS_0;
+  if (!ogec || !token) return null;
+
+  return `OGEC_ED_CAS=${ogec}; TOKEN_ED_CAS_0=${token}`;
+}
+
+function buildEdPhotoHeaders() {
+  const cookie = buildEdPhotoCookie();
+  const headers = {
+    accept: "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+    "accept-language": "fr-FR,fr;q=0.6",
+    "cache-control": "no-cache",
+    pragma: "no-cache",
+    referer: "https://www.ecoledirecte.com/",
+    "sec-ch-ua": "\"Brave\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+    "sec-ch-ua-mobile": "?0",
+    "sec-ch-ua-platform": "\"Windows\"",
+    "sec-fetch-dest": "image",
+    "sec-fetch-mode": "no-cors",
+    "sec-fetch-site": "same-site",
+    "sec-gpc": "1",
+    "user-agent":
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+      "(KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
+  };
+
+  if (cookie) {
+    headers.cookie = cookie;
+  }
+
+  return headers;
+}
+
 async function compressImageToBase64(buffer) {
   const compressedBuffer = await sharp(buffer)
     .resize(50, 50, { fit: "cover" })
@@ -42,14 +79,7 @@ async function fetchEdPhoto(url, timeoutMs = DEFAULT_TIMEOUT_MS) {
 
   const response = await fetch(url, {
     signal: controller.signal,
-    headers: {
-      accept: "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
-      "accept-language": "fr-FR,fr;q=0.8",
-      referer: "https://www.ecoledirecte.com/",
-      "user-agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
-        "(KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
-    },
+    headers: buildEdPhotoHeaders(),
   }).finally(() => clearTimeout(timeout));
 
   if (response.status === 404) {

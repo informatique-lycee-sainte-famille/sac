@@ -187,13 +187,13 @@ cron.schedule('30 3 * * *', () => {
   purge_business_logs();
 });
 
-cron.schedule('15 2 * * *', () => {
-  process_ed_photo_queue({
-    delayMs: Number(process.env.ED_PHOTO_CACHE_DELAY_MS || 1000),
-    limit: Number(process.env.ED_PHOTO_CACHE_DAILY_LIMIT || 500),
-    timeoutMs: Number(process.env.ED_PHOTO_CACHE_TIMEOUT_MS || 15000),
-  }).catch(err => log_technical(TECHNICAL_LEVELS.WARNING, "Daily ED student photo cache failed", { error: err }));
-});
+// cron.schedule('15 2 * * *', () => {
+//   process_ed_photo_queue({
+//     delayMs: Number(process.env.ED_PHOTO_CACHE_DELAY_MS || 5000),
+//     limit: Number(process.env.ED_PHOTO_CACHE_DAILY_LIMIT || 500),
+//     timeoutMs: Number(process.env.ED_PHOTO_CACHE_TIMEOUT_MS || 15000),
+//   }).catch(err => log_technical(TECHNICAL_LEVELS.WARNING, "Daily ED student photo cache failed", { error: err }));
+// });
 
 function getNextMonthEdtRange() {
   const start = new Date();
