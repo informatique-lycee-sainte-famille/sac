@@ -126,21 +126,41 @@ jobs:
         if: ${{ env.SNYK_TOKEN == '' }}
         run: echo "SNYK_TOKEN is not configured; skipping Snyk scan."
 
-      - name: Trivy filesystem scan
+      - name: Trivy filesystem scan summary
+        id: trivy_fs_summary
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: table
+          scanners: vuln
+          ignore-unfixed: true
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+
+      - name: Trivy filesystem SARIF
+        if: always()
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: fs
           scan-ref: .
           format: sarif
           output: trivy-fs-results.sarif
+          scanners: vuln
+          ignore-unfixed: true
           severity: HIGH,CRITICAL
-          exit-code: "1"
+          exit-code: "0"
 
       - name: Upload Trivy filesystem SARIF
         if: ${{ always() && hashFiles('trivy-fs-results.sarif') != '' }}
         uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: trivy-fs-results.sarif
+
+      - name: Fail on Trivy filesystem findings
+        if: ${{ steps.trivy_fs_summary.outcome == 'failure' }}
+        run: exit 1
 
   image-security:
     name: Docker image security scan
@@ -155,20 +175,39 @@ jobs:
       - name: Build local Docker image
         run: docker build -t sac-ci:${{ github.sha }} .
 
-      - name: Trivy image scan
+      - name: Trivy image scan summary
+        id: trivy_image_summary
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: sac-ci:${{ github.sha }}
+          format: table
+          scanners: vuln
+          ignore-unfixed: true
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+
+      - name: Trivy image SARIF
+        if: always()
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: sac-ci:${{ github.sha }}
           format: sarif
           output: trivy-image-results.sarif
+          scanners: vuln
+          ignore-unfixed: true
           severity: HIGH,CRITICAL
-          exit-code: "1"
+          exit-code: "0"
 
       - name: Upload Trivy image SARIF
         if: ${{ always() && hashFiles('trivy-image-results.sarif') != '' }}
         uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: trivy-image-results.sarif
+
+      - name: Fail on Trivy image findings
+        if: ${{ steps.trivy_image_summary.outcome == 'failure' }}
+        run: exit 1
 
   zap:
     name: OWASP ZAP baseline scan

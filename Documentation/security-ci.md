@@ -21,7 +21,7 @@ Variables du test de charge:
 - `npm audit` bloque les vulnérabilités npm à partir de `moderate`, sauf allowlist explicite dans `tests/runners/security_audit.cli.js`.
 - Gitleaks détecte les secrets committés.
 - Snyk scanne les dépendances si le secret GitHub `SNYK_TOKEN` est configuré.
-- Trivy scanne le dépôt et l'image Docker.
+- Trivy scanne le dépôt et l'image Docker. Chaque scan produit d'abord un tableau lisible dans les logs, puis un SARIF uploadé dans GitHub Security.
 - OWASP ZAP baseline scanne l'application démarrée localement par la CI.
 
 L'allowlist npm actuelle couvre des advisories transitoires connues:
