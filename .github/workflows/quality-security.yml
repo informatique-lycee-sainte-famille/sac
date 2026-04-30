@@ -41,6 +41,9 @@ jobs:
       - name: Syntax smoke check
         run: npm run quality:syntax
 
+      - name: Make local test runners executable
+        run: chmod +x tests/runners/*.cli.js
+
       - name: Run unit tests
         run: npx --package=. sac-test-unit
 
