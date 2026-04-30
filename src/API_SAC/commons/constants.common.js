@@ -1,5 +1,4 @@
 // ./API_SAC/commons/constants.common.js
-// commons/constants.js
 require("./env.common");
 const { ECOLEDIRECTE_APIP_BASE_URL, ECOLEDIRECTE_API_BASE_URL, ECOLEDIRECTE_API_VERSION } = process.env;
 
@@ -42,7 +41,6 @@ const ROLES = {
   ADMIN: "ADMIN",
 };
 
-// Priority (higher = more privileges)
 const ROLE_PRIORITY = {
   [ROLES.STUDENT]: 1,
   [ROLES.TEACHER]: 2,
@@ -50,7 +48,6 @@ const ROLE_PRIORITY = {
   [ROLES.ADMIN]: 4,
 };
 
-// 🔑 Azure Groups → App Roles
 const GROUP_TO_ROLE = {
   SAC_ELEVES: ROLES.STUDENT,
   SAC_PROFESSEURS: ROLES.TEACHER,
@@ -59,7 +56,6 @@ const GROUP_TO_ROLE = {
   SAC_ADMINS: ROLES.ADMIN,
 };
 
-// 🔑 MAIN FUNCTION (used everywhere)
 function get_highest_role_from_groups(groups) {
   if (!groups || groups.length === 0) return ROLES.STUDENT;
 
@@ -78,7 +74,6 @@ function get_highest_role_from_groups(groups) {
   return highestRole;
 }
 
-// 🔑 Prisma mapping (only for DB)
 function map_to_prisma_role(role) {
   switch (role) {
     case ROLES.ADMIN:

@@ -1,5 +1,4 @@
 // ./scripts/auto/get_data.script.js
-// scripts/auto/get_data.script.js
 const {
   fetchData,
   USER_ID,
@@ -10,11 +9,6 @@ const {
 
 const crypto = require('crypto');
 
-/**
- * ---------------------------------------------------------------------------
- * Helper: compute date range for EDT_CLASSE
- * ---------------------------------------------------------------------------
- */
 function computeEdtDateRange(rawDateOpt) {
   const opt = (rawDateOpt || '').toString().trim().toLowerCase();
   const fmt = d => d.toISOString().slice(0, 10);
@@ -22,8 +16,8 @@ function computeEdtDateRange(rawDateOpt) {
 
   const startOfWeek = d => {
     const n = new Date(d);
-    const day = n.getDay(); // 0 = Sunday
-    const diff = (day === 0 ? -6 : 1) - day; // Monday as first day
+    const day = n.getDay();
+    const diff = (day === 0 ? -6 : 1) - day;
     n.setDate(n.getDate() + diff);
     n.setHours(0, 0, 0, 0);
     return n;
@@ -64,7 +58,6 @@ function computeEdtDateRange(rawDateOpt) {
     return { dateDebut: fmt(s), dateFin: fmt(e) };
   }
 
-  // Manual "start=YYYY-MM-DD,end=YYYY-MM-DD"
   if (opt.includes('start=') || opt.includes('end=')) {
     const parts = opt.split(',');
     let start, end;
@@ -79,14 +72,12 @@ function computeEdtDateRange(rawDateOpt) {
     return { dateDebut: start, dateFin: end };
   }
 
-  // "YYYY-MM-DD:YYYY-MM-DD"
   if (opt.includes(':')) {
     const [start, end] = opt.split(':').map(x => x.trim());
     if (!start || !end) throw new Error(`Format date invalide: ${rawDateOpt}`);
     return { dateDebut: start, dateFin: end };
   }
 
-  // "YYYY-MM-DD" -> single day
   if (/^\d{4}-\d{2}-\d{2}$/.test(opt)) {
     return { dateDebut: opt, dateFin: opt };
   }
@@ -94,11 +85,6 @@ function computeEdtDateRange(rawDateOpt) {
   throw new Error(`Option de date EDT_CLASSE  invalide: ${rawDateOpt}`);
 }
 
-/**
- * ============================================================================
- *  Core function: get_data_by_type(type, args)
- * ============================================================================
- */
 async function get_data_by_type(type, args = {}) {
   const dataType = type?.toUpperCase();
   if (!dataType) {
@@ -107,12 +93,8 @@ async function get_data_by_type(type, args = {}) {
     );
   }
 
-  // data is used by the types that rely on a generic fetch at the end
   let data;
 
-  // -------------------------------------------------------------------------
-  // ELEVES (custom fetching, as in old code)
-  // -------------------------------------------------------------------------
   if (dataType === 'ELEVES') {
     let eleves = [];
 
@@ -143,11 +125,10 @@ async function get_data_by_type(type, args = {}) {
             );
           }
         } catch {
-          // ignore per-class errors
+          // Multi-class imports stay best-effort because ED can fail on one class while others are valid.
         }
       }
     } else {
-      // Single class
       const url = await buildUrl('ELEVES', args);
       const res = await fetchData(url);
       if (res?.code === 200 && Array.isArray(res.data?.eleves)) {
@@ -171,10 +152,6 @@ async function get_data_by_type(type, args = {}) {
 
     return eleves;
   }
-
-  // -------------------------------------------------------------------------
-  // ELEVES_ALL (custom fetching)
-  // -------------------------------------------------------------------------
   if (dataType === 'ELEVES_ALL') {
     const url = await buildUrl('ELEVES_ALL', args);
     const res = await fetchData(url, {});
@@ -212,10 +189,6 @@ async function get_data_by_type(type, args = {}) {
 
     return eleves;
   }
-
-  // -------------------------------------------------------------------------
-  // PROFESSEURS (custom fetching)
-  // -------------------------------------------------------------------------
   if (dataType === 'PROFESSEURS') {
     const url = await buildUrl('PROFESSEURS', args);
     const res = await fetchData(url, {});
@@ -252,9 +225,6 @@ async function get_data_by_type(type, args = {}) {
 
     return profs;
   }
-
-  // -------------------------------------------------------------------------
-  // PERSONNELS (custom fetching)
   if (dataType === 'PERSONNELS') {
     const url = await buildUrl('PERSONNELS', args);
     const res = await fetchData(url, {});
@@ -273,10 +243,6 @@ async function get_data_by_type(type, args = {}) {
     }
     return personnels;
   }
-
-  // -------------------------------------------------------------------------
-  // EDT_CLASSE (custom fetching, with date range helper)
-  // -------------------------------------------------------------------------
   if (dataType === 'EDT_CLASSE') {
     let cours = [];
 
@@ -318,7 +284,7 @@ async function get_data_by_type(type, args = {}) {
             );
           }
         } catch {
-          // ignore per-class errors
+          // Multi-class imports stay best-effort because ED can fail on one class while others are valid.
         }
       }
     } else {
@@ -353,16 +319,12 @@ async function get_data_by_type(type, args = {}) {
     return cours;
   }
 
-  // -------------------------------------------------------------------------
-  // EDT_SALLE (custom fetching, with date range helper)
-  // -------------------------------------------------------------------------
   if (dataType === 'EDT_SALLE') {
     let cours = [];
 
     let dateParams;
     try {
       dateParams = computeEdtDateRange(args.date || 'today');
-      // console.log(`dateParams: ${JSON.stringify(dateParams)}`);
     } catch (e) {
       throw e;
     }
@@ -394,14 +356,13 @@ async function get_data_by_type(type, args = {}) {
             );
           }
         } catch {
-          // ignore per-salle errors
+          // Keep aggregated room schedules best-effort for the same reason as class schedules.
         }
       }
     } else {
       const url = await buildUrl('EDT_SALLE', { salle: args.salle });
       const res = await fetchData(url, commonBody);
       if (res?.code === 200 && Array.isArray(res.data)) {
-        // console.log(`res: ${JSON.stringify(res)}`);
         cours = res.data;
       } else {
         throw new Error('Aucun cours trouvé pour la salle demandée.');
@@ -421,13 +382,9 @@ async function get_data_by_type(type, args = {}) {
     return cours;
   }
 
-  // -------------------------------------------------------------------------
-  // EDT_PROFESSEUR (custom fetching, with date range helper)
-  // -------------------------------------------------------------------------
   if (dataType === 'EDT_PROFESSEUR') {
     let cours = [];
 
-    // ---- date range
     let dateParams;
     try {
       dateParams = computeEdtDateRange(args.date || 'today');
@@ -440,7 +397,6 @@ async function get_data_by_type(type, args = {}) {
       avecTrous: false,
     };
 
-    // ---- fetch all teachers if no --prof is provided
     if (!args.prof) {
       const profsUrl = await buildUrl('PROFESSEURS', {});
       const profsData = await fetchData(profsUrl);
@@ -466,15 +422,12 @@ async function get_data_by_type(type, args = {}) {
             );
           }
         } catch {
-          // ignore per-prof errors
+          // Keep aggregated teacher schedules best-effort for the same reason as class schedules.
         }
       }
     } else {
-      // ---- fetch only one teacher
       const url = await buildUrl('EDT_PROFESSEUR', { prof: args.prof });
       const res = await fetchData(url, commonBody);
-
-      // console.log(`res: ${JSON.stringify(res)}`);
 
       if (res?.code === 200 && Array.isArray(res.data)) {
         cours = res.data;
@@ -483,7 +436,6 @@ async function get_data_by_type(type, args = {}) {
       }
     }
 
-    // ---- extra filtering
     if (args.search) {
       const keyword = args.search.toLowerCase();
       cours = cours.filter(
@@ -508,9 +460,6 @@ async function get_data_by_type(type, args = {}) {
     return cours;
   }
 
-  // -------------------------------------------------------------------------
-  // APPEL (POST attendance with full eleve objects + idempotency)
-  // -------------------------------------------------------------------------
   if (dataType === 'APPEL') {
     if (!args.classe) {
       throw new Error('Paramètre --classe requis pour APPEL.');
@@ -520,7 +469,6 @@ async function get_data_by_type(type, args = {}) {
       throw new Error('Paramètre --horaire requis (ex: 13:00-14:00).');
     }
 
-    // If eleves passed as JSON string (CLI)
     if (typeof args.eleves === 'string') {
       try {
         args.eleves = JSON.parse(args.eleves);
@@ -535,9 +483,6 @@ async function get_data_by_type(type, args = {}) {
       );
     }
 
-    // ---------------------------------------------------------------------
-    // Build payload
-    // ---------------------------------------------------------------------
     const normalizedInput = args.eleves
       .filter(e => e && e.id !== undefined)
       .map(e => ({
@@ -549,12 +494,9 @@ async function get_data_by_type(type, args = {}) {
       throw new Error('Aucun élève valide à envoyer.');
     }
 
-    // Sort for deterministic hashing
     normalizedInput.sort((a, b) => a.id - b.id);
 
-    // ---------------------------------------------------------------------
-    // Idempotency protection
-    // ---------------------------------------------------------------------
+    // ED has no session id for APPEL, so idempotency is based on class, slot and payload.
     const today = new Date().toISOString().slice(0, 10);
     const appelKey = `${args.classe}_${args.horaire}_${today}`;
 
@@ -579,9 +521,6 @@ async function get_data_by_type(type, args = {}) {
       };
     }
 
-    // ---------------------------------------------------------------------
-    // Send to ED
-    // ---------------------------------------------------------------------
     const url = await buildUrl(
       "APPEL",
       {
@@ -602,7 +541,6 @@ async function get_data_by_type(type, args = {}) {
       throw new Error('Erreur lors de l\'envoi de l\'appel.');
     }
 
-    // Store successful hash
     global.__SENT_APPELS__.set(appelKey, payloadHash);
 
     return {
@@ -616,15 +554,9 @@ async function get_data_by_type(type, args = {}) {
   }
 
 
-  // -------------------------------------------------------------------------
-  // For the remaining types, first do a generic fetch like in old script
-  // -------------------------------------------------------------------------
   const baseUrl = await buildUrl(dataType, args);
   data = await fetchData(baseUrl);
 
-  // -------------------------------------------------------------------------
-  // MESSAGES (logic from old file but using fetched `data`)
-  // -------------------------------------------------------------------------
   if (dataType === 'MESSAGES') {
     if (data?.code !== 200) {
       throw new Error('Impossible de récupérer les messages.');
@@ -668,9 +600,6 @@ async function get_data_by_type(type, args = {}) {
     return messages;
   }
 
-  // -------------------------------------------------------------------------
-  // CLASSES (same logic as old script, with data from generic fetch)
-  // -------------------------------------------------------------------------
   if (dataType === 'CLASSES') {
     let etablissements = data.data?.etablissements || [];
 
@@ -726,9 +655,6 @@ async function get_data_by_type(type, args = {}) {
     return classes;
   }
 
-  // -------------------------------------------------------------------------
-  // NIVEAUX
-  // -------------------------------------------------------------------------
   if (dataType === 'NIVEAUX') {
     let etablissements = data.data?.etablissements || [];
 
@@ -756,9 +682,6 @@ async function get_data_by_type(type, args = {}) {
     return etablissements;
   }
 
-  // -------------------------------------------------------------------------
-  // NIVEAUX_ALL
-  // -------------------------------------------------------------------------
   if (dataType === 'NIVEAUX_ALL') {
     let etablissements = data.data?.etablissements || [];
     let groupes = data.data?.groupes || [];
@@ -825,9 +748,6 @@ async function get_data_by_type(type, args = {}) {
     return { etablissements, groupes };
   }
 
-  // -------------------------------------------------------------------------
-  // ETABLISSEMENTS
-  // -------------------------------------------------------------------------
   if (dataType === 'ETABLISSEMENTS') {
     let etablissements = data.data?.etablissements || [];
 
@@ -848,17 +768,13 @@ async function get_data_by_type(type, args = {}) {
     return etablissements;
   }
 
-  // -------------------------------------------------------------------------
-  // SALLES (explicit fetch & filtering)
-  // -------------------------------------------------------------------------
   if (dataType === 'SALLES') {
-    // override: SALLES is a flat list, not under data.data.etablissements
     const url = await buildUrl('SALLES', args);
     const res = await fetchData(url);
     if (res?.code !== 200) {
       throw new Error('Impossible de récupérer les salles.');
     }
-    let salles = res.data || res; // depends on your API; adjust if needed
+    let salles = res.data || res;
 
     if (args.salle || args.search) {
       const keyword = (args.salle || args.search).toLowerCase();
@@ -873,15 +789,9 @@ async function get_data_by_type(type, args = {}) {
     return salles;
   }
 
-  // -------------------------------------------------------------------------
-  // Fallback: return raw data
-  // -------------------------------------------------------------------------
   return data.data || data;
 }
 
-/**
- * CLI entrypoint (kept for original behavior)
- */
 async function main() {
   const args = parseArgs();
   const type = args._ || Object.keys(args)[0];

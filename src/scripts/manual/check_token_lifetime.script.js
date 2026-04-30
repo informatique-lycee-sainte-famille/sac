@@ -1,5 +1,4 @@
 // ./scripts/manual/check_token_lifetime.script.js
-// scripts/manual/check_token_lifetime.script.js
 require("../../API_SAC/commons/env.common");
 
 const TOKEN = process.env.ECOLEDIRECTE_USER_TOKEN;
@@ -65,6 +64,6 @@ function formatDuration(ms) {
     }
 
     console.log(`⏳ Token is still valid... checked ${count} time(s).`);
-    await new Promise(r => setTimeout(r, 1000)); // wait 1 second
+    await new Promise(r => setTimeout(r, 1000));
   }
 })();

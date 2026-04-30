@@ -70,7 +70,6 @@ module.exports = function ipFilter({ env, LAN_SUBNETS = [] }) {
       const userInfo = req.session?.user || {};
       const role = (userInfo.role || "").toUpperCase();
 
-      // Allow localhost in dev
       if (env === "dev" && (clientIp == "::1" || clientIp == "127.0.0.1")) {
         return next();
       }
@@ -93,7 +92,6 @@ module.exports = function ipFilter({ env, LAN_SUBNETS = [] }) {
         });
       }
 
-      // 🔒 Define access logic
       const isStudent =
         role === "STUDENT";
 

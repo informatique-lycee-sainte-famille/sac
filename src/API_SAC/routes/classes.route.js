@@ -206,6 +206,8 @@ router.get("/me", require_access({ minRole: ROLES.STUDENT }), async (req, res) =
             id: true,
             firstName: true,
             lastName: true,
+            o365AvatarB64: true,
+            edPhotoB64: true,
           },
         },
       },

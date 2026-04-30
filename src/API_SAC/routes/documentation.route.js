@@ -41,18 +41,12 @@ function buildSwaggerDocument(swaggerDocument, req) {
 module.exports = ({ swaggerDocument }) => {
   const router = express.Router();
 
-  // =========================
-  // Route protection
-  // =========================
   router.use(require_access({ minRole: ROLES.ADMIN }));
 
   router.get("/swagger.json", (req, res) => {
     res.json(buildSwaggerDocument(swaggerDocument, req));
   });
 
-  // =========================
-  // Swagger UI
-  // =========================
   router.use("/", swaggerUi.serve, swaggerUi.setup(null, {
     swaggerOptions: {
       url: "/api/documentation/swagger.json",

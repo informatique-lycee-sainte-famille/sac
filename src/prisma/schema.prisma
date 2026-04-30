@@ -35,35 +35,28 @@ enum NfcScanEventType {
 model User {
   id         Int      @id @default(autoincrement())
 
-  // 🔐 IDs
   o365Id     String?  @unique   // Azure / Microsoft ID
   edId       String?  @unique   // EcoleDirecte ID
 
   role       UserRole
 
-  // 📧 Emails
   o365Email  String?  @unique
   edEmail    String?
 
-  // 👤 Identity
   firstName  String?
   lastName   String?
 
-  // 🖼 Avatars
   o365AvatarB64 String?
   edPhotoUrl    String?
   edPhotoB64    String?
 
-  // 🎓 Student-specific
   classId    Int?
 
-  // 🧠 Optional flexible field (future-proof)
   metadata   Json?
 
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  // 🔗 Relations
   class Class? @relation(fields: [classId], references: [id])
 
   teachingSessions CourseSession[] @relation("TeacherSessions")

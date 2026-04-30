@@ -1329,11 +1329,31 @@
         "edId": {
           "type": "string"
         },
-        "students": {
+        "users": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/User"
+            "$ref": "#/definitions/ClassMeStudent"
           }
+        }
+      }
+    },
+    "ClassMeStudent": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "firstName": {
+          "type": "string"
+        },
+        "lastName": {
+          "type": "string"
+        },
+        "o365AvatarB64": {
+          "type": "string"
+        },
+        "edPhotoB64": {
+          "type": "string"
         }
       }
     },

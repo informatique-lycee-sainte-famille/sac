@@ -21,7 +21,6 @@ module.exports = function require_access({ role, minRole } = {}) {
         throw new Error("Cannot use both role and minRole");
       }
 
-      // ✅ Exact role
       if (role) {
         if (userRole !== role) {
           return res.status(403).json({
@@ -31,7 +30,6 @@ module.exports = function require_access({ role, minRole } = {}) {
         return next();
       }
 
-      // ✅ Minimum role (hierarchy)
       if (minRole) {
         if (ROLE_PRIORITY[userRole] < ROLE_PRIORITY[minRole]) {
           return res.status(403).json({
@@ -40,7 +38,6 @@ module.exports = function require_access({ role, minRole } = {}) {
         }
         return next();
       }
-      // No restriction
       return next();
     } catch (err) {
       log_technical(TECHNICAL_LEVELS.ERROR, "Access middleware failed", {

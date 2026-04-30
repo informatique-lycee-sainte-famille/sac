@@ -13,9 +13,6 @@ const { LOG_DESTINATIONS, TECHNICAL_LEVELS, log_business, log_technical } = requ
 
 const { get_highest_role_from_groups, map_to_prisma_role, ROLES } = require("../commons/constants.common");
 
-// =========================
-// LOGIN
-// =========================
 router.get("/login", async (req, res) => {
   const state = crypto.randomBytes(24).toString("base64url");
   req.session.oauthState = state;
@@ -30,9 +27,6 @@ router.get("/login", async (req, res) => {
   res.redirect(authUrl);
 });
 
-// =========================
-// REDIRECT (LOGIN CALLBACK)
-// =========================
 router.get("/redirect", async (req, res) => {
   try {
     if (!req.query.state || req.query.state !== req.session?.oauthState) {
@@ -46,7 +40,6 @@ router.get("/redirect", async (req, res) => {
       scopes: auth_config.scopes,
     });
 
-    // Get user info
     const userInfoResponse = await msal_client.acquireTokenSilent({
       account: tokenResponse.account,
       scopes: ["User.Read"],
@@ -58,9 +51,6 @@ router.get("/redirect", async (req, res) => {
       },
     }).then(res => res.json());
 
-    // =========================
-    // FETCH GROUPS
-    // =========================
     const groupsResponse = await fetch(
       "https://graph.microsoft.com/v1.0/me/memberOf",
       {
@@ -83,15 +73,9 @@ router.get("/redirect", async (req, res) => {
         name: group.displayName,
       }));
 
-    // =========================
-    // ROLE FROM GROUPS
-    // =========================
     const roleConst = get_highest_role_from_groups(groups);
     const role = map_to_prisma_role(roleConst);
 
-    // =========================
-    // OPTIONAL ED PROFILE
-    // =========================
     let edProfile = null;
 
     if (roleConst) {
@@ -126,9 +110,6 @@ router.get("/redirect", async (req, res) => {
       log_technical(TECHNICAL_LEVELS.WARNING, "Office 365 profile picture fetch failed", { error: err });
     }
 
-    // =========================
-    // UPSERT USER IN DB
-    // =========================
     let dbUser = null;
 
     const edId = edProfile?.ED?.id ? String(edProfile.ED.id) : null;
@@ -149,22 +130,18 @@ router.get("/redirect", async (req, res) => {
       baseUserUpdate.edEmail = edEmail;
     }
 
-    // =========================
-    // CASE 1: ED MATCH FOUND
-    // =========================
     if (edId) {
       const existingUser = await prisma.user.findUnique({
         where: { edId },
       });
 
       if (existingUser) {
-        // 🔥 UPDATE existing ED user
+        // Keep the ED-created record as the source of identity, then attach O365 data to it.
         dbUser = await prisma.user.update({
           where: { id: existingUser.id },
           data: baseUserUpdate,
         });
       } else {
-        // ⚠️ ED user not in DB (unexpected but possible)
         dbUser = await prisma.user.create({
           data: {
             edId,
@@ -180,9 +157,6 @@ router.get("/redirect", async (req, res) => {
       }
     }
 
-    // =========================
-    // CASE 2: NO ED MATCH
-    // =========================
     else {
       dbUser = await prisma.user.upsert({
         where: { o365Id: userInfo.id },
@@ -198,10 +172,6 @@ router.get("/redirect", async (req, res) => {
       });
     }
 
-
-    // =========================
-    // STORE SESSION
-    // =========================
     dbUser = await prisma.user.findUnique({
       where: { id: dbUser.id },
       include: { class: true },
@@ -241,9 +211,6 @@ router.get("/redirect", async (req, res) => {
   }
 });
 
-// =========================
-// LOGOUT
-// =========================
 router.get("/logout", (req, res) => {
   req.session.destroy(() => {
     res.redirect("/");

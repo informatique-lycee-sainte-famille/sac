@@ -1,7 +1,6 @@
 // ./API_SAC/commons/mail.common.js
 const { ConfidentialClientApplication } = require("@azure/msal-node");
 const { TECHNICAL_LEVELS, log_technical } = require("./logger.common");
-// const fetch = require("node-fetch");
 
 const msalConfig = {
   auth: {
@@ -13,7 +12,6 @@ const msalConfig = {
 
 const cca = new ConfidentialClientApplication(msalConfig);
 
-// 🔑 Get app token (no user needed)
 async function getAccessToken() {
   const result = await cca.acquireTokenByClientCredential({
     scopes: ["https://graph.microsoft.com/.default"],
@@ -26,11 +24,9 @@ async function getAccessToken() {
   return result.accessToken;
 }
 
-// 📧 Send email
 async function sendMail({ to, subject, html, attachments = [] }) {
   const token = await getAccessToken();
 
-  // ensure array
   const emails = Array.isArray(to) ? to : [to];
 
   const response = await fetch(
@@ -48,13 +44,10 @@ async function sendMail({ to, subject, html, attachments = [] }) {
             contentType: "HTML",
             content: html,
           },
-
-          // ✅ MULTIPLE RECIPIENTS
           toRecipients: emails.map(email => ({
             emailAddress: { address: email },
           })),
 
-          // ✅ OPTIONAL ATTACHMENTS
           attachments: attachments.map(file => ({
             "@odata.type": "#microsoft.graph.fileAttachment",
             name: file.name,

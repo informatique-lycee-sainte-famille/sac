@@ -139,36 +139,28 @@ function outputJSON(data, args) {
   }
 }
 
-// Timezone helpers
-
-// Parse EDT → JS Date (UTC)
 function fromParis(str) {
   return DateTime.fromFormat(str, "yyyy-MM-dd HH:mm", { zone: process.env.TZ }).toJSDate();
 }
 
-// Convert DB → Paris (string)
 function toParis(date) {
   return DateTime.fromJSDate(date).setZone(process.env.TZ).toFormat("yyyy-MM-dd HH:mm");
 }
 
-// Convert DB → Paris ISO (API-safe)
 function toParisISO(date) {
   return DateTime.fromJSDate(date).setZone(process.env.TZ).toISO();
 }
-
-// Normalize PROFS NAMES
 
 function normalize(str) {
   if (!str) return "";
 
   return str
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "") // remove accents
+    .replace(/[\u0300-\u036f]/g, "")
     .toUpperCase()
-    .replace(/[^A-Z]/g, ""); // keep only letters
+    .replace(/[^A-Z]/g, "");
 }
 
-// Keep structure (for better matching)
 function normalizeSoft(str) {
   if (!str) return "";
 
@@ -183,7 +175,6 @@ function normalizeSoft(str) {
 function parseProfName(prof) {
   if (!prof) return { lastName: "", firstInitial: "" };
 
-  // remove civilities
   prof = prof.replace(/^(M\.|MME|Mme|MR|Madame|Monsieur)\s+/i, "");
 
   const parts = prof.trim().split(" ");
@@ -192,7 +183,6 @@ function parseProfName(prof) {
 
   const lastPart = parts[parts.length - 1];
 
-  // detect initial like "E."
   if (/^[A-Z]\.?$/i.test(lastPart)) {
     return {
       lastName: parts.slice(0, -1).join(" "),
@@ -200,7 +190,6 @@ function parseProfName(prof) {
     };
   }
 
-  // otherwise assume full firstname
   return {
     lastName: parts.slice(0, -1).join(" "),
     firstInitial: parts[parts.length - 1][0]?.toUpperCase() || "",
@@ -213,21 +202,18 @@ function scoreTeacherMatch(input, teacher) {
   const inputLast = normalize(input.lastName);
   const teacherLast = normalize(teacher.lastName);
 
-  // exact match
   if (inputLast === teacherLast) score += 100;
 
-  // contains (handles DE / LA / etc.)
+  // Handles compound particles such as DE, LA and LE without overfitting the label.
   if (teacherLast.includes(inputLast) || inputLast.includes(teacherLast)) {
     score += 50;
   }
 
-  // soft match (spaces preserved)
   const softInput = normalizeSoft(input.lastName);
   const softTeacher = normalizeSoft(teacher.lastName);
 
   if (softInput === softTeacher) score += 30;
 
-  // first initial match
   if (
     input.firstInitial &&
     teacher.firstName &&
@@ -263,7 +249,6 @@ async function findBestUserTeacherMatch(prof) {
     }
   }
 
-  // threshold → avoid bad matches
   if (bestScore < 50) {
     log_technical(TECHNICAL_LEVELS.WARNING, "No reliable teacher match", { teacherLabel: prof });
     return null;

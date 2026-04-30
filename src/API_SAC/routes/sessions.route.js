@@ -302,7 +302,6 @@ function canReadSession(user, session) {
   return false;
 }
 
-// Sessions du jour
 router.get("/today", require_access({ minRole: ROLES.STUDENT }), async (req, res) => {
   try {
     const sessionUser = getSessionUser(req);
@@ -552,7 +551,6 @@ router.get("/staff", require_access({ minRole: ROLES.STAFF }), async (req, res) 
   }
 });
 
-// Détail session
 router.get("/:sessionId", require_access({ minRole: ROLES.STUDENT }), async (req, res) => {
   try {
     const sessionUser = getSessionUser(req);

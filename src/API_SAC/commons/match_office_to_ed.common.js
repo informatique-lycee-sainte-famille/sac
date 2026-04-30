@@ -1,12 +1,8 @@
 // ./API_SAC/commons/match_office_to_ed.common.js
-// match_office_to_ed.common.js
-
 const { get_data_by_type } = require('../../scripts/auto/get_data.script.js');
 
-// === CONFIG ===
 const MATCH_THRESHOLD = 3;
 
-// === Helpers ===
 const normalize = (str = "") =>
   str
     .toLowerCase()
@@ -41,7 +37,6 @@ const similarity = (a, b) => {
   return 1 - dist / Math.max(na.length, nb.length);
 };
 
-// Map your higher-level role to the data type used by get_data_by_type
 function mapRoleToDataType(role) {
   const r = role?.toUpperCase();
   if (r === 'STUDENT') return 'ELEVES_ALL';
@@ -51,39 +46,23 @@ function mapRoleToDataType(role) {
   throw new Error(`Type d'annuaire non supporté: ${role}`);
 }
 
-/**
- * Find the best matching user in EcoleDirecte for a given Office 365 account.
- *
- * @param {Object} officeAccount - AAD / Office365 user object
- * @param {String} role          - "STUDENT" | "TEACHER" | "STAFF" | "ADMIN"
- * @param {Object} [options]     - Extra filters passed to get_data_by_type (e.g. { classe: 142 })
- *
- * @returns {Promise<null|{ match_score:number, ED:object }>}
- */
 async function return_ed_account(officeAccount, role = 'STUDENT', options = {}) {
   if (!officeAccount) return null;
 
-  // Map "FORMATEUR" -> "PROFESSEURS", etc.
   const dataType = mapRoleToDataType(role);
-
-  // 1) Load ED directory dynamically
-  //    For ELEVES you probably want to pass a class filter in options,
-  //    otherwise it may load *all* students.
   const ecoledirecte = await get_data_by_type(dataType, options);
 
-  // 2) Extract Office365 identity
   const email = normalize(officeAccount.mail || officeAccount.userPrincipalName);
   const fullName = normalize(officeAccount.displayName || "");
   const parts = fullName.split(" ");
   let prenom = normalize(officeAccount.givenName || parts[0] || "");
   let nom = normalize(officeAccount.surname || parts.slice(1).join(" ") || "");
 
-  // Swap if Office puts uppercase name first
+  // Some Office accounts only expose one display-name chunk; keep it searchable.
   if (prenom.length > 0 && nom.length === 0) {
     nom = prenom;
   }
 
-  // 3) Find best candidate in ED directory
   let bestMatch = null;
   let bestScore = 0;
 
@@ -94,16 +73,12 @@ async function return_ed_account(officeAccount, role = 'STUDENT', options = {}) 
     const edPrenom = normalize(ed.prenom);
     const edEmail = normalize(ed.email || "");
 
-    // Email weight
     if (email && edEmail && (email === edEmail || email.includes(edEmail))) {
       score += 3;
     }
 
-    // Name similarity
     if (similarity(nom, edNom) > 0.8) score += 2;
     if (similarity(prenom, edPrenom) > 0.8) score += 2;
-
-    // Optionally, you can also use classe or matiere if available
 
     if (score > bestScore) {
       bestScore = score;
@@ -113,7 +88,6 @@ async function return_ed_account(officeAccount, role = 'STUDENT', options = {}) 
 
   if (!bestMatch || bestScore < MATCH_THRESHOLD) return null;
 
-  // 4) Normalize ED output (fields differ slightly between ELEVES / PROFESSEURS / PERSONNELS)
   const result = {
     match_score: bestScore,
     ED: {
@@ -124,7 +98,6 @@ async function return_ed_account(officeAccount, role = 'STUDENT', options = {}) 
     },
   };
 
-  // For élèves you might have classeId/Code/Libelle derived in your ELEVES logic
   if (bestMatch.classe.id || bestMatch.classe.code || bestMatch.classe.libelle) {
     result.ED.classeId = bestMatch.classe.id || null;
     result.ED.classeLibelle = bestMatch.classe.libelle || null;

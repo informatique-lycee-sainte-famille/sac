@@ -5,12 +5,7 @@ const { fromParis, findBestUserTeacherMatch, normalizeSoft } = require("../commo
 const { prisma } = require("../commons/prisma.common");
 const { LOG_DESTINATIONS, TECHNICAL_LEVELS, log_business, log_technical } = require("../commons/logger.common");
 
-// -----------------------------------------------------------------------------
-// HELPERS
-// -----------------------------------------------------------------------------
-
 function parseDateTime(dateStr, timeStr) {
-  // ED format varies → adapt if needed
   return new Date(`${dateStr}T${timeStr}`);
 }
 
@@ -22,12 +17,8 @@ function computeSessionStatus(c, startTime, endTime) {
   if (now >= startTime && now <= endTime) return "ongoing";
   if (now > endTime) return "completed";
 
-  return "scheduled"; // fallback safety
+  return "scheduled";
 }
-
-// -----------------------------------------------------------------------------
-// IMPORT SALLES → Room
-// -----------------------------------------------------------------------------
 
 async function importRooms() {
   const salles = await get_data_by_type('SALLES');
@@ -49,10 +40,6 @@ async function importRooms() {
   log_technical(TECHNICAL_LEVELS.INFO, "Rooms imported from EcoleDirecte", { count: salles.length });
   return salles.length;
 }
-
-// -----------------------------------------------------------------------------
-// IMPORT CLASSES → Class
-// -----------------------------------------------------------------------------
 
 async function importClasses() {
   const classes = await get_data_by_type('CLASSES');
@@ -76,17 +63,10 @@ async function importClasses() {
   return classes.length;
 }
 
-// -----------------------------------------------------------------------------
-// IMPORT EDT_CLASSE → CourseSession
-// -----------------------------------------------------------------------------
-
 async function importSessions(options = {}) {
   const date = options.date || 'today';
   const classes = await prisma.class.findMany(
-    // filter only class with edId exists
     { where: { edId: { not: null } } }
-    // only ext id 142
-    // { where: { edId: 16 } }
   );
 
   let total = 0;
@@ -215,7 +195,6 @@ async function importUsers() {
   let teachersCreated = 0;
   let teachersUpdated = 0;
 
-  // 🔥 STUDENTS
   for (const s of students) {
     const edId = String(s.id);
     let classId = null;
@@ -262,6 +241,7 @@ async function importUsers() {
       });
       studentsCreated++;
     } else {
+      // Once a photo has been cached or marked unavailable, do not requeue it on every ED import.
       const nextEdPhotoUrl = (existing.edPhotoUrl !== null || existing.edPhotoB64)
         ? (existing.edPhotoB64 ? null : edPhotoFromImport)
         : existing.edPhotoUrl;
@@ -290,7 +270,6 @@ async function importUsers() {
     studentsProcessed++;
   }
 
-  // 🔥 TEACHERS
   for (const p of teachers) {
     const edId = String(p.id);
 
@@ -350,10 +329,6 @@ async function importUsers() {
   return summary;
 }
 
-// -----------------------------------------------------------------------------
-// MAIN SEED FUNCTION
-// -----------------------------------------------------------------------------
-
 async function import_ed_data_to_db(dataTypes = ['SALLES', 'CLASSES', 'PROFESSEURS', 'EDT_CLASSE', 'ELEVES_ALL'], options = {}) {
   log_technical(TECHNICAL_LEVELS.INFO, "Starting EcoleDirecte import", { dataTypes });
   const summary = {};
@@ -377,7 +352,6 @@ async function import_ed_data_to_db(dataTypes = ['SALLES', 'CLASSES', 'PROFESSEU
   }
 }
 
-// Run directly
 if (require.main === module) {
   import_ed_data_to_db();
 }

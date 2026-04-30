@@ -1,5 +1,4 @@
 // ./scripts/auto/login.script.js
-// scripts/auto/login.script.js
 require("../../API_SAC/commons/env.common");
 const fs = require("fs");
 const path = require("path");
@@ -82,9 +81,6 @@ async function login(cookieHeader, gtk) {
   }
 }
 
-/**
- * SWITCH PROFILE (P → A)
- */
 async function switchProfile(token, uid, profil = "A") {
   const headers = {
     ...BASE_HEADERS,
@@ -152,7 +148,6 @@ function updateEnvBatch(updates) {
     console.log("   • Token de base : " + baseToken);
     console.log("   • UID : " + uid);
 
-    // 🔥 Si déjà en A, on saute
     if (account.typeCompte !== "A") {
       console.log("3️⃣  Changement de profil vers A…");
       const sw = await switchProfile(baseToken, uid, "A");
@@ -170,7 +165,6 @@ function updateEnvBatch(updates) {
         throw new Error(`Échec du switch de profil (${sw.code}) : ${sw.message}`);
       }
     } else {
-      // Déjà en A
       updateEnvBatch({
         ECOLEDIRECTE_USER_TOKEN: baseToken,
         ECOLEDIRECTE_USER_ID: account.id,

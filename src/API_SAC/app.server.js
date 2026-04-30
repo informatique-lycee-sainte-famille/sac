@@ -95,7 +95,7 @@ app.use("/api", apiRateLimit);
 app.use(express.json({ limit: "1mb", type: "application/json" }));
 app.use(csrfProtection);
 app.use("/api/o365", o365Routes);
-// Serve static files from the React frontend app
+
 app.use((req, res, next) => {
   if (req.path.startsWith("/api/")) return next();
   return staticRateLimit(req, res, next);
@@ -121,10 +121,8 @@ app.use(express.static(path.join(__dirname, "../front/public"),
     },
   }));
 
-// Default: at least logged-in user (student)
 app.use(require_access({ minRole: ROLES.STUDENT }));
 
-// Global access filter middleware
 app.use(
   networkFilter({
     env,
@@ -132,7 +130,6 @@ app.use(
   })
 );
 
-// mount routes
 app.use("/api/admin", adminRoutes);
 app.use("/api/attendance", attendanceRoutes);
 app.use("/api/business-logs", businessLogsRoutes);
@@ -187,13 +184,13 @@ cron.schedule('30 3 * * *', () => {
   purge_business_logs();
 });
 
-// cron.schedule('15 2 * * *', () => {
-//   process_ed_photo_queue({
-//     delayMs: Number(process.env.ED_PHOTO_CACHE_DELAY_MS || 5000),
-//     limit: Number(process.env.ED_PHOTO_CACHE_DAILY_LIMIT || 500),
-//     timeoutMs: Number(process.env.ED_PHOTO_CACHE_TIMEOUT_MS || 15000),
-//   }).catch(err => log_technical(TECHNICAL_LEVELS.WARNING, "Daily ED student photo cache failed", { error: err }));
-// });
+cron.schedule('15 2 * * *', () => {
+  process_ed_photo_queue({
+    delayMs: Number(process.env.ED_PHOTO_CACHE_DELAY_MS || 5000),
+    limit: Number(process.env.ED_PHOTO_CACHE_DAILY_LIMIT || 500),
+    timeoutMs: Number(process.env.ED_PHOTO_CACHE_TIMEOUT_MS || 15000),
+  }).catch(err => log_technical(TECHNICAL_LEVELS.WARNING, "Daily ED student photo cache failed", { error: err }));
+});
 
 function getNextMonthEdtRange() {
   const start = new Date();
@@ -220,7 +217,6 @@ async function refreshNextMonthClassSchedule(reason) {
   });
 }
 
-// run importdatatodb workflow on startup and every day at 6am
 import_ed_data_to_db(['SALLES', 'CLASSES', 'USERS'])
   .then(() => refreshNextMonthClassSchedule("startup"))
   .catch(err => {
