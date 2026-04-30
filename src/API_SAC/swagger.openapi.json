@@ -979,6 +979,53 @@
         }
       }
     },
+    "/sessions/{sessionId}/attendance/manual": {
+      "post": {
+        "tags": [
+          "Sessions"
+        ],
+        "summary": "[TEACHER+] Faire l'appel manuel d'un eleve",
+        "description": "Role minimum: enseignant ou plus.\n\nPermet a l'enseignant affecte au cours, aux personnels et aux admins de marquer un eleve present ou absent quand le scan NFC n'est pas possible. La route refuse les sessions deja finalisees/envoyees a EcoleDirecte et cree une signature PNG automatique indiquant une validation manuelle.",
+        "x-min-role": "teacher",
+        "x-role-note": "Le code verifie aussi que l'enseignant connecte est affecte au cours. Les personnels/admins peuvent corriger les cours visibles.",
+        "parameters": [
+          {
+            "$ref": "#/parameters/SessionIdPath"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ManualAttendanceRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Presence ou absence mise a jour",
+            "schema": {
+              "$ref": "#/definitions/ManualAttendanceResponse"
+            }
+          },
+          "400": {
+            "$ref": "#/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        }
+      }
+    },
     "/sessions/{sessionId}": {
       "get": {
         "tags": [
@@ -1765,12 +1812,45 @@
                 "$ref": "#/definitions/AttendanceRecord"
               }
             },
+            "students": {
+              "type": "array",
+              "description": "Liste des eleves de la classe avec leur presence pour les enseignants, personnels et admins autorises.",
+              "items": {
+                "$ref": "#/definitions/CourseSessionStudentAttendance"
+              }
+            },
             "canGeneratePdf": {
+              "type": "boolean"
+            },
+            "canManageAttendance": {
               "type": "boolean"
             }
           }
         }
       ]
+    },
+    "CourseSessionStudentAttendance": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "integer"
+        },
+        "firstName": {
+          "type": "string"
+        },
+        "lastName": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "student"
+          ]
+        },
+        "attendance": {
+          "$ref": "#/definitions/AttendanceRecord"
+        }
+      }
     },
     "SessionsResponse": {
       "type": "object",
@@ -2111,6 +2191,40 @@
             "present",
             "absent"
           ]
+        }
+      }
+    },
+    "ManualAttendanceRequest": {
+      "type": "object",
+      "required": [
+        "studentId",
+        "status"
+      ],
+      "properties": {
+        "studentId": {
+          "type": "integer",
+          "description": "ID utilisateur de l'eleve a marquer present ou absent."
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "present",
+            "absent"
+          ]
+        }
+      }
+    },
+    "ManualAttendanceResponse": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string"
+        },
+        "attendance": {
+          "$ref": "#/definitions/AttendanceRecord"
+        },
+        "stats": {
+          "$ref": "#/definitions/AttendanceStats"
         }
       }
     },

@@ -8,6 +8,9 @@ const state = {
     teacherId: "",
     subject: "",
   },
+  activeSessionId: null,
+  realtimeSocket: null,
+  realtimeSubscriptions: new Set(),
 };
 
 function escapeHtml(value) {
@@ -120,7 +123,7 @@ function formatTime(value) {
 }
 
 function formatDateTime(value) {
-  if (!value) return "Non envoyé";
+  if (!value) return "Non renseigné";
 
   return new Intl.DateTimeFormat("fr-FR", {
     day: "2-digit",
@@ -129,6 +132,62 @@ function formatDateTime(value) {
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(value));
+}
+
+function getCookie(name) {
+  return document.cookie
+    .split(";")
+    .map(cookie => cookie.trim())
+    .find(cookie => cookie.startsWith(`${name}=`))
+    ?.slice(name.length + 1) || "";
+}
+
+function connectRealtime() {
+  if (state.realtimeSocket && [WebSocket.CONNECTING, WebSocket.OPEN].includes(state.realtimeSocket.readyState)) {
+    return state.realtimeSocket;
+  }
+
+  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  const socket = new WebSocket(`${protocol}//${window.location.host}/ws/realtime`);
+  state.realtimeSocket = socket;
+
+  socket.addEventListener("open", () => {
+    state.realtimeSubscriptions.forEach(sessionId => {
+      socket.send(JSON.stringify({ type: "subscribe", sessionId }));
+    });
+  });
+
+  socket.addEventListener("message", async event => {
+    let message;
+    try {
+      message = JSON.parse(event.data);
+    } catch {
+      return;
+    }
+
+    if (message.type !== "attendance.updated") return;
+
+    await loadStaffCourses();
+    if (state.activeSessionId && Number(state.activeSessionId) === Number(message.sessionId)) {
+      await openStaffCourseModal(message.sessionId, { keepExisting: true });
+    }
+  });
+
+  socket.addEventListener("close", () => {
+    if (state.realtimeSocket === socket) {
+      state.realtimeSocket = null;
+    }
+  });
+
+  return socket;
+}
+
+function subscribeRealtimeSession(sessionId) {
+  state.realtimeSubscriptions.add(String(sessionId));
+  const socket = connectRealtime();
+  if (socket.readyState === WebSocket.OPEN) {
+    socket.send(JSON.stringify({ type: "subscribe", sessionId }));
+  }
 }
 
 function formatStatus(status) {
@@ -290,6 +349,213 @@ function finalizationBadge(session) {
   `;
 }
 
+function formatAttendance(record) {
+  if (!record) return "Absent";
+  return record.status === "present" ? "Présent" : "Absent";
+}
+
+function studentRows(students, canManageAttendance) {
+  if (!students?.length) {
+    return `<tr><td colspan="5" class="px-2 py-3 text-sm text-neutral-500">Aucun élève trouvé pour cette classe.</td></tr>`;
+  }
+
+  return students.map(student => {
+    const record = student.attendance;
+    const name = `${student.lastName || ""} ${student.firstName || ""}`.trim() || `Élève #${student.id}`;
+    return `
+      <tr class="border-t border-neutral-200">
+        <td class="px-2 py-2 text-sm font-medium">${escapeHtml(name)}</td>
+        <td class="px-2 py-2 text-sm">${escapeHtml(formatAttendance(record))}</td>
+        <td class="px-2 py-2 text-sm">${escapeHtml(formatDateTime(record?.scannedAt))}</td>
+        <td class="px-2 py-2 text-sm">${record?.signature ? "Oui" : "Non"}</td>
+        <td class="px-2 py-2">
+          <div class="flex flex-wrap gap-1">
+            <button
+              type="button"
+              data-staff-manual-attendance="${escapeHtml(student.id)}"
+              data-staff-manual-status="present"
+              class="${canManageAttendance ? "" : "hidden"} inline-flex items-center gap-1 border border-emerald-600 bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-800 hover:bg-emerald-100"
+            >
+              <i class="fa-solid fa-check" aria-hidden="true"></i>
+              Présent
+            </button>
+            <button
+              type="button"
+              data-staff-manual-attendance="${escapeHtml(student.id)}"
+              data-staff-manual-status="absent"
+              class="${canManageAttendance ? "" : "hidden"} inline-flex items-center gap-1 border border-red-600 bg-red-50 px-2 py-1 text-xs font-semibold text-red-800 hover:bg-red-100"
+            >
+              <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+              Absent
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join("");
+}
+
+async function setManualAttendance(sessionId, studentId, status) {
+  const response = await fetch(`/api/sessions/${encodeURIComponent(sessionId)}/attendance/manual`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-csrf-token": getCookie("XSRF-TOKEN"),
+    },
+    body: JSON.stringify({ studentId: Number(studentId), status }),
+  });
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(data.message || data.error || "Validation manuelle impossible.");
+  }
+
+  return data;
+}
+
+function closeStaffCourseModal() {
+  document.getElementById("staff-course-session-modal")?.remove();
+  state.activeSessionId = null;
+}
+
+function bindManualAttendanceActions(sessionId) {
+  document.querySelectorAll("[data-staff-manual-attendance]").forEach(button => {
+    button.addEventListener("click", async () => {
+      const studentId = button.dataset.staffManualAttendance;
+      const status = button.dataset.staffManualStatus;
+      const originalHtml = button.innerHTML;
+      button.disabled = true;
+      button.innerHTML = `<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i><span>...</span>`;
+
+      try {
+        await setManualAttendance(sessionId, studentId, status);
+        await loadStaffCourses();
+        await openStaffCourseModal(sessionId, { keepExisting: true });
+      } catch (error) {
+        alert(error.message);
+      } finally {
+        button.disabled = false;
+        button.innerHTML = originalHtml;
+      }
+    });
+  });
+}
+
+async function openStaffCourseModal(sessionId, options = {}) {
+  if (!options.keepExisting) {
+    closeStaffCourseModal();
+  }
+  state.activeSessionId = Number(sessionId);
+  subscribeRealtimeSession(sessionId);
+
+  let modal = document.getElementById("staff-course-session-modal");
+  if (!modal) {
+    modal = document.createElement("div");
+  }
+  modal.id = "staff-course-session-modal";
+  modal.className = "fixed inset-0 z-[9998] flex items-center justify-center overflow-y-auto bg-black/60 p-4";
+  modal.innerHTML = `
+    <div class="w-full max-w-4xl bg-white p-5 text-neutral-950 shadow-2xl">
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <h2 class="text-xl font-semibold">Détail du cours</h2>
+          <p class="mt-1 text-sm text-neutral-500">Chargement...</p>
+        </div>
+        <button type="button" data-staff-course-modal-close class="border border-neutral-300 px-3 py-1 text-sm transition hover:bg-neutral-100">Fermer</button>
+      </div>
+    </div>
+  `;
+  if (!modal.dataset.closeBound) {
+    modal.addEventListener("click", event => {
+      if (event.target === modal || event.target.closest("[data-staff-course-modal-close]")) {
+        closeStaffCourseModal();
+      }
+    });
+    modal.dataset.closeBound = "true";
+  }
+  if (!modal.isConnected) {
+    document.body.appendChild(modal);
+  }
+
+  try {
+    const response = await fetch(`/api/sessions/${encodeURIComponent(sessionId)}`);
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data.message || data.error || "Impossible de charger le détail du cours.");
+    }
+
+    modal.innerHTML = `
+      <div class="w-full max-w-5xl bg-white p-5 text-neutral-950 shadow-2xl">
+        <div class="flex items-start justify-between gap-4">
+          <div class="min-w-0">
+            <h2 class="break-words text-xl font-semibold">${escapeHtml(data.label || data.matiere || "Cours")}</h2>
+            <p class="mt-1 text-sm text-neutral-500">
+              ${escapeHtml(formatDate(data.startTime))} · ${formatTime(data.startTime)} - ${formatTime(data.endTime)}
+            </p>
+          </div>
+          <button type="button" data-staff-course-modal-close class="border border-neutral-300 px-3 py-1 text-sm transition hover:bg-neutral-100">Fermer</button>
+        </div>
+
+        <div class="mt-4 grid gap-3 text-sm md:grid-cols-4">
+          <div class="border border-neutral-200 p-3">
+            <p class="text-xs uppercase text-neutral-400">Classe</p>
+            <p class="mt-1 font-medium">${escapeHtml(data.class?.name || data.class?.code || "Non renseignée")}</p>
+          </div>
+          <div class="border border-neutral-200 p-3">
+            <p class="text-xs uppercase text-neutral-400">Salle</p>
+            <p class="mt-1 font-medium">${escapeHtml(data.room?.name || data.room?.code || "Non renseignée")}</p>
+          </div>
+          <div class="border border-neutral-200 p-3">
+            <p class="text-xs uppercase text-neutral-400">Présents</p>
+            <p class="mt-1 font-medium text-emerald-700">${escapeHtml(data.stats?.presentCount ?? 0)}/${escapeHtml(data.stats?.totalStudents ?? 0)}</p>
+          </div>
+          <div class="border border-neutral-200 p-3">
+            <p class="text-xs uppercase text-neutral-400">Présence</p>
+            <p class="mt-1 font-medium ${rateColor(data.stats?.presencePercent ?? 0)}">${escapeHtml(data.stats?.presencePercent ?? 0)}%</p>
+          </div>
+        </div>
+
+        <div class="mt-5">
+          <div class="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h3 class="text-base font-semibold">Appel manuel</h3>
+              <p class="text-sm text-neutral-500">Correction disponible pour les personnels/admins tant que l'appel n'est pas finalisé.</p>
+            </div>
+            ${data.canManageAttendance ? "" : `<p class="text-sm font-medium text-amber-700">Appel déjà finalisé ou modification indisponible.</p>`}
+          </div>
+          <div class="mt-2 overflow-x-auto">
+            <table class="w-full min-w-[760px] border border-neutral-200 text-left">
+              <thead class="bg-neutral-100 text-xs uppercase text-neutral-500">
+                <tr>
+                  <th class="px-2 py-2">Élève</th>
+                  <th class="px-2 py-2">Statut</th>
+                  <th class="px-2 py-2">Validation</th>
+                  <th class="px-2 py-2">Signature</th>
+                  <th class="px-2 py-2">Action</th>
+                </tr>
+              </thead>
+              <tbody>${studentRows(data.students, data.canManageAttendance)}</tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    `;
+    bindManualAttendanceActions(data.id);
+  } catch (error) {
+    modal.innerHTML = `
+      <div class="w-full max-w-lg bg-white p-5 text-neutral-950 shadow-2xl">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <h2 class="text-xl font-semibold">Erreur</h2>
+            <p class="mt-2 text-sm text-red-700">${escapeHtml(error.message)}</p>
+          </div>
+          <button type="button" data-staff-course-modal-close class="border border-neutral-300 px-3 py-1 text-sm transition hover:bg-neutral-100">Fermer</button>
+        </div>
+      </div>
+    `;
+  }
+}
+
 function renderSessionRow(session) {
   const className = session.class?.name || session.class?.code || "Classe non renseignée";
   const roomName = session.room?.name || session.room?.code || "Salle non renseignée";
@@ -309,6 +575,10 @@ function renderSessionRow(session) {
           ${periodDate}
           ${finalizationBadge(session)}
           <span class="bg-neutral-100 px-2 py-1 text-xs font-medium text-neutral-700">${escapeHtml(stats.presencePercent ?? 0)}% présence</span>
+          <button type="button" data-staff-session-detail="${escapeHtml(session.id)}" class="inline-flex items-center gap-1 border border-[#624292] bg-white px-2 py-1 text-xs font-semibold text-[#624292] transition hover:bg-[#f3eef9]">
+            <i class="fa-solid fa-clipboard-check" aria-hidden="true"></i>
+            Appel
+          </button>
         </div>
       </div>
 
@@ -354,6 +624,10 @@ function renderSessions(sessions) {
     </div>
     <div class="space-y-3">${sessions.map(renderSessionRow).join("")}</div>
   `;
+
+  document.querySelectorAll("[data-staff-session-detail]").forEach(button => {
+    button.addEventListener("click", () => openStaffCourseModal(button.dataset.staffSessionDetail));
+  });
 }
 
 function renderLoading() {

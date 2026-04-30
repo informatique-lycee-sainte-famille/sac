@@ -1,6 +1,6 @@
 // ./front/public/js/component_loader.loader.js
 (function () {
-  const ASSET_VERSION = "20260430-legal-footer";
+  const ASSET_VERSION = "20260430-manual-attendance";
   const loadedStyles = new Set();
   const moduleCache = new Map();
   const contentNames = new Set(["home", "scan", "my-courses", "my-class", "staff-courses", "staff-classes", "staff-teachers", "business-logs", "admin"]);

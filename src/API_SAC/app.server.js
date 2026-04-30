@@ -23,6 +23,7 @@ const ipaddr = require('ipaddr.js');
 const swaggerDocument = require('./swagger.openapi.json');
 const { session_options } = require("./commons/session_config.common");
 const { import_ed_data_to_db } = require("./workflows/import_ed_data_to_db.workflow");
+const { handleRealtimeUpgrade } = require("./commons/realtime.common");
 const { process_ed_photo_queue } = require("../scripts/auto/download_ed_student_photo.script");
 
 const adminRoutes = require("./routes/admin.route");
@@ -237,4 +238,10 @@ cron.schedule('*/5 * * * *', () => {
 const server = app.listen(port, () => {
   log_technical(TECHNICAL_LEVELS.INFO, `SAC server is running on http://localhost:${port}`);
   log_technical(TECHNICAL_LEVELS.INFO, `Backend debug level: ${getDebugMode()}`);
+});
+
+server.on("upgrade", (req, socket) => {
+  if (!handleRealtimeUpgrade(req, socket)) {
+    socket.destroy();
+  }
 });

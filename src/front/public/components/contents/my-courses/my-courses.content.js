@@ -2,6 +2,9 @@
 const state = {
   selectedDate: toIsoDate(new Date()),
   view: "day",
+  activeSessionId: null,
+  realtimeSocket: null,
+  realtimeSubscriptions: new Set(),
 };
 
 function escapeHtml(value) {
@@ -305,14 +308,162 @@ function attendanceRows(records) {
   }).join("");
 }
 
-function closeCourseModal() {
-  document.getElementById("course-session-modal")?.remove();
+function getCookie(name) {
+  return document.cookie
+    .split(";")
+    .map(cookie => cookie.trim())
+    .find(cookie => cookie.startsWith(`${name}=`))
+    ?.slice(name.length + 1) || "";
 }
 
-async function openCourseModal(sessionId) {
-  closeCourseModal();
+function connectRealtime() {
+  if (state.realtimeSocket && [WebSocket.CONNECTING, WebSocket.OPEN].includes(state.realtimeSocket.readyState)) {
+    return state.realtimeSocket;
+  }
 
-  const modal = document.createElement("div");
+  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  const socket = new WebSocket(`${protocol}//${window.location.host}/ws/realtime`);
+  state.realtimeSocket = socket;
+
+  socket.addEventListener("open", () => {
+    state.realtimeSubscriptions.forEach(sessionId => {
+      socket.send(JSON.stringify({ type: "subscribe", sessionId }));
+    });
+  });
+
+  socket.addEventListener("message", async event => {
+    let message;
+    try {
+      message = JSON.parse(event.data);
+    } catch {
+      return;
+    }
+
+    if (message.type !== "attendance.updated") return;
+
+    await loadCourses();
+    if (state.activeSessionId && Number(state.activeSessionId) === Number(message.sessionId)) {
+      await openCourseModal(message.sessionId, { keepExisting: true });
+    }
+  });
+
+  socket.addEventListener("close", () => {
+    if (state.realtimeSocket === socket) {
+      state.realtimeSocket = null;
+    }
+  });
+
+  return socket;
+}
+
+function subscribeRealtimeSession(sessionId) {
+  state.realtimeSubscriptions.add(String(sessionId));
+  const socket = connectRealtime();
+  if (socket.readyState === WebSocket.OPEN) {
+    socket.send(JSON.stringify({ type: "subscribe", sessionId }));
+  }
+}
+
+function studentRows(students, canManageAttendance) {
+  if (!students?.length) {
+    return `<p class="text-sm text-neutral-500">Aucun élève trouvé pour cette classe.</p>`;
+  }
+
+  return students.map(student => {
+    const record = student.attendance;
+    const name = `${student.lastName || ""} ${student.firstName || ""}`.trim() || `Élève #${student.id}`;
+    const status = formatAttendance(record, false);
+    const canManage = canManageAttendance;
+    return `
+      <tr class="border-t border-neutral-200">
+        <td class="px-2 py-2 text-sm font-medium">${escapeHtml(name)}</td>
+        <td class="px-2 py-2 text-sm">${escapeHtml(status)}</td>
+        <td class="px-2 py-2 text-sm">${escapeHtml(formatDateTime(record?.scannedAt))}</td>
+        <td class="px-2 py-2 text-sm">${record?.signature ? "Oui" : "Non"}</td>
+        <td class="px-2 py-2">
+          <div class="flex flex-wrap gap-1">
+            <button
+              type="button"
+              data-manual-attendance="${escapeHtml(student.id)}"
+              data-manual-status="present"
+              class="${canManage ? "" : "hidden"} inline-flex items-center gap-1 border border-emerald-600 bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-800 hover:bg-emerald-100"
+            >
+              <i class="fa-solid fa-check" aria-hidden="true"></i>
+              Présent
+            </button>
+            <button
+              type="button"
+              data-manual-attendance="${escapeHtml(student.id)}"
+              data-manual-status="absent"
+              class="${canManage ? "" : "hidden"} inline-flex items-center gap-1 border border-red-600 bg-red-50 px-2 py-1 text-xs font-semibold text-red-800 hover:bg-red-100"
+            >
+              <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+              Absent
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join("");
+}
+
+async function setManualAttendance(sessionId, studentId, status) {
+  const response = await fetch(`/api/sessions/${encodeURIComponent(sessionId)}/attendance/manual`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-csrf-token": getCookie("XSRF-TOKEN"),
+    },
+    body: JSON.stringify({ studentId: Number(studentId), status }),
+  });
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(data.message || data.error || "Validation manuelle impossible.");
+  }
+
+  return data;
+}
+
+function bindManualAttendanceActions(sessionId) {
+  document.querySelectorAll("[data-manual-attendance]").forEach(button => {
+    button.addEventListener("click", async () => {
+      const studentId = button.dataset.manualAttendance;
+      const status = button.dataset.manualStatus;
+      const originalHtml = button.innerHTML;
+      button.disabled = true;
+      button.innerHTML = `<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i><span>...</span>`;
+
+      try {
+        await setManualAttendance(sessionId, studentId, status);
+        await loadCourses();
+        await openCourseModal(sessionId, { keepExisting: true });
+      } catch (error) {
+        alert(error.message);
+      } finally {
+        button.disabled = false;
+        button.innerHTML = originalHtml;
+      }
+    });
+  });
+}
+
+function closeCourseModal() {
+  document.getElementById("course-session-modal")?.remove();
+  state.activeSessionId = null;
+}
+
+async function openCourseModal(sessionId, options = {}) {
+  if (!options.keepExisting) {
+    closeCourseModal();
+  }
+  state.activeSessionId = Number(sessionId);
+  subscribeRealtimeSession(sessionId);
+
+  let modal = document.getElementById("course-session-modal");
+  if (!modal) {
+    modal = document.createElement("div");
+  }
   modal.id = "course-session-modal";
   modal.className = "fixed inset-0 z-[9998] flex items-center justify-center overflow-y-auto bg-black/60 p-4";
   modal.innerHTML = `
@@ -326,12 +477,17 @@ async function openCourseModal(sessionId) {
       </div>
     </div>
   `;
-  modal.addEventListener("click", event => {
-    if (event.target === modal || event.target.closest("[data-course-modal-close]")) {
-      closeCourseModal();
-    }
-  });
-  document.body.appendChild(modal);
+  if (!modal.dataset.closeBound) {
+    modal.addEventListener("click", event => {
+      if (event.target === modal || event.target.closest("[data-course-modal-close]")) {
+        closeCourseModal();
+      }
+    });
+    modal.dataset.closeBound = "true";
+  }
+  if (!modal.isConnected) {
+    document.body.appendChild(modal);
+  }
 
   try {
     const response = await fetch(`/api/sessions/${sessionId}`);
@@ -368,6 +524,33 @@ async function openCourseModal(sessionId) {
         </div>
       `
       : "";
+    const manualAttendanceTable = data.canGeneratePdf
+      ? `
+        <div class="mt-5">
+          <div class="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h3 class="text-base font-semibold">Appel manuel</h3>
+              <p class="text-sm text-neutral-500">À utiliser si un élève n'a pas de téléphone, pas de NFC, ou si le scan échoue.</p>
+            </div>
+            ${data.canManageAttendance ? "" : `<p class="text-sm font-medium text-amber-700">Appel déjà finalisé ou modification indisponible.</p>`}
+          </div>
+          <div class="mt-2 overflow-x-auto">
+            <table class="w-full min-w-[720px] border border-neutral-200 text-left">
+              <thead class="bg-neutral-100 text-xs uppercase text-neutral-500">
+                <tr>
+                  <th class="px-2 py-2">Élève</th>
+                  <th class="px-2 py-2">Statut</th>
+                  <th class="px-2 py-2">Validation</th>
+                  <th class="px-2 py-2">Signature</th>
+                  <th class="px-2 py-2">Action</th>
+                </tr>
+              </thead>
+              <tbody>${studentRows(data.students, data.canManageAttendance)}</tbody>
+            </table>
+          </div>
+        </div>
+      `
+      : "";
 
     modal.innerHTML = `
       <div class="w-full max-w-3xl bg-white p-5 text-neutral-950 shadow-2xl">
@@ -391,6 +574,8 @@ async function openCourseModal(sessionId) {
 
         ${statsHtml}
 
+        ${manualAttendanceTable}
+
         <div class="mt-5">
           <h3 class="text-base font-semibold">Ma signature</h3>
           <div class="mt-2">${signatureBlock(currentRecord)}</div>
@@ -403,6 +588,7 @@ async function openCourseModal(sessionId) {
         </div>
       </div>
     `;
+    bindManualAttendanceActions(data.id);
   } catch (error) {
     modal.innerHTML = `
       <div class="w-full max-w-lg bg-white p-5 text-neutral-950 shadow-2xl">

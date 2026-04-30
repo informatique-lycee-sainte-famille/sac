@@ -1,10 +1,12 @@
 // ./API_SAC/routes/sessions.route.js
 const express = require("express");
 const { DateTime } = require("luxon");
+const sharp = require("sharp");
 const { prisma } = require("../commons/prisma.common");
 const require_access = require("../middlewares/require_access.middleware");
 const { ROLES } = require("../commons/constants.common");
 const { LOG_DESTINATIONS, TECHNICAL_LEVELS, log_business, log_technical } = require("../commons/logger.common");
+const { broadcastAttendanceUpdate } = require("../commons/realtime.common");
 const { generate_attendance_pdf } = require("../../scripts/auto/generate_attendance_pdf.script");
 
 const router = express.Router();
@@ -302,6 +304,75 @@ function canReadSession(user, session) {
   return false;
 }
 
+async function manualSignatureDataUrl({ status, teacherName, studentName, scannedAt }) {
+  const title = status === "present"
+    ? "Présence validée manuellement"
+    : "Absence validée manuellement";
+  const timestamp = DateTime.fromJSDate(scannedAt).setZone(APP_TIMEZONE).toFormat("dd/MM/yyyy HH:mm");
+  const escapeSvg = value => String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="640" height="220" viewBox="0 0 640 220">
+      <rect width="640" height="220" fill="#ffffff"/>
+      <rect x="10" y="10" width="620" height="200" fill="none" stroke="#624292" stroke-width="4"/>
+      <text x="32" y="62" font-family="Arial, sans-serif" font-size="30" font-weight="700" fill="#624292">${escapeSvg(title)}</text>
+      <text x="32" y="108" font-family="Arial, sans-serif" font-size="24" fill="#111827">Elève: ${escapeSvg(studentName)}</text>
+      <text x="32" y="148" font-family="Arial, sans-serif" font-size="22" fill="#374151">Validé par: ${escapeSvg(teacherName)}</text>
+      <text x="32" y="184" font-family="Arial, sans-serif" font-size="20" fill="#6b7280">Validé le: ${escapeSvg(timestamp)}</text>
+    </svg>
+  `.trim();
+
+  const pngBuffer = await sharp(Buffer.from(svg, "utf8")).png().toBuffer();
+  return `data:image/png;base64,${pngBuffer.toString("base64")}`;
+}
+
+function canManageManualAttendance(user, session) {
+  const role = String(user?.role || "").toLowerCase();
+  return ["staff", "admin"].includes(role) || session.teacherId === Number(user?.id);
+}
+
+async function loadSessionForManualAttendance(sessionId) {
+  return prisma.courseSession.findUnique({
+    where: { id: sessionId },
+    include: {
+      class: {
+        include: {
+          users: {
+            where: { role: "student" },
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              role: true,
+            },
+            orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+          },
+        },
+      },
+      room: true,
+      teacher: true,
+      attendance: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              role: true,
+              o365Email: true,
+              edEmail: true,
+            },
+          },
+        },
+      },
+      finalization: true,
+    },
+  });
+}
+
 router.get("/today", require_access({ minRole: ROLES.STUDENT }), async (req, res) => {
   try {
     const sessionUser = getSessionUser(req);
@@ -551,6 +622,132 @@ router.get("/staff", require_access({ minRole: ROLES.STAFF }), async (req, res) 
   }
 });
 
+router.post("/:sessionId/attendance/manual", require_access({ minRole: ROLES.TEACHER }), async (req, res) => {
+  try {
+    const sessionUser = getSessionUser(req);
+    const sessionId = Number.parseInt(req.params.sessionId, 10);
+    const studentId = Number.parseInt(req.body?.studentId, 10);
+    const status = String(req.body?.status || "present").toLowerCase();
+
+    if (!sessionUser?.id) {
+      return res.status(401).json({ error: "UNAUTHENTICATED", message: "Utilisateur non authentifie." });
+    }
+
+    if (!Number.isInteger(sessionId) || !Number.isInteger(studentId)) {
+      return res.status(400).json({ error: "INVALID_MANUAL_ATTENDANCE", message: "Session ou eleve invalide." });
+    }
+
+    if (!["present", "absent"].includes(status)) {
+      return res.status(400).json({ error: "INVALID_ATTENDANCE_STATUS", message: "Statut de presence invalide." });
+    }
+
+    const session = await loadSessionForManualAttendance(sessionId);
+    if (!session) {
+      return res.status(404).json({ error: "SESSION_NOT_FOUND", message: "Session introuvable." });
+    }
+
+    if (session.finalization) {
+      return res.status(403).json({ error: "APPEL_ALREADY_SENT", message: "Appel deja envoye a EcoleDirecte." });
+    }
+
+    if (!canManageManualAttendance(sessionUser, session)) {
+      return res.status(403).json({ error: "MANUAL_ATTENDANCE_FORBIDDEN", message: "Vous ne pouvez pas modifier l'appel de ce cours." });
+    }
+
+    const student = session.class?.users?.find(user => user.id === studentId);
+    if (!student) {
+      return res.status(404).json({ error: "STUDENT_NOT_IN_CLASS", message: "Cet eleve n'appartient pas a la classe du cours." });
+    }
+
+    const scannedAt = new Date();
+    const teacherName = `${sessionUser.firstName || ""} ${sessionUser.lastName || ""}`.trim()
+      || `${session.teacher.firstName || ""} ${session.teacher.lastName || ""}`.trim()
+      || `User #${sessionUser.id}`;
+    const studentName = `${student.firstName || ""} ${student.lastName || ""}`.trim() || `Student #${student.id}`;
+    const signature = await manualSignatureDataUrl({
+      status,
+      teacherName,
+      studentName,
+      scannedAt,
+    });
+
+    const attendance = await prisma.attendanceRecord.upsert({
+      where: {
+        sessionId_userId: {
+          sessionId,
+          userId: studentId,
+        },
+      },
+      update: {
+        status,
+        signature,
+        scannedAt,
+      },
+      create: {
+        sessionId,
+        userId: studentId,
+        status,
+        signature,
+        scannedAt,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            role: true,
+            o365Email: true,
+            edEmail: true,
+          },
+        },
+      },
+    });
+
+    await log_business(
+      "teacher_manual_attendance",
+      status === "present"
+        ? "Presence eleve validee manuellement."
+        : "Absence eleve indiquee manuellement.",
+      {
+        destination: LOG_DESTINATIONS.BOTH,
+        req,
+        userId: Number(sessionUser.id),
+        entityType: "CourseSession",
+        entityId: sessionId,
+        metadata: {
+          studentId,
+          status,
+        },
+      }
+    );
+
+    broadcastAttendanceUpdate(sessionId, {
+      updatedByUserId: Number(sessionUser.id),
+    });
+
+    const updatedSession = await loadSessionForManualAttendance(sessionId);
+    return res.json({
+      message: status === "present"
+        ? "Presence validee manuellement."
+        : "Absence indiquee manuellement.",
+      attendance,
+      stats: getAttendanceStats(updatedSession),
+    });
+  } catch (err) {
+    log_technical(TECHNICAL_LEVELS.ERROR, "Manual attendance update failed", {
+      error: err,
+      userId: req.session?.user?.id,
+      sessionId: req.params.sessionId,
+      body: req.body,
+    });
+    return res.status(500).json({
+      error: "MANUAL_ATTENDANCE_FAILED",
+      message: "Erreur lors de la validation manuelle.",
+    });
+  }
+});
+
 router.get("/:sessionId", require_access({ minRole: ROLES.STUDENT }), async (req, res) => {
   try {
     const sessionUser = getSessionUser(req);
@@ -628,9 +825,20 @@ router.get("/:sessionId", require_access({ minRole: ROLES.STUDENT }), async (req
 
     const isTeacherOwner = dbUser.role === "teacher" && session.teacherId === dbUser.id;
     const userAttendance = session.attendance.find(record => record.userId === dbUser.id) || null;
-    const visibleAttendance = isTeacherOwner || ["staff", "admin"].includes(dbUser.role)
+    const hasFullAttendanceAccess = isTeacherOwner || ["staff", "admin"].includes(dbUser.role);
+    const visibleAttendance = hasFullAttendanceAccess
       ? session.attendance
       : (userAttendance ? [userAttendance] : []);
+    const attendanceByUser = new Map(session.attendance.map(record => [record.userId, record]));
+    const visibleStudents = hasFullAttendanceAccess
+      ? (session.class?.users || []).map(student => ({
+          id: student.id,
+          firstName: student.firstName,
+          lastName: student.lastName,
+          role: student.role,
+          attendance: attendanceByUser.get(student.id) || null,
+        }))
+      : [];
 
     return res.json({
       id: session.id,
@@ -649,7 +857,9 @@ router.get("/:sessionId", require_access({ minRole: ROLES.STUDENT }), async (req
       stats: getAttendanceStats(session),
       currentUserAttendance: userAttendance,
       attendance: visibleAttendance,
+      students: visibleStudents,
       canGeneratePdf: isTeacherOwner,
+      canManageAttendance: hasFullAttendanceAccess && !session.finalization,
     });
   } catch (err) {
     log_technical(TECHNICAL_LEVELS.ERROR, "Course session detail fetch failed", {
