@@ -1,5 +1,12 @@
 # SAC — Saintonge Access Control
 
+[![Build](https://img.shields.io/github/actions/workflow/status/informatique-lycee-sainte-famille/SAC/docker-publish.yaml?branch=main&label=build)](https://github.com/informatique-lycee-sainte-famille/SAC/actions/workflows/docker-publish.yaml)
+[![Deploy](https://img.shields.io/github/actions/workflow/status/informatique-lycee-sainte-famille/SAC/docker-publish.yaml?branch=main&label=deploy)](https://github.com/informatique-lycee-sainte-famille/SAC/actions/workflows/docker-publish.yaml)
+[![Tests](https://img.shields.io/github/actions/workflow/status/informatique-lycee-sainte-famille/SAC/quality-security.yml?branch=main&label=tests)](https://github.com/informatique-lycee-sainte-famille/SAC/actions/workflows/quality-security.yml)
+[![Dependency, Secret & Source Security](https://img.shields.io/github/actions/workflow/status/informatique-lycee-sainte-famille/SAC/quality-security.yml?branch=main&label=dependency%20%2F%20secret%20%2F%20source%20security)](https://github.com/informatique-lycee-sainte-famille/SAC/actions/workflows/quality-security.yml)
+[![Docker Image Security](https://img.shields.io/github/actions/workflow/status/informatique-lycee-sainte-famille/SAC/quality-security.yml?branch=main&label=docker%20image%20security)](https://github.com/informatique-lycee-sainte-famille/SAC/actions/workflows/quality-security.yml)
+[![OWASP ZAP](https://img.shields.io/github/actions/workflow/status/informatique-lycee-sainte-famille/SAC/quality-security.yml?branch=main&label=owasp%20zap)](https://github.com/informatique-lycee-sainte-famille/SAC/actions/workflows/quality-security.yml)
+
 Projet de **gestion automatisée des présences** par **NFC** destiné à l’annexe du lycée Sainte Famille Saintonge (Bordeaux), réalisé dans le cadre du **BTS CIEL – Épreuve E6 (Option Informatique et réseaux)**.
 
 Le projet vise à remplacer les feuilles d’émargement papier par un système numérique sécurisé, fonctionnant **exclusivement sur le réseau interne (LAN)** de l’établissement.
