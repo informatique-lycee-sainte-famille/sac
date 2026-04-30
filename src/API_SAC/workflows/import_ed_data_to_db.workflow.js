@@ -194,9 +194,12 @@ async function importUsers() {
 
   let teachersCreated = 0;
   let teachersUpdated = 0;
+  let departedStudentsDeleted = 0;
+  const activeStudentEdIds = new Set();
 
   for (const s of students) {
     const edId = String(s.id);
+    activeStudentEdIds.add(edId);
     let classId = null;
 
     if (s.classeId) {
@@ -270,6 +273,33 @@ async function importUsers() {
     studentsProcessed++;
   }
 
+  if (activeStudentEdIds.size > 0) {
+    const deleted = await prisma.user.deleteMany({
+      where: {
+        role: "student",
+        edId: {
+          not: null,
+          notIn: [...activeStudentEdIds],
+        },
+      },
+    });
+    departedStudentsDeleted = deleted.count;
+
+    if (departedStudentsDeleted > 0) {
+      await log_business("ed_departed_students_deleted", "Élèves sortis de l'établissement supprimés après import EcoleDirecte.", {
+        destination: LOG_DESTINATIONS.BOTH,
+        entityType: "User",
+        metadata: {
+          deletedCount: departedStudentsDeleted,
+        },
+      });
+    }
+  } else {
+    log_technical(TECHNICAL_LEVELS.WARNING, "Skipped departed student cleanup because EcoleDirecte returned no active student", {
+      studentsCount: students.length,
+    });
+  }
+
   for (const p of teachers) {
     const edId = String(p.id);
 
@@ -319,6 +349,7 @@ async function importUsers() {
     studentsProcessed,
     studentsCreated,
     studentsUpdated,
+    departedStudentsDeleted,
     teachersProcessed,
     teachersCreated,
     teachersUpdated,
@@ -332,11 +363,12 @@ async function importUsers() {
 async function import_ed_data_to_db(dataTypes = ['SALLES', 'CLASSES', 'PROFESSEURS', 'EDT_CLASSE', 'ELEVES_ALL'], options = {}) {
   log_technical(TECHNICAL_LEVELS.INFO, "Starting EcoleDirecte import", { dataTypes });
   const summary = {};
+  const shouldImportUsers = ["USERS", "ELEVES", "ELEVES_ALL", "PROFESSEURS"].some(type => dataTypes.includes(type));
 
   try {
     if (dataTypes.includes('SALLES')) summary.rooms = await importRooms();
     if (dataTypes.includes('CLASSES')) summary.classes = await importClasses();
-    if (dataTypes.includes('USERS')) summary.users = await importUsers();
+    if (shouldImportUsers) summary.users = await importUsers();
     if (dataTypes.includes('EDT_CLASSE')) summary.courseSessions = await importSessions(options.edtClasse || {});
 
     await log_business("ed_import_completed", "Import EcoleDirecte terminé.", {
