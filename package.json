@@ -14,7 +14,7 @@
     "test:integration": "node tests/runners/integration.cli.js",
     "test:performance": "node tests/runners/performance.cli.js",
     "test:all": "npm run test:unit && npm run test:integration && npm run test:performance",
-    "security:audit": "npm audit --audit-level=moderate",
+    "security:audit": "node tests/runners/security_audit.cli.js",
     "quality:syntax": "node tests/runners/syntax.cli.js",
     "start": "nodemon",
     "ed:photos": "node src/scripts/auto/download_ed_student_photo.script.js",

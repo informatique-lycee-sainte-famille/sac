@@ -18,11 +18,21 @@ Variables du test de charge:
 
 ## Sécurité
 
-- `npm audit` bloque les vulnérabilités npm à partir de `moderate`.
+- `npm audit` bloque les vulnérabilités npm à partir de `moderate`, sauf allowlist explicite dans `tests/runners/security_audit.cli.js`.
 - Gitleaks détecte les secrets committés.
 - Snyk scanne les dépendances si le secret GitHub `SNYK_TOKEN` est configuré.
 - Trivy scanne le dépôt et l'image Docker.
 - OWASP ZAP baseline scanne l'application démarrée localement par la CI.
+
+L'allowlist npm actuelle couvre des advisories transitoires connues:
+
+- `GHSA-92pp-h63x-v22m` via `prisma`/`@prisma/dev`/`@hono/node-server`.
+- `GHSA-458j-xx4x-4375` via `hono`.
+- `GHSA-w5hq-g745-h8pq` via `@azure/msal-node`/`uuid`.
+
+Elles restent visibles dans l'audit brut, mais ne bloquent pas la CI tant que le correctif recommandé impose une rupture majeure non validée. Toute nouvelle advisory non allowlistée bloque le pipeline.
+
+Le script autorise aussi les paquets parents concernés (`prisma`, `@prisma/dev`, `@hono/node-server`, `hono`, `@azure/msal-node`, `uuid`) lorsque `npm audit` les remonte par propagation sans répéter l'identifiant GHSA.
 
 ## Couverture OWASP Top 10
 
