@@ -201,6 +201,76 @@
       });
     }
 
+    function getCookieConsent() {
+      try {
+        return JSON.parse(localStorage.getItem("sacCookieConsent") || "null");
+      } catch {
+        return null;
+      }
+    }
+
+    function saveCookieConsent(choice) {
+      try {
+        localStorage.setItem("sacCookieConsent", JSON.stringify({
+          choice,
+          savedAt: new Date().toISOString(),
+          version: 1,
+        }));
+      } catch {
+        undefined;
+      }
+    }
+
+    function closeCookieBanner() {
+      document.getElementById("cookie-consent-banner")?.remove();
+    }
+
+    function showCookieBanner(force = false) {
+      if (!force && getCookieConsent()) return;
+      if (document.getElementById("cookie-consent-banner")) return;
+
+      const banner = document.createElement("aside");
+      banner.id = "cookie-consent-banner";
+      banner.className = "fixed inset-x-3 bottom-3 z-[9996] mx-auto w-[min(960px,calc(100vw-24px))] border border-white/20 bg-white text-neutral-950 shadow-2xl";
+      banner.setAttribute("role", "dialog");
+      banner.setAttribute("aria-live", "polite");
+      banner.setAttribute("aria-label", "Information cookies");
+      banner.innerHTML = `
+        <div class="grid gap-4 p-4 sm:grid-cols-[auto_1fr_auto] sm:items-center sm:p-5">
+          <div class="flex h-11 w-11 items-center justify-center rounded-full bg-[#624292] text-white">
+            <i class="fa-solid fa-cookie-bite" aria-hidden="true"></i>
+          </div>
+          <div class="min-w-0">
+            <p class="text-base font-semibold">Cookies et sécurité</p>
+            <p class="mt-1 text-sm leading-relaxed text-neutral-600">
+              SAC utilise uniquement des cookies nécessaires à la connexion, à la sécurité CSRF et au fonctionnement de l'application. Aucun cookie publicitaire ou traceur tiers n'est utilisé.
+            </p>
+            <a class="mt-2 inline-flex text-sm font-medium text-[#624292] underline-offset-2 hover:underline" href="/cookies.html">Lire la politique cookies</a>
+          </div>
+          <div class="flex flex-col gap-2 sm:min-w-44">
+            <button type="button" data-cookie-accept class="inline-flex items-center justify-center gap-2 border border-[#624292] bg-[#624292] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#52357f]">
+              <i class="fa-solid fa-check" aria-hidden="true"></i>
+              <span>J'ai compris</span>
+            </button>
+            <button type="button" data-cookie-necessary class="inline-flex items-center justify-center border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-800 transition hover:bg-neutral-50">
+              Nécessaires uniquement
+            </button>
+          </div>
+        </div>
+      `;
+
+      banner.querySelector("[data-cookie-accept]")?.addEventListener("click", () => {
+        saveCookieConsent("accepted");
+        closeCookieBanner();
+      });
+      banner.querySelector("[data-cookie-necessary]")?.addEventListener("click", () => {
+        saveCookieConsent("necessary_only");
+        closeCookieBanner();
+      });
+
+      document.body.appendChild(banner);
+    }
+
     function getUserAvatarSrc(data) {
       return (
         data?.avatar ||
@@ -989,6 +1059,7 @@
 
     async function init() {
       bindAdminMediaShortcut();
+      showCookieBanner();
 
       window.SACApp = {
         get user() {

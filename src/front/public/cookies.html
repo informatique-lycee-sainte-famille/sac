@@ -1,0 +1,54 @@
+<!-- ./front/public/cookies.html -->
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="index, follow" />
+  <title>Gestion des cookies - Saintonge Access Control</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/css/all.min.css" />
+</head>
+<body class="min-h-dvh bg-neutral-950 text-white">
+  <main class="mx-auto flex min-h-dvh w-full max-w-5xl flex-col px-5 py-8">
+    <a href="/" class="mb-8 inline-flex items-center gap-2 text-sm text-white/75 hover:text-white">
+      <i class="fa-solid fa-arrow-left" aria-hidden="true"></i>
+      Retour à l'application
+    </a>
+    <section class="border border-white/15 bg-white p-6 text-neutral-950 shadow-2xl sm:p-8">
+      <p class="text-sm font-semibold uppercase text-[#624292]">Saintonge Access Control</p>
+      <h1 class="mt-2 text-3xl font-semibold">Gestion des cookies</h1>
+      <p class="mt-2 text-sm text-neutral-500">Dernière mise à jour : 30 avril 2026</p>
+
+      <div class="mt-8 grid gap-6 leading-relaxed">
+        <article>
+          <h2 class="text-xl font-semibold">Cookies nécessaires</h2>
+          <p class="mt-2">SAC utilise des cookies strictement nécessaires au fonctionnement de l'application, notamment le cookie de session Express et le jeton CSRF. Ils permettent de maintenir votre connexion, de sécuriser les requêtes et de protéger l'application contre les actions non autorisées.</p>
+        </article>
+        <article>
+          <h2 class="text-xl font-semibold">Mesure d'audience et publicité</h2>
+          <p class="mt-2">L'application ne dépose pas de cookie publicitaire et n'intègre pas de mesure d'audience tiers. Aucun profilage publicitaire n'est réalisé.</p>
+        </article>
+        <article>
+          <h2 class="text-xl font-semibold">Préférence du bandeau</h2>
+          <p class="mt-2">Votre choix d'affichage du bandeau cookies est mémorisé dans le stockage local du navigateur afin de ne pas vous le représenter à chaque visite.</p>
+        </article>
+        <article>
+          <h2 class="text-xl font-semibold">Changer votre choix</h2>
+          <p class="mt-2">Vous pouvez réinitialiser votre préférence depuis cette page ou supprimer les données du site depuis votre navigateur.</p>
+          <button id="reset-cookie-choice" type="button" class="mt-4 inline-flex items-center gap-2 border border-[#624292] bg-[#624292] px-4 py-2 text-sm font-semibold text-white hover:bg-[#52357f]">
+            <i class="fa-solid fa-rotate-left" aria-hidden="true"></i>
+            Réinitialiser mon choix
+          </button>
+        </article>
+      </div>
+    </section>
+  </main>
+  <script>
+    document.getElementById("reset-cookie-choice")?.addEventListener("click", () => {
+      localStorage.removeItem("sacCookieConsent");
+      window.location.href = "/";
+    });
+  </script>
+</body>
+</html>

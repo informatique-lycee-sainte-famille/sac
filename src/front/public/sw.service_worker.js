@@ -1,11 +1,15 @@
 // ./front/public/sw.service_worker.js
-const CACHE_NAME = "sac-pwa-v1";
+const CACHE_NAME = "sac-pwa-v2";
 const APP_SHELL = [
   "/",
   "/index.page.html",
   "/manifest.webmanifest.json",
   "/script.app.js",
   "/js/component_loader.loader.js",
+  "/mentions-legales.html",
+  "/politique-confidentialite.html",
+  "/cookies.html",
+  "/accessibilite.html",
   "/ressources/ensemble_scolaire_lyce_sainte_famille_saintonge_formation_logo_512x512.png",
   "/ressources/fond_page_login.png",
 ];
@@ -41,6 +45,24 @@ self.addEventListener("fetch", event => {
   }
 
   if (url.pathname.startsWith("/api/")) return;
+
+  if (
+    url.pathname.endsWith(".html") ||
+    url.pathname.endsWith(".js") ||
+    url.pathname.endsWith(".css") ||
+    url.pathname.startsWith("/components/")
+  ) {
+    event.respondWith(
+      fetch(request)
+        .then(response => {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+          return response;
+        })
+        .catch(() => caches.match(request))
+    );
+    return;
+  }
 
   event.respondWith(
     caches.match(request).then(cached => cached || fetch(request).then(response => {

@@ -1,5 +1,6 @@
 // ./front/public/js/component_loader.loader.js
 (function () {
+  const ASSET_VERSION = "20260430-legal-footer";
   const loadedStyles = new Set();
   const moduleCache = new Map();
   const contentNames = new Set(["home", "scan", "my-courses", "my-class", "staff-courses", "staff-classes", "staff-teachers", "business-logs", "admin"]);
@@ -16,8 +17,13 @@
   }
 
   async function resourceExists(url) {
-    const response = await fetch(url, { method: "HEAD" }).catch(() => null);
+    const response = await fetch(withVersion(url), { method: "HEAD" }).catch(() => null);
     return Boolean(response?.ok);
+  }
+
+  function withVersion(url) {
+    const separator = url.includes("?") ? "&" : "?";
+    return `${url}${separator}v=${ASSET_VERSION}`;
   }
 
   async function loadStyle(url) {
@@ -25,7 +31,7 @@
 
     const link = document.createElement("link");
     link.rel = "stylesheet";
-    link.href = url;
+    link.href = withVersion(url);
     document.head.appendChild(link);
     loadedStyles.add(url);
   }
@@ -34,7 +40,7 @@
     if (!(await resourceExists(url))) return null;
 
     if (!moduleCache.has(url)) {
-      moduleCache.set(url, import(`${url}?v=${Date.now()}`));
+      moduleCache.set(url, import(withVersion(url)));
     }
 
     const module = await moduleCache.get(url);
@@ -57,7 +63,7 @@
 
     const fileType = getFileType(context);
     const htmlUrl = `${basePath}.${fileType}.html`;
-    const response = await fetch(htmlUrl);
+    const response = await fetch(withVersion(htmlUrl));
     if (!response.ok) {
       throw new Error(`Component not found: ${htmlUrl}`);
     }
