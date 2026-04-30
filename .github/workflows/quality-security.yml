@@ -56,6 +56,10 @@ jobs:
           PORT: 3000
           SESSION_SECRET: ci-only-session-secret
           TRUST_PROXY: loopback
+          AZURE_CLIENT_ID: 00000000-0000-0000-0000-000000000000
+          AZURE_TENANT_ID: common
+          AZURE_CLIENT_SECRET: ci-only-placeholder
+          O365_ROBOT_EMAIL: ci@example.invalid
         run: |
           node src/API_SAC/app.server.js &
           echo $! > sac.pid
@@ -212,6 +216,10 @@ jobs:
           PORT: 3000
           SESSION_SECRET: ci-only-session-secret
           TRUST_PROXY: loopback
+          AZURE_CLIENT_ID: 00000000-0000-0000-0000-000000000000
+          AZURE_TENANT_ID: common
+          AZURE_CLIENT_SECRET: ci-only-placeholder
+          O365_ROBOT_EMAIL: ci@example.invalid
         run: |
           node src/API_SAC/app.server.js &
           echo $! > sac.pid

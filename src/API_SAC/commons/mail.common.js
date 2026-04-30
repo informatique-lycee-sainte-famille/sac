@@ -2,18 +2,28 @@
 const { ConfidentialClientApplication } = require("@azure/msal-node");
 const { TECHNICAL_LEVELS, log_technical } = require("./logger.common");
 
-const msalConfig = {
-  auth: {
-    clientId: process.env.AZURE_CLIENT_ID,
-    authority: `https://login.microsoftonline.com/${process.env.AZURE_TENANT_ID}`,
-    clientSecret: process.env.AZURE_CLIENT_SECRET,
-  },
-};
+let cca = null;
 
-const cca = new ConfidentialClientApplication(msalConfig);
+function getMailClient() {
+  if (cca) return cca;
+
+  if (!process.env.AZURE_CLIENT_ID || !process.env.AZURE_TENANT_ID || !process.env.AZURE_CLIENT_SECRET) {
+    throw new Error("Azure mail credentials are missing.");
+  }
+
+  cca = new ConfidentialClientApplication({
+    auth: {
+      clientId: process.env.AZURE_CLIENT_ID,
+      authority: `https://login.microsoftonline.com/${process.env.AZURE_TENANT_ID}`,
+      clientSecret: process.env.AZURE_CLIENT_SECRET,
+    },
+  });
+
+  return cca;
+}
 
 async function getAccessToken() {
-  const result = await cca.acquireTokenByClientCredential({
+  const result = await getMailClient().acquireTokenByClientCredential({
     scopes: ["https://graph.microsoft.com/.default"],
   });
 
