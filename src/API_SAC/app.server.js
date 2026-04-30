@@ -102,6 +102,7 @@ app.use((req, res, next) => {
   return staticRateLimit(req, res, next);
 });
 app.get("/.well-known/assetlinks.json", (req, res) => {
+  res.setHeader("Cache-Control", "public, max-age=3600");
   res.type("application/json").json([
     {
       relation: ["delegate_permission/common.handle_all_urls"],
@@ -112,13 +113,34 @@ app.get("/.well-known/assetlinks.json", (req, res) => {
     },
   ]);
 });
+app.get("/robots.txt", (req, res) => {
+  res.setHeader("Cache-Control", "public, max-age=3600");
+  res.type("text/plain").send("User-agent: *\nDisallow: /api/\n");
+});
+app.get("/sitemap.xml", (req, res) => {
+  const origin = getExternalOrigin(req);
+  res.setHeader("Cache-Control", "public, max-age=3600");
+  res.type("application/xml").send(
+    `<?xml version="1.0" encoding="UTF-8"?>\n` +
+    `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
+    `  <url><loc>${origin}/</loc></url>\n` +
+    `  <url><loc>${origin}/legal-notice</loc></url>\n` +
+    `  <url><loc>${origin}/privacy-policy</loc></url>\n` +
+    `</urlset>\n`
+  );
+});
 app.use(express.static(path.join(__dirname, "../front/public"),
   {
     extensions: ['html', 'json', 'png', 'svg', 'js', 'css'],
     dotfiles: 'ignore',
     index: "index.page.html",
-    setHeaders: (res) => {
+    setHeaders: (res, filePath) => {
       res.setHeader("X-Content-Type-Options", "nosniff");
+      if (filePath.endsWith(".html")) {
+        res.setHeader("Cache-Control", "no-cache");
+      } else {
+        res.setHeader("Cache-Control", "public, max-age=3600");
+      }
     },
   }));
 

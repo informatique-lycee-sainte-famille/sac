@@ -112,6 +112,7 @@ jobs:
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
 
       - name: Snyk Open Source scan
         if: ${{ env.SNYK_TOKEN != '' }}
@@ -276,6 +277,8 @@ jobs:
         with:
           target: http://127.0.0.1:3000/
           fail_action: true
+          allow_issue_writing: false
+          rules_file_name: .zap/baseline.conf
           cmd_options: "-a"
 
       - name: Stop SAC
