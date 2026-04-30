@@ -3,6 +3,7 @@ const sharp = require("sharp");
 const { prisma } = require("../commons/prisma.common");
 const { is_session_finalized } = require("./finalize_course_session.workflow");
 const { LOG_DESTINATIONS, TECHNICAL_LEVELS, log_business, log_technical } = require("../commons/logger.common");
+const { broadcastAttendanceUpdate } = require("../commons/realtime.common");
 
 const SIGNATURE_MAX_INPUT_LENGTH = 750000;
 const SIGNATURE_MAX_OUTPUT_LENGTH = 220000;
@@ -231,6 +232,8 @@ async function validateTeacher(session, userId, scannedAt, signature, dryRun = f
     },
   });
 
+  broadcastAttendanceUpdate(session.id, { updatedByUserId: userId });
+
   return response(
     200,
     "TEACHER_ATTENDANCE_VALIDATED",
@@ -323,6 +326,8 @@ async function validateStudent(session, user, sessionUser, scannedAt, signature,
       scannedAt,
     },
   });
+
+  broadcastAttendanceUpdate(session.id, { updatedByUserId: user.id });
 
   return response(200, "STUDENT_ATTENDANCE_VALIDATED", "Presence eleve validee.", {
     sessionId: session.id,

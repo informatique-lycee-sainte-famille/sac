@@ -1,6 +1,45 @@
 // ./scripts/auto/generate_attendance_pdf.script.js
 const PDFDocument = require("pdfkit");
+const fs = require("fs");
 const path = require("path");
+
+const FONT_REGULAR = "SAC-Regular";
+const FONT_BOLD = "SAC-Bold";
+
+function findFirstExistingPath(paths) {
+  return paths.find(filePath => {
+    try {
+      return fs.existsSync(filePath);
+    } catch {
+      return false;
+    }
+  }) || null;
+}
+
+function registerUnicodeFonts(doc) {
+  const regularFont = findFirstExistingPath([
+    process.env.PDF_FONT_REGULAR_PATH,
+    path.join(__dirname, "../../front/public/ressources/fonts/DejaVuSans.ttf"),
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    "/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf",
+    "C:/Windows/Fonts/arial.ttf",
+  ].filter(Boolean));
+  const boldFont = findFirstExistingPath([
+    process.env.PDF_FONT_BOLD_PATH,
+    path.join(__dirname, "../../front/public/ressources/fonts/DejaVuSans-Bold.ttf"),
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+    "/usr/share/fonts/truetype/liberation2/LiberationSans-Bold.ttf",
+    "C:/Windows/Fonts/arialbd.ttf",
+  ].filter(Boolean));
+
+  if (!regularFont) {
+    return { regular: "Helvetica", bold: "Helvetica-Bold" };
+  }
+
+  doc.registerFont(FONT_REGULAR, regularFont);
+  doc.registerFont(FONT_BOLD, boldFont || regularFont);
+  return { regular: FONT_REGULAR, bold: FONT_BOLD };
+}
 
 function formatDate(value) {
   return new Intl.DateTimeFormat("fr-FR", {
@@ -49,7 +88,7 @@ function drawSignature(doc, signature, x, y, width, height) {
       valign: "center",
     });
   } catch {
-    doc.fontSize(8).fillColor("#777").text("Signature illisible", x + 5, y + 8, {
+    doc.font(doc.sacFonts.regular).fontSize(8).fillColor("#777").text("Signature illisible", x + 5, y + 8, {
       width: width - 10,
       align: "center",
     });
@@ -58,7 +97,7 @@ function drawSignature(doc, signature, x, y, width, height) {
 }
 
 function formatStatus(status) {
-  return status === "present" ? "Present" : "Absent";
+  return status === "present" ? "Présent" : "Absent";
 }
 
 function formatScanTime(value) {
@@ -75,7 +114,7 @@ function formatScanTime(value) {
 function drawCell(doc, x, y, width, height, text, options = {}) {
   doc.rect(x, y, width, height).stroke();
   doc
-    .font(options.bold ? "Helvetica-Bold" : "Helvetica")
+    .font(options.bold ? doc.sacFonts.bold : doc.sacFonts.regular)
     .fontSize(options.fontSize || 9)
     .fillColor(options.color || "#000")
     .text(text || "", x + 5, y + 6, {
@@ -94,25 +133,25 @@ function drawHeader(doc, data) {
   } catch {}
 
   doc.moveDown(2);
-  doc.fontSize(16).font("Helvetica-Bold").text("FEUILLE D'EMARGEMENT", { align: "center" });
+  doc.fontSize(16).font(doc.sacFonts.bold).text("FEUILLE D'ÉMARGEMENT", { align: "center" });
   doc.moveDown(0.6);
-  doc.fontSize(10).font("Helvetica").text(`Classe: ${data.className}`, { align: "center" });
+  doc.fontSize(10).font(doc.sacFonts.regular).text(`Classe : ${data.className}`, { align: "center" });
   doc.text(`Cours: ${data.courseLabel || "N/A"}`, { align: "center" });
-  doc.text(`Salle: ${data.roomName || data.roomCode || "N/A"}`, { align: "center" });
-  doc.text(`Date: ${formatDate(data.startTime)} - ${formatTime(data.startTime)} / ${formatTime(data.endTime)}`, { align: "center" });
-  doc.text(`Generé par: ${data.author || "SAC"} le ${new Date().toLocaleString("fr-FR")}`, { align: "center" });
+  doc.text(`Salle : ${data.roomName || data.roomCode || "N/A"}`, { align: "center" });
+  doc.text(`Date : ${formatDate(data.startTime)} - ${formatTime(data.startTime)} / ${formatTime(data.endTime)}`, { align: "center" });
+  doc.text(`Généré par : ${data.author || "SAC"} le ${new Date().toLocaleString("fr-FR")}`, { align: "center" });
   if (data.finalization?.sentToEdAt) {
     doc
-      .font("Helvetica-Bold")
+      .font(doc.sacFonts.bold)
       .fillColor("#166534")
-      .text(`Appel envoye a EcoleDirecte le ${formatDateTime(data.finalization.sentToEdAt)}`, { align: "center" });
+      .text(`Appel envoyé à EcoleDirecte le ${formatDateTime(data.finalization.sentToEdAt)}`, { align: "center" });
   } else {
     doc
-      .font("Helvetica-Bold")
+      .font(doc.sacFonts.bold)
       .fillColor("#991b1b")
-      .text("Appel non envoye a EcoleDirecte - feuille non finalisee", { align: "center" });
+      .text("Appel non envoyé à EcoleDirecte - feuille non finalisée", { align: "center" });
   }
-  doc.font("Helvetica").fillColor("#000");
+  doc.font(doc.sacFonts.regular).fillColor("#000");
   doc.moveDown(1.5);
 }
 
@@ -128,10 +167,10 @@ function drawSessionPage(doc, data, options = {}) {
   const bottom = doc.page.height - 60;
   const widths = [usableWidth * 0.34, usableWidth * 0.15, usableWidth * 0.18, usableWidth * 0.33];
 
-  doc.fontSize(12).font("Helvetica-Bold").text("ELEVES");
+  doc.fontSize(12).font(doc.sacFonts.bold).text("ÉLÈVES");
   y = doc.y + 8;
 
-  drawCell(doc, startX, y, widths[0], 24, "Nom prenom", { bold: true, align: "center" });
+  drawCell(doc, startX, y, widths[0], 24, "Nom prénom", { bold: true, align: "center" });
   drawCell(doc, startX + widths[0], y, widths[1], 24, "Statut", { bold: true, align: "center" });
   drawCell(doc, startX + widths[0] + widths[1], y, widths[2], 24, "Scan NFC", { bold: true, align: "center" });
   drawCell(doc, startX + widths[0] + widths[1] + widths[2], y, widths[3], 24, "Signature du cours", { bold: true, align: "center" });
@@ -141,7 +180,7 @@ function drawSessionPage(doc, data, options = {}) {
     if (y + rowHeight > bottom) {
       doc.addPage();
       y = 40;
-      drawCell(doc, startX, y, widths[0], 24, "Nom prenom", { bold: true, align: "center" });
+      drawCell(doc, startX, y, widths[0], 24, "Nom prénom", { bold: true, align: "center" });
       drawCell(doc, startX + widths[0], y, widths[1], 24, "Statut", { bold: true, align: "center" });
       drawCell(doc, startX + widths[0] + widths[1], y, widths[2], 24, "Scan NFC", { bold: true, align: "center" });
       drawCell(doc, startX + widths[0] + widths[1] + widths[2], y, widths[3], 24, "Signature du cours", { bold: true, align: "center" });
@@ -167,7 +206,7 @@ function drawSessionPage(doc, data, options = {}) {
     y += 22;
   }
 
-  doc.fontSize(12).font("Helvetica-Bold").text("FORMATEUR / PROFESSEUR", startX, y);
+  doc.fontSize(12).font(doc.sacFonts.bold).text("FORMATEUR / PROFESSEUR", startX, y);
   y += 20;
 
   const teacherName = `${data.teacher?.lastName || ""} ${data.teacher?.firstName || ""}`.trim();
@@ -183,11 +222,12 @@ function createPdfBuffer(render) {
     const doc = new PDFDocument({
       margin: 40,
       info: {
-        Title: "Feuille d'emargement",
+        Title: "Feuille d'émargement",
         Author: "SAC",
-        Subject: "Presences",
+        Subject: "Présences",
       },
     });
+    doc.sacFonts = registerUnicodeFonts(doc);
 
     const chunks = [];
     doc.on("data", chunk => chunks.push(chunk));

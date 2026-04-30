@@ -644,6 +644,9 @@ async function loadCourses() {
 
     syncDayPdfLink(data);
     target.innerHTML = data.map(renderSession).join("");
+    if (window.SACApp?.user?.role === "teacher") {
+      data.forEach(session => subscribeRealtimeSession(session.id));
+    }
     bindCourseActions();
   } catch (error) {
     syncDayPdfLink([]);

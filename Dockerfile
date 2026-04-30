@@ -22,6 +22,8 @@ FROM node:25-alpine AS runtime
 # Set the working directory
 WORKDIR /app
 
+RUN apk add --no-cache fontconfig ttf-dejavu
+
 # Copy node_modules and application code from the build stage
 COPY --from=build /app /app
 

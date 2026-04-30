@@ -450,7 +450,7 @@ async function finalize_session(req) {
     },
   });
 
-  return response(200, "SESSION_ATTENDANCE_FINALIZED", "Appel envoye a EcoleDirecte et PDF generé et envoyé par mail.", {
+  return response(200, "SESSION_ATTENDANCE_FINALIZED", "Appel envoyé à EcoleDirecte et PDF généré et envoyé par mail.", {
     sessionId: session.id,
     ed: edResult,
     mail: {
