@@ -1,7 +1,9 @@
 # SAC — Saintonge Access Control
 
-[![Build & Deploy](https://img.shields.io/github/actions/workflow/status/informatique-lycee-sainte-famille/SAC/docker-publish.yaml?branch=main&label=Build%20&%20Deploy)](https://github.com/informatique-lycee-sainte-famille/SAC/actions/workflows/docker-publish.yaml)
-[![Quality & Security](https://img.shields.io/github/actions/workflow/status/informatique-lycee-sainte-famille/SAC/quality-security.yml?branch=main&label=Quality%20&%20Security)](https://github.com/informatique-lycee-sainte-famille/SAC/actions/workflows/quality-security.yml)
+# SAC — Saintonge Access Control
+
+[![Build & Deploy](https://img.shields.io/github/actions/workflow/status/informatique-lycee-sainte-famille/SAC/docker-publish.yml?branch=main&label=Build%20%26%20Deploy)](https://github.com/informatique-lycee-sainte-famille/SAC/actions/workflows/docker-publish.yml)
+[![Quality & Security](https://img.shields.io/github/actions/workflow/status/informatique-lycee-sainte-famille/SAC/quality-security.yml?branch=main&label=Quality%20%26%20Security)](https://github.com/informatique-lycee-sainte-famille/SAC/actions/workflows/quality-security.yml)
 
 Projet de **gestion automatisée des présences** par **NFC** destiné à l’annexe du lycée Sainte Famille Saintonge (Bordeaux), réalisé dans le cadre du **BTS CIEL – Épreuve E6 (Option Informatique et réseaux)**.
 
