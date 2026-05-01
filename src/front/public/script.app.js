@@ -14,6 +14,55 @@
       .join("");
     let adminMediaBuffer = "";
 
+    // Handle network access error modal
+    function showNetworkErrorModal() {
+      const modal = document.getElementById("network-error-modal");
+      if (modal) {
+        modal.classList.remove("hidden");
+        
+        // Unblock page now that modal is visible
+        document.documentElement.style.pointerEvents = "auto";
+        document.documentElement.style.opacity = "1";
+      }
+    }
+
+    function closeNetworkErrorModal() {
+      const modal = document.getElementById("network-error-modal");
+      if (modal) {
+        modal.classList.add("hidden");
+      }
+    }
+    
+    function showNetworkErrorModalFromApi(blockedIp) {
+      // Set the IP address if provided
+      if (blockedIp) {
+        const ipElement = document.getElementById("network-error-ip");
+        if (ipElement) {
+          ipElement.textContent = blockedIp;
+        }
+      }
+      
+      // Show the modal
+      showNetworkErrorModal();
+      
+      // Setup close button if not already done
+      const closeButton = document.getElementById("network-error-close");
+      if (closeButton && !closeButton.dataset.networkErrorListenerAttached) {
+        closeButton.dataset.networkErrorListenerAttached = "true";
+        closeButton.addEventListener("click", closeNetworkErrorModal);
+      }
+      
+      // Setup Escape key handler
+      window.addEventListener("keydown", event => {
+        if (event.key === "Escape") {
+          const modal = document.getElementById("network-error-modal");
+          if (modal && !modal.classList.contains("hidden")) {
+            closeNetworkErrorModal();
+          }
+        }
+      });
+    }
+
     window.addEventListener("beforeinstallprompt", event => {
       event.preventDefault();
       deferredInstallPrompt = event;
@@ -538,12 +587,22 @@
     async function loadProfile() {
       try {
         const res = await fetch("/api/user/me");
-        if (!res.ok) throw new Error("Not logged in");
         const data = await res.json();
+        
+        // Check if blocked by network filter (returns 403 with error code)
+        if (!res.ok && res.status === 403 && data.code === "NETWORK_ACCESS_BLOCKED") {
+          // Show network error modal with blocked IP
+          showNetworkErrorModalFromApi(data.blockedIp);
+          appState.user = null;
+          refreshProfileView();
+          return null;
+        }
+        
+        if (!res.ok) throw new Error("Not logged in");
         appState.user = data;
         refreshProfileView();
         return data;
-      } catch {
+      } catch (err) {
         appState.user = null;
         refreshProfileView();
         return null;
