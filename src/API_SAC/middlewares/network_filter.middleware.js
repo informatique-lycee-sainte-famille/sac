@@ -96,8 +96,9 @@ module.exports = function ipFilter({ env, LAN_SUBNETS = [] }) {
         role === "STUDENT";
 
       if (isStudent && !isInLan) {
+        const clientIpStr = parsedIp.toString();
         log_technical(TECHNICAL_LEVELS.WARNING, "Blocked student outside allowed LANs", {
-          ip: parsedIp.toString(),
+          ip: clientIpStr,
           allowedLans: LAN_SUBNETS.map(formatSubnet),
           userId: req.session?.user?.id,
         });
@@ -107,17 +108,20 @@ module.exports = function ipFilter({ env, LAN_SUBNETS = [] }) {
           userId: req.session?.user?.id,
           entityType: "NetworkAccess",
           metadata: {
-            ip: parsedIp.toString(),
+            ip: clientIpStr,
             allowedLans: LAN_SUBNETS.map(formatSubnet),
             ipChain,
           },
         });
 
-        return res
-          .status(403)
-          .sendFile(
-            path.join(__dirname, "../../front/public/errors/403.error.html")
-          );
+        // Return 403 JSON response for API calls, let page loads through
+        // (page loads will fail when they try to call /api/user/me)
+        return res.status(403).json({
+          error: "NETWORK_ACCESS_BLOCKED",
+          message: "Vous n'êtes pas connecté aux réseaux autorisés de l'établissement.",
+          blockedIp: clientIpStr,
+          code: "NETWORK_ACCESS_BLOCKED",
+        });
       }
 
       next();
