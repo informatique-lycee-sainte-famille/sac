@@ -74,6 +74,10 @@ async function importSessions(options = {}) {
   for (const cls of classes) {
     let totalForClass = 0;
     let skipped = 0;
+    const importedEdIds = new Set();
+    let minStartDate = null;
+    let maxStartDate = null;
+
     try {
       const cours = await get_data_by_type('EDT_CLASSE', {
         date,
@@ -152,6 +156,17 @@ async function importSessions(options = {}) {
                 status: status,
             },
             });
+
+            importedEdIds.add(edId);
+
+            // Track date range for cleanup
+            if (minStartDate === null || startTime < minStartDate) {
+              minStartDate = startTime;
+            }
+            if (maxStartDate === null || startTime > maxStartDate) {
+              maxStartDate = startTime;
+            }
+
             total++;
             totalForClass++;
 
@@ -163,6 +178,34 @@ async function importSessions(options = {}) {
             });
         }
       }
+
+      // Remove stale course sessions not returned by the API for this date range
+      if (importedEdIds.size > 0 && minStartDate !== null && maxStartDate !== null) {
+        const endOfDay = new Date(maxStartDate);
+        endOfDay.setHours(23, 59, 59, 999);
+
+        const deleted = await prisma.courseSession.deleteMany({
+          where: {
+            classId: cls.id,
+            startTime: {
+              gte: minStartDate,
+              lte: endOfDay,
+            },
+            edId: {
+              notIn: Array.from(importedEdIds),
+            },
+          },
+        });
+
+        if (deleted.count > 0) {
+          log_technical(TECHNICAL_LEVELS.INFO, "Removed stale course sessions", {
+            classCode: cls.code,
+            deletedCount: deleted.count,
+            dateRange: { start: minStartDate, end: endOfDay },
+          });
+        }
+      }
+
       log_technical(TECHNICAL_LEVELS.INFO, "Class schedule imported", {
         classCode: cls.code,
         importedCount: totalForClass,
