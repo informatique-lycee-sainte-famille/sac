@@ -138,6 +138,12 @@ app.use(express.static(path.join(__dirname, "../front/public"),
       res.setHeader("X-Content-Type-Options", "nosniff");
       if (filePath.endsWith(".html")) {
         res.setHeader("Cache-Control", "no-cache");
+      } else if (
+        filePath.endsWith(path.join("front", "public", "script.app.js")) ||
+        filePath.endsWith(path.join("front", "public", "js", "component_loader.loader.js")) ||
+        filePath.endsWith(path.join("front", "public", "sw.service_worker.js"))
+      ) {
+        res.setHeader("Cache-Control", "no-cache, max-age=0, must-revalidate");
       } else {
         res.setHeader("Cache-Control", "public, max-age=3600");
       }

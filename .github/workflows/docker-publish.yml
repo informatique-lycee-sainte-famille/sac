@@ -56,6 +56,11 @@ jobs:
       security-events: write
 
     steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
       - name: Trivy image scan summary
         id: trivy_image_summary
         continue-on-error: true
@@ -63,10 +68,32 @@ jobs:
         with:
           image-ref: ${{ needs.build.outputs.image }}
           format: table
+          output: trivy-image-summary.txt
           scanners: vuln
           ignore-unfixed: true
           severity: HIGH,CRITICAL
           exit-code: "1"
+
+      - name: Publish Trivy table report in logs
+        if: always()
+        run: |
+          if [ -f trivy-image-summary.txt ]; then
+            cat trivy-image-summary.txt
+          else
+            echo "Trivy table report not generated."
+          fi
+
+      - name: Trivy image JSON
+        if: always()
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ needs.build.outputs.image }}
+          format: json
+          output: trivy-image-results.json
+          scanners: vuln
+          ignore-unfixed: true
+          severity: HIGH,CRITICAL
+          exit-code: "0"
 
       - name: Trivy image SARIF
         if: always()
@@ -79,6 +106,39 @@ jobs:
           ignore-unfixed: true
           severity: HIGH,CRITICAL
           exit-code: "0"
+
+      - name: Upload Trivy scan artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-image-reports-${{ github.event.workflow_run.head_sha }}
+          if-no-files-found: warn
+          retention-days: 14
+          path: |
+            trivy-image-summary.txt
+            trivy-image-results.json
+            trivy-image-results.sarif
+
+      - name: Add Trivy summary to workflow summary
+        if: always()
+        run: |
+          {
+            echo "## Trivy image scan"
+            echo "Image: \`${{ needs.build.outputs.image }}\`"
+            echo ""
+            if [ -f trivy-image-summary.txt ]; then
+              echo "<details><summary>Open Trivy table report</summary>"
+              echo ""
+              echo '```text'
+              cat trivy-image-summary.txt
+              echo '```'
+              echo "</details>"
+            else
+              echo "Trivy table report not generated."
+            fi
+            echo ""
+            echo "Artifacts: trivy-image-reports-${{ github.event.workflow_run.head_sha }}"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload Trivy image SARIF
         if: ${{ always() && hashFiles('trivy-image-results.sarif') != '' }}
