@@ -17,7 +17,7 @@ const state = {
   },
 };
 
-const PLACEHOLDER_AVATAR = "/ressources/ensemble_scolaire_lycee_sainte_famille_saintonge_formation_logo_512x512.png";
+const PLACEHOLDER_AVATAR = "/resources/ensemble_scolaire_lycee_sainte_famille_saintonge_formation_logo_512x512.png";
 
 function escapeHtml(value) {
   return String(value ?? "")

@@ -19,14 +19,14 @@ function findFirstExistingPath(paths) {
 function registerUnicodeFonts(doc) {
   const regularFont = findFirstExistingPath([
     process.env.PDF_FONT_REGULAR_PATH,
-    path.join(__dirname, "../../front/public/ressources/fonts/DejaVuSans.ttf"),
+    path.join(__dirname, "../../front/public/resources/fonts/DejaVuSans.ttf"),
     "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
     "/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf",
     "C:/Windows/Fonts/arial.ttf",
   ].filter(Boolean));
   const boldFont = findFirstExistingPath([
     process.env.PDF_FONT_BOLD_PATH,
-    path.join(__dirname, "../../front/public/ressources/fonts/DejaVuSans-Bold.ttf"),
+    path.join(__dirname, "../../front/public/resources/fonts/DejaVuSans-Bold.ttf"),
     "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
     "/usr/share/fonts/truetype/liberation2/LiberationSans-Bold.ttf",
     "C:/Windows/Fonts/arialbd.ttf",
@@ -133,8 +133,8 @@ function formatNameWithComment(person) {
 
 function drawHeader(doc, data) {
   try {
-    doc.image(path.join(__dirname, "../../front/public/ressources/logo1.png"), 40, 20, { width: 70 });
-    doc.image(path.join(__dirname, "../../front/public/ressources/logo2.png"), doc.page.width - 110, 20, { width: 70 });
+    doc.image(path.join(__dirname, "../../front/public/resources/logo1.png"), 40, 20, { width: 70 });
+    doc.image(path.join(__dirname, "../../front/public/resources/logo2.png"), doc.page.width - 110, 20, { width: 70 });
   } catch {}
 
   doc.moveDown(2);
