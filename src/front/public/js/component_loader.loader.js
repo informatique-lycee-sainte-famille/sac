@@ -54,7 +54,7 @@
     const htmlUrl = `${basePath}.${fileType}.html`;
     const response = await fetch(withVersion(htmlUrl));
     if (!response.ok) {
-      throw new Error(`Component not found: ${htmlUrl}`);
+      throw new Error(`Component load failed (${response.status}): ${htmlUrl}`);
     }
 
     host.innerHTML = await response.text();

@@ -13,6 +13,7 @@
       .map(code => String.fromCharCode(code))
       .join("");
     let adminMediaBuffer = "";
+    let networkErrorEscapeListenerAttached = false;
 
     // Handle network access error modal
     function showNetworkErrorModal() {
@@ -25,6 +26,16 @@
         document.documentElement.style.opacity = "1";
       }
     }
+
+    function handleNetworkErrorEscapeKey(event) {
+      if (event.key === "Escape") {
+        const modal = document.getElementById("network-error-modal");
+        if (modal && !modal.classList.contains("hidden")) {
+          closeNetworkErrorModal();
+        }
+      }
+    }
+
 
     function closeNetworkErrorModal() {
       const modal = document.getElementById("network-error-modal");
@@ -52,15 +63,15 @@
         closeButton.addEventListener("click", closeNetworkErrorModal);
       }
       
-      // Setup Escape key handler
-      window.addEventListener("keydown", event => {
-        if (event.key === "Escape") {
-          const modal = document.getElementById("network-error-modal");
-          if (modal && !modal.classList.contains("hidden")) {
-            closeNetworkErrorModal();
-          }
+    // Setup Escape key handler
+    if (!networkErrorEscapeListenerAttached) {
+      if (event.key === "Escape") {
+        window.addEventListener("keydown", handleNetworkErrorEscapeKey);
+        const modal = document.getElementById("network-error-modal");
+        networkErrorEscapeListenerAttached = true;
+        if (modal && !modal.classList.contains("hidden")) {
         }
-      });
+      }
     }
 
     window.addEventListener("beforeinstallprompt", event => {
