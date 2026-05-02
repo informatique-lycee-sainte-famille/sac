@@ -274,11 +274,11 @@ function userRow(user) {
           </button>
           <button type="button" data-force-logout-user="${escapeHtml(user.id)}" class="inline-flex items-center gap-1 border border-amber-600 bg-amber-600 px-2 py-1.5 text-xs font-medium text-white transition hover:bg-amber-700 whitespace-nowrap" title="Déconnecter cet utilisateur">
             <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
-            <span>Déco</span>
+            <span>Déconnecter</span>
           </button>
           <button type="button" data-delete-user="${escapeHtml(user.id)}" class="inline-flex items-center gap-1 border border-red-700 bg-red-700 px-2 py-1.5 text-xs font-medium text-white transition hover:bg-red-800 whitespace-nowrap" title="Supprimer cet utilisateur">
             <i class="fa-solid fa-trash" aria-hidden="true"></i>
-            <span>Supp</span>
+            <span>Supprimer</span>
           </button>
         </div>
       </td>
