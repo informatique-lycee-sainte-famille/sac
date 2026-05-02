@@ -495,14 +495,14 @@ function refreshWebNfcUi() {
   document.getElementById("admin-nfc-web-unavailable")?.classList.toggle("hidden", supported);
 
   if (!window.isSecureContext) {
-    setWebNfcStatus("L'ecriture NFC directe exige HTTPS ou localhost.", "warning");
+    setWebNfcStatus("L'écriture NFC directe exige HTTPS ou localhost.", "warning");
     return;
   }
 
   setWebNfcStatus(
     supported
-      ? "Ecriture directe disponible sur ce navigateur. Preparez une carte NDEF vierge ou reinscriptible."
-      : "Ecriture directe non supportee ici. Utilisez NFC Tools pour programmer la carte.",
+      ? "Écriture directe disponible sur ce navigateur. Préparez une carte NDEF vierge ou réinscriptible."
+      : "Écriture directe non supportée ici. Utilisez NFC Tools pour programmer la carte.",
     supported ? "success" : "warning"
   );
 }
@@ -648,7 +648,7 @@ async function startNfcRead() {
 async function writeNfcCard() {
   const url = getGeneratedNfcUrl();
   if (!url) {
-    showAlert("Aucune URL NFC a ecrire.", "error");
+    showAlert("Aucune URL NFC à écrire.", "error");
     return;
   }
   if (!canUseWebNfc()) {
@@ -658,13 +658,13 @@ async function writeNfcCard() {
 
   const confirmed = await confirmAdminAction({
     title: "Ecrire la carte NFC",
-    message: `SAC va ecrire cette URL dans la carte NFC: ${url}. Approchez une carte NDEF vierge ou reinscriptible apres validation.`,
+    message: `SAC va écrire cette URL dans la carte NFC: ${url}. Approchez une carte NDEF vierge ou réinscriptible après validation.`,
     confirmLabel: "Ecrire",
   });
   if (!confirmed) return;
 
   try {
-    setWebNfcStatus("Permission NFC en attente, puis approchez la carte du telephone...", "info");
+    setWebNfcStatus("Permission NFC en attente, puis approchez la carte du téléphone...", "info");
     const ndef = new NDEFReader();
     setAdminNfcIgnore(document.getElementById("admin-nfc-uid")?.value || "");
     await ndef.write({
