@@ -100,7 +100,6 @@ router.get("/users", async (req, res) => {
       { lastName: "asc" },
       { firstName: "asc" },
     ],
-    take: 500,
   });
 
   res.json(users);

@@ -317,6 +317,20 @@ async function importUsers() {
   }
 
   if (activeStudentEdIds.size > 0) {
+    const departedStudentsList = await prisma.user.findMany({
+      where: {
+        role: "student",
+        edId: {
+          not: null,
+          notIn: [...activeStudentEdIds],
+        },
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+      },
+    });
     const deleted = await prisma.user.deleteMany({
       where: {
         role: "student",
@@ -334,6 +348,7 @@ async function importUsers() {
         entityType: "User",
         metadata: {
           deletedCount: departedStudentsDeleted,
+          departedStudents: departedStudentsList,
         },
       });
     }
