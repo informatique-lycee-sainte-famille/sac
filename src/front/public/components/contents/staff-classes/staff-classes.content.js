@@ -85,7 +85,7 @@ function bindAvatarFallbacks(root = document) {
       };
       
       // 3 second timeout for image load
-      let loadTimeout = setTimeout(() => {
+      const loadTimeout = setTimeout(() => {
         triggerFallback();
       }, 3000);
       
