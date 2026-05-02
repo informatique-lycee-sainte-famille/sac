@@ -1028,7 +1028,7 @@ export async function init() {
   document.getElementById("admin-nfc-web-lock")?.addEventListener("click", lockNfcCard);
   window.addEventListener("sac:admin-nfc-neutralized", event => {
     const nfcUid = event.detail?.nfcUid || "";
-    setWebNfcStatus(`Scan NFC ignore apres écriture admin (${nfcUid}). Vous restez dans l'outil cartes NFC.`, "success");
+    setWebNfcStatus(`Scan NFC ignoré après écriture admin (${nfcUid}). Vous restez dans l'outil cartes NFC.`, "success");
   });
   document.getElementById("admin-system-test")?.addEventListener("click", async () => {
     try {

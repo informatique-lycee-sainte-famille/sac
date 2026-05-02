@@ -1056,15 +1056,15 @@
               </div>
             </div>
             <div class="p-5">
-              <p class="text-sm text-neutral-600">Cette action valide la session, envoie l'appel a EcoleDirecte, génère le PDF et déclenche l'envoi mail prévu.</p>
+              <p class="text-sm text-neutral-600">Cette action valide la session, envoie l'appel à EcoleDirecte, génère le PDF et déclenche l'envoi mail prévu.</p>
               <div class="mt-5 grid gap-3 sm:grid-cols-2">
                 <div class="border border-neutral-200 bg-neutral-50 p-3">
                   <p class="text-xs font-semibold uppercase text-neutral-500">Classe</p>
-                  <p class="mt-1 break-words text-base font-semibold">${escapeHtml(summary.className || "Non renseignee")}</p>
+                  <p class="mt-1 break-words text-base font-semibold">${escapeHtml(summary.className || "Non renseignée")}</p>
                 </div>
                 <div class="border border-neutral-200 bg-neutral-50 p-3">
                   <p class="text-xs font-semibold uppercase text-neutral-500">Horaire</p>
-                  <p class="mt-1 break-words text-base font-semibold">${escapeHtml(summary.horaire || "Non renseigne")}</p>
+                  <p class="mt-1 break-words text-base font-semibold">${escapeHtml(summary.horaire || "Non renseigné")}</p>
                 </div>
                 <div class="border border-neutral-200 bg-neutral-50 p-3 sm:col-span-2">
                   <p class="text-xs font-semibold uppercase text-neutral-500">Cours</p>
