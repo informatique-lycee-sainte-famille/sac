@@ -1,5 +1,5 @@
 // ./API_SAC/commons/session_config.common.js
-const session = require("express-session");
+require("express-session");
 const PrismaSessionStore = require("./prisma_session_store.common");
 
 const DAY = 1000 * 60 * 60 * 24;

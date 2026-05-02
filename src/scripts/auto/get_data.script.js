@@ -1,7 +1,6 @@
 // ./scripts/auto/get_data.script.js
 const {
   fetchData,
-  USER_ID,
   parseArgs,
   buildUrl,
   outputJSON,

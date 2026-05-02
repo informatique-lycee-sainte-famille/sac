@@ -5,10 +5,6 @@ const { fromParis, findBestUserTeacherMatch, normalizeSoft } = require("../commo
 const { prisma } = require("../commons/prisma.common");
 const { LOG_DESTINATIONS, TECHNICAL_LEVELS, log_business, log_technical } = require("../commons/logger.common");
 
-function parseDateTime(dateStr, timeStr) {
-  return new Date(`${dateStr}T${timeStr}`);
-}
-
 function computeSessionStatus(c, startTime, endTime) {
   const now = new Date();
 
