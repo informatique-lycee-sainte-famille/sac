@@ -16,6 +16,14 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
+function normalizeSessionId(value) {
+  const text = String(value ?? "").trim();
+  if (!/^\d+$/.test(text)) return null;
+  const numericId = Number.parseInt(text, 10);
+  if (!Number.isSafeInteger(numericId) || numericId <= 0) return null;
+  return numericId;
+}
+
 function toIsoDate(value) {
   const date = value instanceof Date ? value : new Date(value);
   const year = date.getFullYear();
@@ -466,11 +474,16 @@ function closeCourseModal() {
 }
 
 async function openCourseModal(sessionId, options = {}) {
+  const normalizedSessionId = normalizeSessionId(sessionId);
+  if (normalizedSessionId === null) {
+    throw new Error("Identifiant de session invalide.");
+  }
+
   if (!options.keepExisting) {
     closeCourseModal();
   }
-  state.activeSessionId = Number(sessionId);
-  subscribeRealtimeSession(sessionId);
+  state.activeSessionId = normalizedSessionId;
+  subscribeRealtimeSession(normalizedSessionId);
 
   let modal = document.getElementById("course-session-modal");
   if (!modal) {
@@ -502,7 +515,7 @@ async function openCourseModal(sessionId, options = {}) {
   }
 
   try {
-    const response = await fetch(`/api/sessions/${sessionId}`);
+    const response = await fetch(`/api/sessions/${normalizedSessionId}`);
     const data = await response.json();
     if (!response.ok) {
       throw new Error(data.message || data.error || "Impossible de charger le détail du cours.");
