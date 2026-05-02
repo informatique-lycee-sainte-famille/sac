@@ -32,7 +32,7 @@
   },
   "homepage": "https://github.com/informatique-lycee-sainte-famille/SAC#readme",
   "dependencies": {
-    "@azure/msal-node": "^3.8.3",
+    "@azure/msal-node": "^5.1.5",
     "@prisma/adapter-pg": "^7.7.0",
     "@prisma/client": "^7.7.0",
     "csv-parser": "^3.2.0",
