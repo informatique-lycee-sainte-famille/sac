@@ -5,7 +5,7 @@ const { prisma } = require("../../API_SAC/commons/prisma.common");
 const { LOG_DESTINATIONS, TECHNICAL_LEVELS, log_business, log_technical } = require("../../API_SAC/commons/logger.common");
 
 const DEFAULT_DELAY_MS = 5000;
-const DEFAULT_LIMIT = 500;
+const DEFAULT_LIMIT = 5000;
 const DEFAULT_TIMEOUT_MS = 15000;
 
 function parseArgs(argv = process.argv.slice(2)) {
