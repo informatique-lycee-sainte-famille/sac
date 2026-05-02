@@ -18,6 +18,9 @@ const userSelect = {
   edEmail: true,
   edId: true,
   classId: true,
+  o365AvatarB64: true,
+  edPhotoUrl: true,
+  edPhotoB64: true,
 };
 const sessionSelect = {
   id: true,
@@ -129,6 +132,116 @@ router.patch("/users/:userId/role", async (req, res) => {
   res.json(user);
 });
 
+router.post("/users/:userId/force-logout", async (req, res) => {
+  const { userId } = req.params;
+  const parsedUserId = parsePositiveInt(userId);
+
+  if (!parsedUserId) {
+    return res.status(400).json({ error: "Utilisateur invalide" });
+  }
+
+  // Check user exists
+  const user = await prisma.user.findUnique({
+    where: { id: parsedUserId },
+    select: { id: true, firstName: true, lastName: true },
+  });
+
+  if (!user) {
+    return res.status(404).json({ error: "Utilisateur non trouvé" });
+  }
+
+  // Delete all browser sessions for this user
+  const deletedSessions = await prisma.browserSession.deleteMany({
+    where: {
+      data: {
+        path: ["user", "id"],
+        equals: parsedUserId,
+      },
+    },
+  });
+
+  await log_business("admin_user_force_logout", "Un admin a forcé la déconnexion d'un utilisateur.", {
+    req,
+    destination: LOG_DESTINATIONS.BOTH,
+    entityType: "User",
+    entityId: parsedUserId,
+    metadata: {
+      deletedSessionCount: deletedSessions.count,
+    },
+  });
+
+  res.json({ message: "Utilisateur déconnecté", deletedSessionCount: deletedSessions.count });
+});
+
+router.delete("/users/:userId", async (req, res) => {
+  const { userId } = req.params;
+  const parsedUserId = parsePositiveInt(userId);
+
+  if (!parsedUserId) {
+    return res.status(400).json({ error: "Utilisateur invalide" });
+  }
+
+  // Check user exists
+  const user = await prisma.user.findUnique({
+    where: { id: parsedUserId },
+    select: { id: true, firstName: true, lastName: true, role: true },
+  });
+
+  if (!user) {
+    return res.status(404).json({ error: "Utilisateur non trouvé" });
+  }
+
+  // Prevent deletion of the last admin
+  if (user.role === "admin") {
+    const adminCount = await prisma.user.count({
+      where: { role: "admin" },
+    });
+    if (adminCount <= 1) {
+      return res.status(400).json({ error: "Impossible de supprimer le dernier administrateur" });
+    }
+  }
+
+  // Delete all related data in correct order
+  await prisma.attendanceRecord.deleteMany({
+    where: { userId: parsedUserId },
+  });
+
+  await prisma.nfcScan.deleteMany({
+    where: { userId: parsedUserId },
+  });
+
+  await prisma.browserSession.deleteMany({
+    where: {
+      data: {
+        path: ["user", "id"],
+        equals: parsedUserId,
+      },
+    },
+  });
+
+  const deletedUser = await prisma.user.delete({
+    where: { id: parsedUserId },
+    select: userSelect,
+  });
+
+  await log_business("admin_user_deleted", "Un admin a supprimé un compte utilisateur.", {
+    req,
+    destination: LOG_DESTINATIONS.BOTH,
+    entityType: "User",
+    entityId: parsedUserId,
+    metadata: {
+      deletedUser: {
+        id: deletedUser.id,
+        firstName: deletedUser.firstName,
+        lastName: deletedUser.lastName,
+        role: deletedUser.role,
+      },
+    },
+  });
+
+  res.json({ message: "Utilisateur supprimé", deletedUser });
+});
+
 // ROOMS
 router.get("/rooms", async (req, res) => {
   const rooms = await prisma.room.findMany({
@@ -145,6 +258,43 @@ router.get("/rooms", async (req, res) => {
   });
 
   res.json(rooms);
+});
+
+// CLASSES
+router.get("/classes", async (req, res) => {
+  const classes = await prisma.class.findMany({
+    orderBy: [
+      { name: "asc" },
+      { code: "asc" },
+    ],
+    select: {
+      id: true,
+      code: true,
+      name: true,
+    },
+  });
+
+  res.json(classes);
+});
+
+// TEACHERS
+router.get("/teachers", async (req, res) => {
+  const teachers = await prisma.user.findMany({
+    where: { role: "teacher" },
+    orderBy: [
+      { lastName: "asc" },
+      { firstName: "asc" },
+    ],
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      o365Email: true,
+      edEmail: true,
+    },
+  });
+
+  res.json(teachers);
 });
 
 // SESSION CRUD

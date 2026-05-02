@@ -4,6 +4,11 @@ const state = {
   users: [],
   sessions: [],
   rooms: [],
+  usersFilters: {
+    search: "",
+    role: "",
+    classId: "",
+  },
   nfcReadAbortController: null,
   options: {
     classes: [],
@@ -11,6 +16,8 @@ const state = {
     teachers: [],
   },
 };
+
+const PLACEHOLDER_AVATAR = "/ressources/ensemble_scolaire_lyce_sainte_famille_saintonge_formation_logo_512x512.png";
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -148,11 +155,109 @@ function setActiveTab(tab) {
   });
 }
 
+function filteredUsers() {
+  const query = state.usersFilters.search.trim().toLowerCase();
+  const role = state.usersFilters.role || "";
+  const classId = state.usersFilters.classId || "";
+
+  return state.users.filter(user => {
+    // Filter by role
+    if (role && user.role !== role) return false;
+
+    // Filter by class (for students)
+    if (classId && String(user.classId) !== String(classId)) return false;
+
+    // Filter by search query
+    if (query) {
+      const userText = [
+        String(user.id),
+        user.firstName || "",
+        user.lastName || "",
+        user.o365Email || "",
+        user.edEmail || "",
+        user.edId || "",
+      ].join(" ").toLowerCase();
+      if (!userText.includes(query)) return false;
+    }
+
+    return true;
+  });
+}
+
+function getAvatarFallbacks(user) {
+  // Priority order: Office 365 avatar → EcoleDirecte base64 → EcoleDirecte URL → Placeholder
+  const fallbacks = [];
+  
+  if (user?.o365AvatarB64) {
+    fallbacks.push(`${user.o365AvatarB64}`);
+  }
+  if (user?.edPhotoB64) {
+    fallbacks.push(`${user.edPhotoB64}`);
+  }
+  if (user?.edPhotoUrl) {
+    fallbacks.push(user.edPhotoUrl);
+  }
+  
+  fallbacks.push(PLACEHOLDER_AVATAR);
+  return fallbacks;
+}
+
+function avatarHtml(user, label) {
+  const fallbacks = getAvatarFallbacks(user);
+  const firstSrc = fallbacks[0];
+
+  return `
+    <img
+      src="${escapeHtml(firstSrc)}"
+      alt="${escapeHtml(label)}"
+      data-avatar-fallbacks="${escapeHtml(JSON.stringify(fallbacks))}"
+      data-avatar-index="0"
+      class="h-10 w-10 shrink-0 rounded-full border border-neutral-200 bg-white object-cover"
+    />
+  `;
+}
+
+function bindAvatarFallbacks(root = document) {
+  root.querySelectorAll("img[data-avatar-fallbacks]").forEach(image => {
+    if (image.dataset.avatarBound !== "true") {
+      image.dataset.avatarBound = "true";
+      
+      // Function to trigger fallback to next avatar source
+      const triggerFallback = () => {
+        const fallbacks = JSON.parse(image.dataset.avatarFallbacks || "[]");
+        const nextIndex = Number(image.dataset.avatarIndex || 0) + 1;
+        if (fallbacks[nextIndex]) {
+          image.dataset.avatarIndex = String(nextIndex);
+          image.src = fallbacks[nextIndex];
+        }
+      };
+      
+      // 5 second timeout for image load
+      let loadTimeout = setTimeout(() => {
+        triggerFallback();
+      }, 5000);
+      
+      // Clear timeout on successful load
+      image.addEventListener("load", () => {
+        clearTimeout(loadTimeout);
+      }, { once: true });
+      
+      // Handle explicit load errors
+      image.addEventListener("error", () => {
+        clearTimeout(loadTimeout);
+        triggerFallback();
+      });
+    }
+  });
+}
+
 function userRow(user) {
+  const userName = `${user.lastName || ""} ${user.firstName || ""}`.trim() || "Sans nom";
   return `
     <tr class="border-t border-neutral-200">
+      <td class="px-2 py-2 text-sm">${avatarHtml(user, userName)}</td>
       <td class="px-2 py-2 text-sm">${escapeHtml(user.id)}</td>
-      <td class="px-2 py-2 text-sm">${escapeHtml(`${user.lastName || ""} ${user.firstName || ""}`.trim() || "Sans nom")}</td>
+      <td class="px-2 py-2 text-sm">${escapeHtml(userName)}</td>
       <td class="px-2 py-2 text-sm">${escapeHtml(user.o365Email || user.edEmail || "")}</td>
       <td class="px-2 py-2 text-sm">
         <select data-user-role="${escapeHtml(user.id)}" class="border border-neutral-300 bg-white px-2 py-1 text-sm">
@@ -162,10 +267,20 @@ function userRow(user) {
         </select>
       </td>
       <td class="px-2 py-2 text-right">
-        <button type="button" data-save-user-role="${escapeHtml(user.id)}" class="inline-flex items-center gap-2 border border-[#624292] bg-[#624292] px-3 py-1.5 text-sm font-medium text-white transition hover:bg-[#52357f]">
-          <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>
-          <span>Sauver</span>
-        </button>
+        <div class="inline-flex gap-1">
+          <button type="button" data-save-user-role="${escapeHtml(user.id)}" class="inline-flex items-center gap-1 border border-[#624292] bg-[#624292] px-2 py-1.5 text-xs font-medium text-white transition hover:bg-[#52357f] whitespace-nowrap">
+            <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>
+            <span>Sauver</span>
+          </button>
+          <button type="button" data-force-logout-user="${escapeHtml(user.id)}" class="inline-flex items-center gap-1 border border-amber-600 bg-amber-600 px-2 py-1.5 text-xs font-medium text-white transition hover:bg-amber-700 whitespace-nowrap" title="Déconnecter cet utilisateur">
+            <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
+            <span>Déco</span>
+          </button>
+          <button type="button" data-delete-user="${escapeHtml(user.id)}" class="inline-flex items-center gap-1 border border-red-700 bg-red-700 px-2 py-1.5 text-xs font-medium text-white transition hover:bg-red-800 whitespace-nowrap" title="Supprimer cet utilisateur">
+            <i class="fa-solid fa-trash" aria-hidden="true"></i>
+            <span>Supp</span>
+          </button>
+        </div>
       </td>
     </tr>
   `;
@@ -175,25 +290,30 @@ function renderUsers() {
   const target = document.getElementById("admin-users-list");
   if (!target) return;
 
-  if (!state.users.length) {
+  const filtered = filteredUsers();
+
+  if (!filtered.length) {
     target.innerHTML = `<p class="text-sm text-neutral-500">Aucun utilisateur trouvé.</p>`;
     return;
   }
 
   target.innerHTML = `
-    <table class="w-full min-w-[760px] text-left">
+    <table class="w-full min-w-[800px] text-left">
       <thead class="bg-neutral-100 text-xs uppercase text-neutral-500">
         <tr>
+          <th class="px-2 py-2 w-12">Photo</th>
           <th class="px-2 py-2">ID</th>
           <th class="px-2 py-2">Nom</th>
           <th class="px-2 py-2">Mail</th>
           <th class="px-2 py-2">Rôle</th>
-          <th class="px-2 py-2 text-right">Action</th>
+          <th class="px-2 py-2 text-right">Actions</th>
         </tr>
       </thead>
-      <tbody>${state.users.map(userRow).join("")}</tbody>
+      <tbody>${filtered.map(userRow).join("")}</tbody>
     </table>
   `;
+
+  bindAvatarFallbacks(target);
 
   document.querySelectorAll("[data-save-user-role]").forEach(button => {
     button.addEventListener("click", async () => {
@@ -211,13 +331,92 @@ function renderUsers() {
       }
     });
   });
+
+  document.querySelectorAll("[data-force-logout-user]").forEach(button => {
+    button.addEventListener("click", async () => {
+      const userId = button.dataset.forceLogoutUser;
+      const user = state.users.find(u => String(u.id) === String(userId));
+      const userName = `${user?.lastName || ""} ${user?.firstName || ""}`.trim() || `utilisateur #${userId}`;
+
+      const confirmed = await confirmAdminAction({
+        title: "Déconnecter l'utilisateur",
+        message: `Êtes-vous sûr de vouloir déconnecter ${escapeHtml(userName)} ? Cet utilisateur devra se reconnecter.`,
+        confirmLabel: "Déconnecter",
+      });
+
+      if (!confirmed) return;
+
+      try {
+        await api(`/api/admin/users/${encodeURIComponent(userId)}/force-logout`, {
+          method: "POST",
+        });
+        showAlert(`${userName} a été déconnecté.`);
+        await loadUsers();
+      } catch (error) {
+        showAlert(error.message, "error");
+      }
+    });
+  });
+
+  document.querySelectorAll("[data-delete-user]").forEach(button => {
+    button.addEventListener("click", async () => {
+      const userId = button.dataset.deleteUser;
+      const user = state.users.find(u => String(u.id) === String(userId));
+      const userName = `${user?.lastName || ""} ${user?.firstName || ""}`.trim() || `utilisateur #${userId}`;
+
+      const confirmed = await confirmAdminAction({
+        title: "Supprimer le compte utilisateur",
+        message: `Êtes-vous absolument sûr de vouloir supprimer le compte de ${escapeHtml(userName)} ? Cette action est irréversible et supprimera toutes les données associées.`,
+        confirmLabel: "Supprimer définitivement",
+        danger: true,
+      });
+
+      if (!confirmed) return;
+
+      try {
+        await api(`/api/admin/users/${encodeURIComponent(userId)}`, {
+          method: "DELETE",
+        });
+        showAlert(`Compte de ${userName} supprimé.`);
+        await loadUsers();
+      } catch (error) {
+        showAlert(error.message, "error");
+      }
+    });
+  });
 }
 
 async function loadUsers() {
-  const role = document.getElementById("admin-users-role")?.value || "";
-  const query = role ? `?role=${encodeURIComponent(role)}` : "";
-  state.users = await api(`/api/admin/users${query}`);
-  renderUsers();
+  try {
+    state.users = await api("/api/admin/users");
+    
+    // Load classes for filter dropdown if not already loaded
+    if (!state.options.classes.length) {
+      const [classes, rooms, teachers] = await Promise.all([
+        api("/api/admin/classes"),
+        api("/api/admin/rooms"),
+        api("/api/admin/teachers"),
+      ]).catch(() => [[], [], []]);
+      state.options.classes = classes;
+      state.options.rooms = rooms;
+      state.options.teachers = teachers;
+      populateUserFilterOptions();
+    }
+    
+    renderUsers();
+  } catch (error) {
+    showAlert(error.message, "error");
+  }
+}
+
+function populateUserFilterOptions() {
+  const classSelect = document.getElementById("admin-users-class");
+  if (classSelect) {
+    classSelect.innerHTML = [
+      '<option value="">Tous</option>',
+      ...state.options.classes.map(cls => optionHtml(cls.id, cls.name || cls.code)),
+    ].join("");
+  }
 }
 
 function optionHtml(value, label, selectedValue = "") {
@@ -763,8 +962,36 @@ export async function init() {
 
   document.getElementById("admin-users-filter")?.addEventListener("submit", async event => {
     event.preventDefault();
-    await loadUsers().catch(error => showAlert(error.message, "error"));
+    state.usersFilters.search = document.getElementById("admin-users-search")?.value || "";
+    state.usersFilters.role = document.getElementById("admin-users-role")?.value || "";
+    state.usersFilters.classId = document.getElementById("admin-users-class")?.value || "";
+    renderUsers();
   });
+
+  document.getElementById("admin-users-search")?.addEventListener("input", event => {
+    state.usersFilters.search = event.target.value || "";
+    renderUsers();
+  });
+
+  document.getElementById("admin-users-role")?.addEventListener("change", event => {
+    state.usersFilters.role = event.target.value || "";
+    renderUsers();
+  });
+
+  document.getElementById("admin-users-class")?.addEventListener("change", event => {
+    state.usersFilters.classId = event.target.value || "";
+    renderUsers();
+  });
+
+  document.getElementById("admin-users-clear")?.addEventListener("click", async event => {
+    event.preventDefault();
+    document.getElementById("admin-users-search").value = "";
+    document.getElementById("admin-users-role").value = "";
+    document.getElementById("admin-users-class").value = "";
+    state.usersFilters = { search: "", role: "", classId: "" };
+    renderUsers();
+  });
+
   document.getElementById("admin-users-refresh")?.addEventListener("click", () => loadUsers().catch(error => showAlert(error.message, "error")));
   document.getElementById("admin-sessions-refresh")?.addEventListener("click", () => loadSessions().catch(error => showAlert(error.message, "error")));
   document.getElementById("admin-session-form")?.addEventListener("submit", saveSession);
