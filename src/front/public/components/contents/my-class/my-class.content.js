@@ -80,7 +80,7 @@ export async function init() {
     target.innerHTML = `
       <h3 class="text-lg font-semibold">${escapeHtml(data.name || data.label || "Classe")}</h3>
       <p class="mt-1 text-sm text-neutral-600">${students.length} élève(s)</p>
-      <ul class="mt-4">${rows || "<li class=\"text-sm text-neutral-500\">Aucun eleve trouvé.</li>"}</ul>
+      <ul class="mt-4">${rows || "<li class=\"text-sm text-neutral-500\">Aucun élève trouvé.</li>"}</ul>
     `;
     bindAvatarFallbacks(target);
   } catch (error) {

@@ -652,14 +652,14 @@ async function writeNfcCard() {
     return;
   }
   if (!canUseWebNfc()) {
-    showAlert("L'ecriture NFC directe n'est pas disponible sur ce navigateur.", "error");
+    showAlert("L'écriture NFC directe n'est pas disponible sur ce navigateur.", "error");
     return;
   }
 
   const confirmed = await confirmAdminAction({
-    title: "Ecrire la carte NFC",
+    title: "Écrire la carte NFC",
     message: `SAC va écrire cette URL dans la carte NFC: ${url}. Approchez une carte NDEF vierge ou réinscriptible après validation.`,
-    confirmLabel: "Ecrire",
+    confirmLabel: "Écrire",
   });
   if (!confirmed) return;
 
@@ -675,11 +675,11 @@ async function writeNfcCard() {
         },
       ],
     });
-    setWebNfcStatus("Carte NFC ecrite. Scannez-la pour tester avant verrouillage definitif.", "success");
-    showAlert("Carte NFC ecrite.");
+    setWebNfcStatus("Carte NFC écrite. Scannez-la pour tester avant verrouillage définitif.", "success");
+    showAlert("Carte NFC écrite.");
   } catch (error) {
-    setWebNfcStatus(error.message || "Ecriture NFC impossible.", "error");
-    showAlert(error.message || "Ecriture NFC impossible.", "error");
+    setWebNfcStatus(error.message || "Écriture NFC impossible.", "error");
+    showAlert(error.message || "Écriture NFC impossible.", "error");
   }
 }
 
@@ -690,28 +690,28 @@ async function lockNfcCard() {
   }
 
   const firstConfirm = await confirmAdminAction({
-    title: "Verrouillage definitif irreversible",
-    message: "Avez-vous teste la carte avec succes ? Ce verrouillage met la carte en lecture seule permanente, sans mot de passe de deblocage.",
+    title: "Verrouillage définitif irréversible",
+    message: "Avez-vous testé la carte avec succès ? Ce verrouillage met la carte en lecture seule permanente, sans mot de passe de déblocage.",
     confirmLabel: "Oui, continuer",
     danger: true,
   });
   if (!firstConfirm) return;
 
   const secondConfirm = await confirmAdminAction({
-    title: "Derniere confirmation",
-    message: "Apres cette operation, la carte ne pourra probablement plus etre modifiee. Approchez uniquement la carte correcte.",
-    confirmLabel: "Verrouiller definitivement",
+    title: "Dernière confirmation",
+    message: "Après cette opération, la carte ne pourra probablement plus être modifiée. Approchez uniquement la carte correcte.",
+    confirmLabel: "Verrouiller définitivement",
     danger: true,
   });
   if (!secondConfirm) return;
 
   try {
-    setWebNfcStatus("Permission NFC en attente, puis approchez la carte a verrouiller definitivement...", "warning");
+    setWebNfcStatus("Permission NFC en attente, puis approchez la carte a verrouiller définitivement...", "warning");
     const ndef = new NDEFReader();
     setAdminNfcIgnore(document.getElementById("admin-nfc-uid")?.value || "");
     await ndef.makeReadOnly();
-    setWebNfcStatus("Carte NFC verrouillee definitivement en lecture seule.", "success");
-    showAlert("Carte NFC verrouillee definitivement.");
+    setWebNfcStatus("Carte NFC verrouillée définitivement en lecture seule.", "success");
+    showAlert("Carte NFC verrouillée définitivement.");
   } catch (error) {
     setWebNfcStatus(error.message || "Verrouillage NFC impossible.", "error");
     showAlert(error.message || "Verrouillage NFC impossible.", "error");
@@ -1028,7 +1028,7 @@ export async function init() {
   document.getElementById("admin-nfc-web-lock")?.addEventListener("click", lockNfcCard);
   window.addEventListener("sac:admin-nfc-neutralized", event => {
     const nfcUid = event.detail?.nfcUid || "";
-    setWebNfcStatus(`Scan NFC ignore apres ecriture admin (${nfcUid}). Vous restez dans l'outil cartes NFC.`, "success");
+    setWebNfcStatus(`Scan NFC ignore apres écriture admin (${nfcUid}). Vous restez dans l'outil cartes NFC.`, "success");
   });
   document.getElementById("admin-system-test")?.addEventListener("click", async () => {
     try {
