@@ -3,11 +3,11 @@ const express = require("express");
 const require_access = require("../middlewares/require_access.middleware");
 const { ROLES } = require("../commons/constants.common");
 const { TECHNICAL_LEVELS, log_technical } = require("../commons/logger.common");
-const { process_nfc_scan } = require("../workflows/start_course_session.workflow.js");
+const { process_nfc_scan } = require("../workflows/start_course_session.workflow");
 const {
   prepare_finalize_from_nfc,
   finalize_session,
-} = require("../workflows/finalize_course_session.workflow.js");
+} = require("../workflows/finalize_course_session.workflow");
 
 const router = express.Router();
 
