@@ -1115,17 +1115,17 @@
     }
 
     async function finalizeNfc(nfcUid) {
-      setNfcResult("Preparation de la validation finale...", "info");
+      setNfcResult("Préparation de la validation finale...", "info");
       const summary = await callNfcApi("/api/nfc/scan/finalize/prepare", { nfcUid });
 
       closeNfcResultModal();
       const confirmed = await confirmFinalizeAttendance(summary);
 
       if (!confirmed) {
-        return { cancelled: true, message: "Validation finale annulee." };
+        return { cancelled: true, message: "Validation finale annulée." };
       }
 
-      setNfcResult("Envoi de l'appel et generation du PDF...", "info");
+      setNfcResult("Envoi de l'appel et génération du PDF...", "info");
       return callNfcApi("/api/nfc/scan/finalize", { sessionId: summary.sessionId });
     }
 
