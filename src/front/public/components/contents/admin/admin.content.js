@@ -235,7 +235,7 @@ function bindAvatarFallbacks(root = document) {
       // 5 second timeout for image load
       let loadTimeout = setTimeout(() => {
         triggerFallback();
-      }, 5000);
+      }, 3000);
       
       // Clear timeout on successful load
       image.addEventListener("load", () => {
