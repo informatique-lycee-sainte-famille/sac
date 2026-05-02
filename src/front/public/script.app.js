@@ -216,7 +216,7 @@
             <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
           </div>
           <div class="min-w-0 flex-1">
-            <p class="text-sm font-semibold">Installation conseillee</p>
+            <p class="text-sm font-semibold">Installation conseillée</p>
             <p class="mt-1 text-sm text-neutral-600">L'usage sera plus simple et fluide si vous installez la PWA.</p>
             <p id="pwa-install-help" class="mt-2 hidden text-xs leading-relaxed text-neutral-500">${escapeHtml(getInstallHelp())}</p>
             <div class="mt-3 flex flex-wrap gap-2">
@@ -958,7 +958,7 @@
     }
 
     async function prepareNfc(nfcUid) {
-      setNfcResult("Verification du badge NFC...", "info");
+      setNfcResult("Vérification du badge NFC...", "info");
       return callNfcApi("/api/nfc/scan/prepare", { nfcUid });
     }
 
@@ -1047,7 +1047,7 @@
             <div class="bg-[#624292] px-5 py-4 text-white">
               <div class="flex items-start justify-between gap-4">
                 <div>
-                  <p class="text-xs font-semibold uppercase tracking-wide text-white/75">Validation definitive</p>
+                  <p class="text-xs font-semibold uppercase tracking-wide text-white/75">Validation définitive</p>
                   <h2 id="finalize-confirm-title" class="mt-1 text-2xl font-semibold">Envoyer l'appel</h2>
                 </div>
                 <button type="button" data-finalize-cancel class="text-white/80 hover:text-white" aria-label="Annuler">
@@ -1056,7 +1056,7 @@
               </div>
             </div>
             <div class="p-5">
-              <p class="text-sm text-neutral-600">Cette action valide la session, envoie l'appel a EcoleDirecte, genere le PDF et declenche l'envoi mail prevu.</p>
+              <p class="text-sm text-neutral-600">Cette action valide la session, envoie l'appel a EcoleDirecte, génère le PDF et déclenche l'envoi mail prévu.</p>
               <div class="mt-5 grid gap-3 sm:grid-cols-2">
                 <div class="border border-neutral-200 bg-neutral-50 p-3">
                   <p class="text-xs font-semibold uppercase text-neutral-500">Classe</p>

@@ -706,7 +706,7 @@ async function lockNfcCard() {
   if (!secondConfirm) return;
 
   try {
-    setWebNfcStatus("Permission NFC en attente, puis approchez la carte a verrouiller définitivement...", "warning");
+    setWebNfcStatus("Permission NFC en attente, puis approchez la carte à verrouiller définitivement...", "warning");
     const ndef = new NDEFReader();
     setAdminNfcIgnore(document.getElementById("admin-nfc-uid")?.value || "");
     await ndef.makeReadOnly();
@@ -779,7 +779,7 @@ function renderSessions() {
     button.addEventListener("click", async () => {
       const confirmed = await confirmAdminAction({
         title: "Supprimer la session",
-        message: "Supprimer cette session et ses informations associees ?",
+        message: "Supprimer cette session et ses informations associées ?",
         confirmLabel: "Supprimer",
         danger: true,
       });
@@ -1011,15 +1011,15 @@ export async function init() {
   document.getElementById("admin-nfc-copy-url")?.addEventListener("click", async () => {
     const value = document.getElementById("admin-nfc-url")?.value || "";
     if (!value) {
-      showAlert("Aucune URL NFC a copier.", "error");
+      showAlert("Aucune URL NFC à copier.", "error");
       return;
     }
     try {
       if (!navigator.clipboard) throw new Error("Presse-papiers indisponible.");
       await navigator.clipboard.writeText(value);
-      showAlert("URL NFC copiee.");
+      showAlert("URL NFC copiée.");
     } catch (error) {
-      showAlert("Copie automatique impossible, selectionnez l'URL manuellement.", "error");
+      showAlert("Copie automatique impossible, sélectionnez l'URL manuellement.", "error");
     }
   });
   document.getElementById("admin-nfc-web-write")?.addEventListener("click", writeNfcCard);
