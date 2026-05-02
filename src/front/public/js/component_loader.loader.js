@@ -16,8 +16,13 @@
   }
 
   async function resourceExists(url) {
-    const response = await fetch(withVersion(url), { method: "HEAD" }).catch(() => null);
-    return Boolean(response?.ok);
+    try {
+      const response = await fetch(withVersion(url), { method: "HEAD" });
+      return Boolean(response?.ok);
+    } catch (error) {
+      console.warn(`Failed to check resource availability: ${url}`, error);
+      return false;
+    }
   }
 
   function withVersion(url) {
@@ -26,18 +31,22 @@
   }
 
   async function loadModule(url, context) {
-    if (!(await resourceExists(url))) return null;
-
     if (!moduleCache.has(url)) {
       moduleCache.set(url, import(withVersion(url)));
     }
 
-    const module = await moduleCache.get(url);
-    if (typeof module.init === "function") {
-      await module.init(context);
-    }
+    try {
+      const module = await moduleCache.get(url);
+      if (typeof module.init === "function") {
+        await module.init(context);
+      }
 
-    return module;
+      return module;
+    } catch (error) {
+      console.warn(`Failed to load module: ${url}`, error);
+      moduleCache.delete(url);
+      return null;
+    }
   }
 
   function getFileType(context) {
@@ -54,7 +63,7 @@
     const htmlUrl = `${basePath}.${fileType}.html`;
     const response = await fetch(withVersion(htmlUrl));
     if (!response.ok) {
-      throw new Error(`Component not found: ${htmlUrl}`);
+      throw new Error(`Component load failed (${response.status}): ${htmlUrl}`);
     }
 
     host.innerHTML = await response.text();
@@ -103,23 +112,24 @@
   }
 
   async function loadContent(name, target = "#content-slot", context = {}) {
-    if (name === "scan" && !scanNavigationEnabled && context.allowScan !== true) {
-      name = "my-courses";
-    }
+    const resolvedName =
+      name === "scan" && !scanNavigationEnabled && context.allowScan !== true
+        ? "my-courses"
+        : name;
 
     const host = await loadFragment({
-      basePath: `/components/contents/${name}/${name}`,
+      basePath: `/components/contents/${resolvedName}/${resolvedName}`,
       target,
-      context: { ...context, name, type: "content" },
+      context: { ...context, name: resolvedName, type: "content" },
     });
 
-    activeContent = name;
+    activeContent = resolvedName;
 
     if (context.updateHash !== false) {
-      updateHash(name);
+      updateHash(resolvedName);
     }
 
-    refreshActiveNavigation(name);
+    refreshActiveNavigation(resolvedName);
 
     return host;
   }
