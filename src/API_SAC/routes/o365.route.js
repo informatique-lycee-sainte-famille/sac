@@ -7,7 +7,7 @@ const router = express.Router();
 const { msal_client } = require("../commons/msal_client.common");
 const auth_config = require("../commons/auth_config.common");
 const { prisma } = require("../commons/prisma.common");
-const { return_ed_account } = require("../commons/match_office_to_ed.common.js");
+const { return_ed_account } = require("../commons/match_office_to_ed.common");
 const { format_session_user } = require("../commons/session_user.common");
 const { LOG_DESTINATIONS, TECHNICAL_LEVELS, log_business, log_technical } = require("../commons/logger.common");
 
