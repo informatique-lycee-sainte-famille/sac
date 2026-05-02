@@ -16,6 +16,7 @@ const state = {
     teachers: [],
   },
 };
+const avatarLoadTimeouts = new WeakMap();
 
 const PLACEHOLDER_AVATAR = "/ressources/ensemble_scolaire_lycee_sainte_famille_saintonge_formation_logo_512x512.png";
 
@@ -231,20 +232,40 @@ function bindAvatarFallbacks(root = document) {
           image.src = fallbacks[nextIndex];
         }
       };
+
+      const clearImageTimeout = () => {
+        const timeoutId = avatarLoadTimeouts.get(image);
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          avatarLoadTimeouts.delete(image);
+        }
+      };
       
       // 5 second timeout for image load
-      let loadTimeout = setTimeout(() => {
+      const loadTimeout = setTimeout(() => {
+        avatarLoadTimeouts.delete(image);
         triggerFallback();
       }, 5000);
+      avatarLoadTimeouts.set(image, loadTimeout);
+
+      const removalObserver = new MutationObserver(() => {
+        if (!image.isConnected) {
+          clearImageTimeout();
+          removalObserver.disconnect();
+        }
+      });
+      removalObserver.observe(document.body, { childList: true, subtree: true });
       
       // Clear timeout on successful load
       image.addEventListener("load", () => {
-        clearTimeout(loadTimeout);
+        clearImageTimeout();
+        removalObserver.disconnect();
       }, { once: true });
       
       // Handle explicit load errors
       image.addEventListener("error", () => {
-        clearTimeout(loadTimeout);
+        clearImageTimeout();
+        removalObserver.disconnect();
         triggerFallback();
       });
     }
