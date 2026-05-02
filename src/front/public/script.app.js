@@ -930,6 +930,7 @@
     function getCanvasSignal() {
       const canvas = document.createElement("canvas");
       const ctx = canvas.getContext("2d");
+      const year = new Date().getFullYear();
       if (!ctx) return null;
 
       canvas.width = 280;
@@ -939,7 +940,7 @@
       ctx.fillRect(0, 0, 120, 36);
       ctx.fillStyle = "#069";
       ctx.font = "18px Arial";
-      ctx.fillText("SAC attendance 2026", 8, 8);
+      ctx.fillText(`SAC attendance ${year}`, 8, 8);
       ctx.fillStyle = "rgba(102, 204, 0, 0.7)";
       ctx.font = "16px Times New Roman";
       ctx.fillText("signature+nfc", 12, 42);

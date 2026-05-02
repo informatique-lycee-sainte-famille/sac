@@ -66,10 +66,20 @@ function firstForwardedValue(value) {
     .filter(Boolean)[0] || "";
 }
 
+function removeTrailingSlashes(value) {
+  let result = String(value || "").trim();
+
+  while (result.endsWith("/")) {
+    result = result.slice(0, -1);
+  }
+
+  return result;
+}
+
 function getExternalOrigin(req) {
   const configuredOrigin = process.env.ASSETLINKS_SITE || process.env.EXTERNAL_DOMAIN;
   if (configuredOrigin) {
-    return configuredOrigin.replace(/\/+$/, "");
+    return removeTrailingSlashes(configuredOrigin);
   }
 
   const proto =
@@ -81,7 +91,7 @@ function getExternalOrigin(req) {
     req.get("host") ||
     `localhost:${port}`;
 
-  return `${proto}://${host}`.replace(/\/+$/, "");
+  return removeTrailingSlashes(`${proto}://${host}`);
 }
 
 app.set('trust proxy', trustProxy);
