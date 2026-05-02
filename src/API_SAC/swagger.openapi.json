@@ -268,6 +268,88 @@
         }
       }
     },
+    "/admin/classes": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "[ADMIN] Lister les classes",
+        "description": "Rôle minimum: admin. Retourne la liste de toutes les classes.",
+        "x-min-role": "admin",
+        "responses": {
+          "200": {
+            "description": "Liste des classes",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer"
+                  },
+                  "code": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/admin/teachers": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "[ADMIN] Lister les enseignants",
+        "description": "Rôle minimum: admin. Retourne la liste de tous les utilisateurs ayant le rôle enseignant.",
+        "x-min-role": "admin",
+        "responses": {
+          "200": {
+            "description": "Liste des enseignants",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer"
+                  },
+                  "firstName": {
+                    "type": "string"
+                  },
+                  "lastName": {
+                    "type": "string"
+                  },
+                  "o365Email": {
+                    "type": "string"
+                  },
+                  "edEmail": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/responses/Forbidden"
+          }
+        }
+      }
+    },
     "/admin/sessions": {
       "post": {
         "tags": [
@@ -454,6 +536,98 @@
           }
         },
         "description": "Role minimum: admin."
+      }
+    },
+    "/admin/users/{userId}/force-logout": {
+      "post": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "[ADMIN] Forcer la deconnexion d'un utilisateur",
+        "x-min-role": "admin",
+        "parameters": [
+          {
+            "$ref": "#/parameters/UserIdPath"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Utilisateur deconnecte",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "message": {
+                  "type": "string"
+                },
+                "deletedSessionCount": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        },
+        "description": "Role minimum: admin. Supprime toutes les sessions de cet utilisateur pour le forcer a se reconnecter."
+      }
+    },
+    "/admin/users/{userId}": {
+      "delete": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "[ADMIN] Supprimer un compte utilisateur",
+        "x-min-role": "admin",
+        "parameters": [
+          {
+            "$ref": "#/parameters/UserIdPath"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Utilisateur supprime",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "message": {
+                  "type": "string"
+                },
+                "deletedUser": {
+                  "$ref": "#/definitions/User"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/responses/InternalError"
+          }
+        },
+        "description": "Role minimum: admin. ATTENTION: Suppression irreversible. Supprime l'utilisateur et toutes ses donnees associees (présences, logs NFC, sessions, etc)."
       }
     },
     "/attendance/pdf/day": {

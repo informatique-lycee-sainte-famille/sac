@@ -73,13 +73,31 @@ function bindAvatarFallbacks(root = document) {
   root.querySelectorAll("img[data-avatar-fallbacks]").forEach(image => {
     if (image.dataset.avatarBound !== "true") {
       image.dataset.avatarBound = "true";
-      image.addEventListener("error", () => {
+      
+      // Function to trigger fallback to next avatar source
+      const triggerFallback = () => {
         const fallbacks = JSON.parse(image.dataset.avatarFallbacks || "[]");
         const nextIndex = Number(image.dataset.avatarIndex || 0) + 1;
         if (fallbacks[nextIndex]) {
           image.dataset.avatarIndex = String(nextIndex);
           image.src = fallbacks[nextIndex];
         }
+      };
+      
+      // 5 second timeout for image load
+      let loadTimeout = setTimeout(() => {
+        triggerFallback();
+      }, 5000);
+      
+      // Clear timeout on successful load
+      image.addEventListener("load", () => {
+        clearTimeout(loadTimeout);
+      }, { once: true });
+      
+      // Handle explicit load errors
+      image.addEventListener("error", () => {
+        clearTimeout(loadTimeout);
+        triggerFallback();
       });
     }
   });
