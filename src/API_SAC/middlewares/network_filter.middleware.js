@@ -1,5 +1,5 @@
 // ./API_SAC/middlewares/network_filter.middleware.js
-const path = require("path");
+require("path");
 const ipaddr = require("ipaddr.js");
 const { TECHNICAL_LEVELS, log_business, log_technical } = require("../commons/logger.common");
 

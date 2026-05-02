@@ -11,7 +11,7 @@ const { return_ed_account } = require("../commons/match_office_to_ed.common.js")
 const { format_session_user } = require("../commons/session_user.common");
 const { LOG_DESTINATIONS, TECHNICAL_LEVELS, log_business, log_technical } = require("../commons/logger.common");
 
-const { get_highest_role_from_groups, map_to_prisma_role, ROLES } = require("../commons/constants.common");
+const { get_highest_role_from_groups, map_to_prisma_role } = require("../commons/constants.common");
 
 router.get("/login", async (req, res) => {
   const state = crypto.randomBytes(24).toString("base64url");

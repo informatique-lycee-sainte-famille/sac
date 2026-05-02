@@ -507,4 +507,5 @@ module.exports = {
   finalize_session,
   generate_class_day_pdf,
   is_session_finalized,
+  sessionToPdfData,
 };

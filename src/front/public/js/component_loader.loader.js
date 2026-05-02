@@ -26,16 +26,6 @@
     return `${url}${separator}v=${ASSET_VERSION}`;
   }
 
-  async function loadStyle(url) {
-    if (loadedStyles.has(url) || !(await resourceExists(url))) return;
-
-    const link = document.createElement("link");
-    link.rel = "stylesheet";
-    link.href = withVersion(url);
-    document.head.appendChild(link);
-    loadedStyles.add(url);
-  }
-
   async function loadModule(url, context) {
     if (!(await resourceExists(url))) return null;
 
