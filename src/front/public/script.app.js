@@ -8,7 +8,7 @@
     };
     let deferredInstallPrompt = null;
     const USER_PLACEHOLDER_AVATAR =
-      "/ressources/ensemble_scolaire_lyce_sainte_famille_saintonge_formation_logo_512x512.png";
+      "/ressources/ensemble_scolaire_lycee_sainte_famille_saintonge_formation_logo_512x512.png";
     const ADMIN_MEDIA_TRIGGER = [100, 114, 32, 104, 111, 117, 115, 101]
       .map(code => String.fromCharCode(code))
       .join("");

@@ -19,13 +19,13 @@
   },
   "icons": [
     {
-      "src": "/ressources/ensemble_scolaire_lyce_sainte_famille_saintonge_formation_logo_512x512.png",
+      "src": "/ressources/ensemble_scolaire_lycee_sainte_famille_saintonge_formation_logo_512x512.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/ressources/ensemble_scolaire_lyce_sainte_famille_saintonge_formation_logo_512x512.png",
+      "src": "/ressources/ensemble_scolaire_lycee_sainte_famille_saintonge_formation_logo_512x512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
@@ -38,7 +38,7 @@
       "url": "/#home",
       "icons": [
         {
-          "src": "/ressources/ensemble_scolaire_lyce_sainte_famille_saintonge_formation_logo_512x512.png",
+          "src": "/ressources/ensemble_scolaire_lycee_sainte_famille_saintonge_formation_logo_512x512.png",
           "sizes": "192x192",
           "type": "image/png"
         }

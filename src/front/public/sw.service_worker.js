@@ -10,7 +10,7 @@ const APP_SHELL = [
   "/politique-confidentialite.html",
   "/cookies.html",
   "/accessibilite.html",
-  "/ressources/ensemble_scolaire_lyce_sainte_famille_saintonge_formation_logo_512x512.png",
+  "/ressources/ensemble_scolaire_lycee_sainte_famille_saintonge_formation_logo_512x512.png",
   "/ressources/fond_page_login.png",
 ];
 

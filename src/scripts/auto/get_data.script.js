@@ -81,7 +81,7 @@ function computeEdtDateRange(rawDateOpt) {
     return { dateDebut: opt, dateFin: opt };
   }
 
-  throw new Error(`Option de date EDT_CLASSE  invalide: ${rawDateOpt}`);
+  throw new Error(`Option de date EDT_CLASSE invalide: ${rawDateOpt}`);
 }
 
 async function get_data_by_type(type, args = {}) {
@@ -156,7 +156,7 @@ async function get_data_by_type(type, args = {}) {
     const res = await fetchData(url, {});
     if (!(res?.code === 200 && Array.isArray(res.data?.contacts))) {
       console.log(res);
-      throw new Error('Aucun eleve trouvé.');
+      throw new Error('Aucun élève trouvé.');
     }
     let eleves = res.data.contacts;
 
