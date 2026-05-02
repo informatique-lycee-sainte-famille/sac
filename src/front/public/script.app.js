@@ -8,11 +8,12 @@
     };
     let deferredInstallPrompt = null;
     const USER_PLACEHOLDER_AVATAR =
-      "/ressources/ensemble_scolaire_lycee_sainte_famille_saintonge_formation_logo_512x512.png";
+      "/resources/ensemble_scolaire_lycee_sainte_famille_saintonge_formation_logo_512x512.png";
     const ADMIN_MEDIA_TRIGGER = [100, 114, 32, 104, 111, 117, 115, 101]
       .map(code => String.fromCharCode(code))
       .join("");
     let adminMediaBuffer = "";
+    let isNetworkErrorEscapeListenerAttached = false;
 
     // Handle network access error modal
     function showNetworkErrorModal() {
@@ -30,6 +31,15 @@
       const modal = document.getElementById("network-error-modal");
       if (modal) {
         modal.classList.add("hidden");
+      }
+    }
+
+    function handleNetworkErrorModalEscape(event) {
+      if (event.key === "Escape") {
+        const modal = document.getElementById("network-error-modal");
+        if (modal && !modal.classList.contains("hidden")) {
+          closeNetworkErrorModal();
+        }
       }
     }
     
@@ -53,14 +63,10 @@
       }
       
       // Setup Escape key handler
-      window.addEventListener("keydown", event => {
-        if (event.key === "Escape") {
-          const modal = document.getElementById("network-error-modal");
-          if (modal && !modal.classList.contains("hidden")) {
-            closeNetworkErrorModal();
-          }
-        }
-      });
+      if (!isNetworkErrorEscapeListenerAttached) {
+        window.addEventListener("keydown", handleNetworkErrorModalEscape);
+        isNetworkErrorEscapeListenerAttached = true;
+      }
     }
 
     window.addEventListener("beforeinstallprompt", event => {
@@ -107,7 +113,7 @@
             <i class="fa-solid fa-xmark" aria-hidden="true"></i>
           </button>
           <img
-            src="/ressources/logo3.png"
+            src="/resources/logo3.png"
             alt="Aperçu média"
             class="max-h-[82vh] w-full object-contain"
             data-admin-media-image
@@ -713,7 +719,10 @@
       if (user?.role !== "admin" || !nfcUid) return false;
 
       try {
-        const rawState = sessionStorage.getItem("sacAdminNfcIgnore") || localStorage.getItem("sacAdminNfcIgnore");
+        let rawState = sessionStorage.getItem("sacAdminNfcIgnore");
+        if (rawState === null) {
+          rawState = localStorage.getItem("sacAdminNfcIgnore");
+        }
         if (!rawState) return false;
 
         const state = JSON.parse(rawState);
@@ -864,8 +873,6 @@
         hardwareConcurrency: navigator.hardwareConcurrency || null,
         deviceMemory: navigator.deviceMemory || null,
         maxTouchPoints: navigator.maxTouchPoints || 0,
-        plugins: Array.from(navigator.plugins || []).map(plugin => plugin.name).sort(),
-        mimeTypes: Array.from(navigator.mimeTypes || []).map(mimeType => mimeType.type).sort(),
         fonts: detectInstalledFonts(),
         canvas: getCanvasSignal(),
       };
