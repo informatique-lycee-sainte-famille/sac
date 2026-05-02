@@ -193,13 +193,13 @@
       const isMac = /Macintosh|Mac OS X/i.test(ua);
 
       if (isIos) {
-        return "Sur iPhone/iPad: ouvrez le bouton Partager dans Safari, puis touchez Ajouter a l'ecran d'accueil.";
+        return "Sur iPhone/iPad: ouvrez le bouton Partager dans Safari, puis touchez Ajouter à l'écran d'accueil.";
       }
       if (isAndroid) {
-        return "Sur Android: ouvrez le menu du navigateur, puis choisissez Installer l'application ou Ajouter a l'ecran d'accueil.";
+        return "Sur Android: ouvrez le menu du navigateur, puis choisissez Installer l'application ou Ajouter à l'écran d'accueil.";
       }
       if (isWindows || isMac) {
-        return "Sur ordinateur: utilisez l'icone d'installation dans la barre d'adresse Chrome/Edge, ou le menu du navigateur.";
+        return "Sur ordinateur: utilisez l'icône d'installation dans la barre d'adresse Chrome/Edge, ou le menu du navigateur.";
       }
       return "Installez l'application depuis le menu de votre navigateur pour que les prochains scans NFC s'ouvrent plus naturellement.";
     }
@@ -757,7 +757,7 @@
         let signaturePad = null;
 
         if (!modal || !canvas || !clearBtn || !cancelBtn || !submitBtn) {
-          reject(new Error("Le module de signature n'est pas charge."));
+          reject(new Error("Le module de signature n'est pas chargé."));
           return;
         }
 
@@ -785,7 +785,7 @@
 
         function cancel() {
           close();
-          reject(new Error("Signature annulee."));
+          reject(new Error("Signature annulée."));
         }
 
         function submit() {
