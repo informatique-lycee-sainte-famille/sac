@@ -5,6 +5,7 @@ const state = {
   search: "",
 };
 const PLACEHOLDER_AVATAR = "/resources/ensemble_scolaire_lycee_sainte_famille_saintonge_formation_logo_512x512.png";
+const AVATAR_LOAD_TIMEOUT_MS = 3000;
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -87,7 +88,7 @@ function bindAvatarFallbacks(root = document) {
       // 3 second timeout for image load
       const loadTimeout = setTimeout(() => {
         triggerFallback();
-      }, 3000);
+      }, AVATAR_LOAD_TIMEOUT_MS);
       
       // Clear timeout on successful load
       image.addEventListener("load", () => {
@@ -98,7 +99,7 @@ function bindAvatarFallbacks(root = document) {
       image.addEventListener("error", () => {
         clearTimeout(loadTimeout);
         triggerFallback();
-      });
+      }, { once: true });
     }
   });
 }
@@ -254,7 +255,16 @@ function renderClassDetail() {
 
 async function loadClasses() {
   const response = await fetch("/api/classes/staff");
-  const data = await response.json().catch(() => ({}));
+  let data = {};
+  try {
+    data = await response.json();
+  } catch (error) {
+    console.error("Failed to parse /api/classes/staff response as JSON.", {
+      status: response.status,
+      statusText: response.statusText,
+      error,
+    });
+  }
 
   if (!response.ok) {
     throw new Error(data.message || data.error || "Impossible de charger les classes.");
