@@ -828,7 +828,7 @@
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        throw new Error(data.message || data.error || "Scan NFC refuse");
+        throw new Error(data.message || data.error || "Scan NFC refusé");
       }
 
       return data;
@@ -1073,7 +1073,7 @@
               </div>
               <div class="mt-5 grid gap-3 sm:grid-cols-3">
                 <div class="border border-emerald-200 bg-emerald-50 p-3 text-emerald-900">
-                  <p class="text-xs font-semibold uppercase">Presents</p>
+                  <p class="text-xs font-semibold uppercase">Présents</p>
                   <p class="mt-1 text-2xl font-bold">${escapeHtml(present)}/${escapeHtml(total)}</p>
                 </div>
                 <div class="border border-red-200 bg-red-50 p-3 text-red-900">
@@ -1081,7 +1081,7 @@
                   <p class="mt-1 text-2xl font-bold">${escapeHtml(summary.absentCount || 0)}</p>
                 </div>
                 <div class="border border-[#624292]/20 bg-[#624292]/10 p-3 text-[#43236f]">
-                  <p class="text-xs font-semibold uppercase">Presence</p>
+                  <p class="text-xs font-semibold uppercase">Présence</p>
                   <p class="mt-1 text-2xl font-bold">${escapeHtml(percent)}%</p>
                 </div>
               </div>
@@ -1153,7 +1153,7 @@
       }
 
       if (!user) {
-        setNfcResult("Connexion requise pour valider la presence...", "info");
+        setNfcResult("Connexion requise pour valider la présence...", "info");
         window.location.href = "/api/o365/login";
         return;
       }
@@ -1163,7 +1163,7 @@
         if (prepareResult.canFinalize) {
           const result = await finalizeNfc(pendingNfc);
           sessionStorage.removeItem("pendingNfcUid");
-          setNfcResult(result.message || "Validation finale terminee.", result.cancelled ? "info" : "success");
+          setNfcResult(result.message || "Validation finale terminée.", result.cancelled ? "info" : "success");
           return;
         }
 
@@ -1180,7 +1180,7 @@
         const signature = needsSignature ? await captureSignature() : null;
         const result = await sendNfc(pendingNfc, signature);
         sessionStorage.removeItem("pendingNfcUid");
-        setNfcResult(result.message || "Presence validee.", "success");
+        setNfcResult(result.message || "Présence validée.", "success");
       } catch (err) {
         sessionStorage.removeItem("pendingNfcUid");
         setNfcResult(err.message, "error");
