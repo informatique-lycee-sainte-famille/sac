@@ -200,8 +200,8 @@ function teacherStatsHtml(stats, variant = "card") {
 function renderSession(session) {
   const teacherName = `${session.teacher?.firstName || ""} ${session.teacher?.lastName || ""}`.trim();
   const title = session.label || session.matiere || session.codeMatiere || "Cours";
-  const room = session.room?.name || session.room?.code || "Salle non definie";
-  const className = session.class?.name || session.class?.code || "Classe non definie";
+  const room = session.room?.name || session.room?.code || "Salle non définie";
+  const className = session.class?.name || session.class?.code || "Classe non définie";
   const color = session.color || "#624292";
   const userRole = window.SACApp?.user?.role;
   const isTeacher = userRole === "teacher";
