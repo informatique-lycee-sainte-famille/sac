@@ -266,7 +266,7 @@
           version: 1,
         }));
       } catch {
-        undefined;
+        return;
       }
     }
 
