@@ -87,12 +87,7 @@ Le système SAC repose sur une architecture **client / serveur** interne :
 - `ED_PHOTO_OGEC_ED_CAS=...` et `ED_PHOTO_TOKEN_ED_CAS_0=...` : alternative à `ED_PHOTO_COOKIE`.
 - `ASSETLINKS_SITE=https://sac.example.tld` : domaine publié dans `/.well-known/assetlinks.json`.
   Si absent, SAC utilise `EXTERNAL_DOMAIN`, puis les headers proxy `X-Forwarded-Proto` / `X-Forwarded-Host`.
-
-## Commandes temporaires
-
-- `npm run ed:photos -- --limit=10 --delayMs=5000` : lance manuellement le cache des photos élèves ED avec 5 secondes entre requêtes.
-- `npm run ed:photos -- --studentId=123` : traite un seul élève par identifiant SAC.
-- `npm run ed:photos -- --edId=3151` : traite un seul élève par identifiant EcoleDirecte.
+- `SESSION_DURATION_DAYS=180` : durée de validité des sessions utilisateur en jours (par défaut 180 jours, soit 6 mois).
 
 ---
 

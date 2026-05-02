@@ -189,7 +189,7 @@ function renderTeacherDetail() {
               ${statusBadge(teacher.hasO365AccountLinked, "Compte lié", "Compte non lié")}
               ${statusBadge(teacher.hasLoggedIn, "Déjà connecté", "Jamais connecté")}
             </div>
-            <p class="mt-1 text-sm text-neutral-500">ID app #${escapeHtml(teacher.id)} · ID ED ${escapeHtml(teacher.edId || "N/A")}</p>
+            <p class="mt-1 text-sm text-neutral-500">ID App #${escapeHtml(teacher.id)} · ID ED ${escapeHtml(teacher.edId || "N/A")}</p>
           </div>
         </div>
       </div>

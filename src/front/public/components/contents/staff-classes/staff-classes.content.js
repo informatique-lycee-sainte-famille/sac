@@ -165,7 +165,7 @@ function renderStudentRow(student) {
               <div class="mt-2 grid gap-1 text-sm text-neutral-600 md:grid-cols-2">
                 <p class="break-words"><span class="font-medium text-neutral-800">O365:</span> ${escapeHtml(student.o365Email || "Non renseigné")}</p>
                 <p class="break-words"><span class="font-medium text-neutral-800">ED:</span> ${escapeHtml(student.edEmail || "Non renseigné")}</p>
-                <p><span class="font-medium text-neutral-800">ID app:</span> #${escapeHtml(student.id)}</p>
+                <p><span class="font-medium text-neutral-800">ID App:</span> #${escapeHtml(student.id)}</p>
                 <p><span class="font-medium text-neutral-800">ID ED:</span> ${escapeHtml(student.edId || "Non renseigné")}</p>
               </div>
             </div>
