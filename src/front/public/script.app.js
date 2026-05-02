@@ -62,7 +62,7 @@
         closeButton.dataset.networkErrorListenerAttached = "true";
         closeButton.addEventListener("click", closeNetworkErrorModal);
       }
-      
+    }
     // Setup Escape key handler
     if (!networkErrorEscapeListenerAttached) {
       if (event.key === "Escape") {
