@@ -579,8 +579,8 @@ async function openStaffCourseModal(sessionId, options = {}) {
           <div class="border border-[#624292]/25 bg-[#624292]/5 p-4">
             <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
               <div>
-                <h3 class="text-base font-semibold">Remplacement formateur</h3>
-                <p class="text-sm text-neutral-500">Permet d'affecter le formateur réellement présent avant finalisation.</p>
+                <h3 class="text-base font-semibold">Remplacement enseignant / formateur</h3>
+                <p class="text-sm text-neutral-500">Permet d'affecter l'enseignant / formateur réellement présent avant finalisation.</p>
               </div>
               <div class="flex flex-col gap-2 sm:flex-row">
                 <select data-staff-replacement-teacher class="min-w-64 border border-neutral-300 bg-white px-3 py-2 text-sm">

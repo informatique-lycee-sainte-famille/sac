@@ -115,11 +115,11 @@ function renderTeacherList() {
   const teachers = filteredTeachers();
   const global = state.summary || {};
   if (summary) {
-    summary.innerText = `${global.teachersCount || state.teachers.length} formateur(s), ${global.loggedInCount || 0} connecté(s), ${global.scannedCount || 0} avec scan NFC`;
+    summary.innerText = `${global.teachersCount || state.teachers.length} enseignant(s) / formateur(s), ${global.loggedInCount || 0} connecté(s), ${global.scannedCount || 0} avec scan NFC`;
   }
 
   if (!teachers.length) {
-    target.innerHTML = `<p class="text-sm text-neutral-500">Aucun formateur trouvé.</p>`;
+    target.innerHTML = `<p class="text-sm text-neutral-500">Aucun enseignant / formateur trouvé.</p>`;
     return;
   }
 
@@ -172,7 +172,7 @@ function renderTeacherDetail() {
 
   const teacher = state.teachers.find(item => String(item.id) === String(state.selectedTeacherId));
   if (!teacher) {
-    target.innerHTML = `<p class="text-sm text-neutral-600">Sélectionnez un formateur.</p>`;
+    target.innerHTML = `<p class="text-sm text-neutral-600">Sélectionnez un enseignant / formateur.</p>`;
     return;
   }
 
@@ -196,9 +196,9 @@ function renderTeacherDetail() {
     </div>
 
     <div class="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-      ${metricCard("Cours connus", teacher.teachingSessionsCount || 0, "Sessions affectées au formateur", "text-neutral-950")}
+      ${metricCard("Cours connus", teacher.teachingSessionsCount || 0, "Sessions affectées à l'enseignant / formateur", "text-neutral-950")}
       ${metricCard("Cours finalisés", `${teacher.finalizedSessionsCount || 0} (${finalizedRate}%)`, "Appels validés/envoyés", finalizedRate >= 80 ? "text-emerald-700" : "text-amber-700")}
-      ${metricCard("Présences prof", teacher.attendanceRecordsCount || 0, "Émargements enseignant", "text-[#624292]")}
+      ${metricCard("Présences prof", teacher.attendanceRecordsCount || 0, "Émargements enseignant / formateur", "text-[#624292]")}
       ${metricCard("Scans NFC", teacher.nfcScansCount || 0, "Scans enregistrés", teacher.nfcScansCount > 0 ? "text-emerald-700" : "text-amber-700")}
     </div>
 
@@ -229,7 +229,7 @@ async function loadTeachers() {
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    throw new Error(data.message || data.error || "Impossible de charger les formateurs.");
+    throw new Error(data.message || data.error || "Impossible de charger les enseignants / formateurs.");
   }
 
   state.teachers = data.teachers || [];
