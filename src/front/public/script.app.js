@@ -65,13 +65,8 @@
     }
     // Setup Escape key handler
     if (!networkErrorEscapeListenerAttached) {
-      if (event.key === "Escape") {
-        window.addEventListener("keydown", handleNetworkErrorEscapeKey);
-        const modal = document.getElementById("network-error-modal");
-        networkErrorEscapeListenerAttached = true;
-        if (modal && !modal.classList.contains("hidden")) {
-        }
-      }
+      window.addEventListener("keydown", handleNetworkErrorEscapeKey);
+      networkErrorEscapeListenerAttached = true;
     }
 
     window.addEventListener("beforeinstallprompt", event => {
