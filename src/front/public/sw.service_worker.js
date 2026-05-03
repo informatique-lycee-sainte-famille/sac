@@ -1,5 +1,5 @@
 // ./front/public/sw.service_worker.js
-const CACHE_NAME = "sac-pwa-v4";
+const CACHE_NAME = "sac-pwa-v5"; // Change this value to force reload of all cached assets (e.g. after a new deployment)
 const APP_SHELL = [
   "/",
   "/index.page.html",

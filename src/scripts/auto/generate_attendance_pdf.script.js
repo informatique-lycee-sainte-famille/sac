@@ -211,7 +211,7 @@ function drawSessionPage(doc, data, options = {}) {
     y += 22;
   }
 
-  doc.fontSize(12).font(doc.sacFonts.bold).text("FORMATEUR / PROFESSEUR", startX, y);
+  doc.fontSize(12).font(doc.sacFonts.bold).text("ENSEIGNANT", startX, y);
   y += 20;
 
   drawCell(doc, startX, y, widths[0], 60, formatNameWithComment(data.teacher || {}), { fontSize: data.teacher?.comment ? 8 : 9 });

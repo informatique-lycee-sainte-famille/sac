@@ -1,6 +1,6 @@
 // ./front/public/js/component_loader.loader.js
 (function () {
-  const ASSET_VERSION = "20260503-strings-update";
+  const ASSET_VERSION = "20260503-strings-updated"; // Change this value to force reload of all components (e.g. after a new deployment)
   const moduleCache = new Map();
   const contentNames = new Set(["home", "scan", "my-courses", "my-class", "staff-courses", "staff-classes", "staff-teachers", "business-logs", "admin"]);
   let activeContent = null;

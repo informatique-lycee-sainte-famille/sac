@@ -1357,8 +1357,8 @@
         "tags": [
           "User"
         ],
-        "summary": "[STAFF+] Enseignants et formateurs",
-        "description": "Role minimum: personnel ou admin.\n\nRetourne les enseignants/formateurs avec indicateurs de compte O365, connexion, derniere session navigateur, derniers scans et activite cours.",
+        "summary": "[STAFF+] Enseignants",
+        "description": "Role minimum: personnel ou admin.\n\nRetourne les enseignants avec indicateurs de compte O365, connexion, derniere session navigateur, derniers scans et activite cours.",
         "x-min-role": "staff",
         "responses": {
           "200": {
@@ -2472,7 +2472,7 @@
       "properties": {
         "teacherId": {
           "type": "integer",
-          "description": "ID utilisateur du nouvel enseignant/formateur affecte a la session."
+          "description": "ID utilisateur du nouvel enseignant affecte a la session."
         }
       }
     },
