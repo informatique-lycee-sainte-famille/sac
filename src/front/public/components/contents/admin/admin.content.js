@@ -18,6 +18,14 @@ const state = {
 };
 
 const PLACEHOLDER_AVATAR = "/resources/ensemble_scolaire_lycee_sainte_famille_saintonge_formation_logo_512x512.png";
+const SAINTONGE_LOGO = "/resources/ensemble_scolaire_lycee_sainte_famille_saintonge_formation_logo_512x512.png";
+const NFC_LOGO = "/resources/nfc_logo.svg";
+const NFC_CARD_DRILL_MARKS_STORAGE_KEY = "sacNfcCardDrillMarksEnabled";
+const NFC_CARD_DEBUG_INFO_STORAGE_KEY = "sacNfcCardDebugInfoEnabled";
+let nfcCardLogoPromise = null;
+let nfcLogoPromise = null;
+let nfcCardFontsPromise = null;
+let nfcCardRenderToken = 0;
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -451,6 +459,364 @@ function updateNfcCardUrl() {
   const domain = (domainInput.value || window.location.origin).replace(/\/+$/, "");
   const uid = uidInput.value.trim();
   urlOutput.value = uid ? `${domain}/?nfc=${encodeURIComponent(uid)}` : "";
+  renderNfcCardDesign();
+}
+
+function getSelectedRoomDisplay() {
+  const room = selectedNfcRoom();
+  return {
+    name: room?.name || room?.code || "Salle",
+    id: room?.id || "",
+    uid: document.getElementById("admin-nfc-uid")?.value.trim() || room?.nfcUid || "",
+  };
+}
+
+function getCardDesignConfig() {
+  const widthMm = Number(document.getElementById("admin-nfc-card-width-mm")?.value) || 85;
+  const heightMm = Number(document.getElementById("admin-nfc-card-height-mm")?.value) || 54;
+  const dpi = Number(document.getElementById("admin-nfc-card-dpi")?.value) || 600;
+  const drillMarksEnabled = document.getElementById("admin-nfc-card-drill-marks")?.checked !== false;
+  const debugInfoEnabled = document.getElementById("admin-nfc-card-debug-info")?.checked !== false;
+  return {
+    widthMm: Math.max(40, widthMm),
+    heightMm: Math.max(25, heightMm),
+    dpi: Math.min(1200, Math.max(150, dpi)),
+    drillMarksEnabled,
+    debugInfoEnabled,
+  };
+}
+
+function initNfcCardBooleanPreference(inputId, storageKey) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+
+  const storedValue = localStorage.getItem(storageKey);
+  input.checked = storedValue === null ? true : storedValue === "true";
+}
+
+function loadNfcCardLogo() {
+  if (!nfcCardLogoPromise) {
+    nfcCardLogoPromise = new Promise(resolve => {
+      const image = new Image();
+      image.onload = () => resolve(image);
+      image.onerror = () => resolve(null);
+      image.src = SAINTONGE_LOGO;
+    });
+  }
+  return nfcCardLogoPromise;
+}
+
+function loadNfcLogo() {
+  if (!nfcLogoPromise) {
+    nfcLogoPromise = new Promise(resolve => {
+      const image = new Image();
+      image.onload = () => resolve(image);
+      image.onerror = () => resolve(null);
+      image.src = NFC_LOGO;
+    });
+  }
+  return nfcLogoPromise;
+}
+
+function waitForNfcCardFonts() {
+  if (!document.fonts) return Promise.resolve();
+  if (!nfcCardFontsPromise) {
+    nfcCardFontsPromise = Promise.all([
+      document.fonts.load("500 16px Inter"),
+      document.fonts.load("600 16px Inter"),
+      document.fonts.load("700 16px Inter"),
+      document.fonts.load("800 16px Inter"),
+      document.fonts.ready,
+    ]).catch(() => null);
+  }
+  return nfcCardFontsPromise;
+}
+
+function fitFontSize(ctx, text, maxWidth, initialSize, minSize, fontWeight = 700) {
+  let size = initialSize;
+  do {
+    ctx.font = `${fontWeight} ${size}px Inter, Arial, sans-serif`;
+    if (ctx.measureText(text).width <= maxWidth) return size;
+    size -= 2;
+  } while (size >= minSize);
+  return minSize;
+}
+
+function drawRoundRect(ctx, x, y, width, height, radius) {
+  const safeRadius = Math.min(radius, width / 2, height / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + safeRadius, y);
+  ctx.lineTo(x + width - safeRadius, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + safeRadius);
+  ctx.lineTo(x + width, y + height - safeRadius);
+  ctx.quadraticCurveTo(x + width, y + height, x + width - safeRadius, y + height);
+  ctx.lineTo(x + safeRadius, y + height);
+  ctx.quadraticCurveTo(x, y + height, x, y + height - safeRadius);
+  ctx.lineTo(x, y + safeRadius);
+  ctx.quadraticCurveTo(x, y, x + safeRadius, y);
+  ctx.closePath();
+}
+
+function drawDrillMark(ctx, x, y, radius) {
+  ctx.save();
+  ctx.globalAlpha = 0.18;
+  ctx.strokeStyle = "#624292";
+  ctx.lineWidth = Math.max(1, radius * 0.06);
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x - radius * 0.62, y);
+  ctx.lineTo(x + radius * 0.62, y);
+  ctx.moveTo(x, y - radius * 0.62);
+  ctx.lineTo(x, y + radius * 0.62);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawNfcGlyph(ctx, image, x, y, size) {
+  if (image) {
+    ctx.drawImage(image, x, y, size, size);
+    return;
+  }
+
+  ctx.save();
+  ctx.fillStyle = "#624292";
+  ctx.font = `800 ${size * 0.32}px Inter, Arial, sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("NFC", x + size / 2, y + size / 2);
+  ctx.restore();
+}
+
+function drawWrappedText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 2) {
+  const words = String(text || "").split(/\s+/).filter(Boolean);
+  const lines = [];
+  let line = "";
+
+  words.forEach(word => {
+    const nextLine = line ? `${line} ${word}` : word;
+    if (ctx.measureText(nextLine).width <= maxWidth || !line) {
+      line = nextLine;
+      return;
+    }
+    lines.push(line);
+    line = word;
+  });
+  if (line) lines.push(line);
+
+  lines.slice(0, maxLines).forEach((item, index) => {
+    const output = index === maxLines - 1 && lines.length > maxLines ? `${item.replace(/\s+\S+$/, "")}...` : item;
+    ctx.fillText(output, x, y + index * lineHeight);
+  });
+}
+
+async function renderNfcCardDesign() {
+  const canvas = document.getElementById("admin-nfc-card-preview");
+  if (!canvas) return;
+
+  const renderToken = ++nfcCardRenderToken;
+  const { widthMm, heightMm, dpi, drillMarksEnabled, debugInfoEnabled } = getCardDesignConfig();
+  const pxPerMm = dpi / 25.4;
+  const width = Math.round(widthMm * pxPerMm);
+  const height = Math.round(heightMm * pxPerMm);
+  const room = getSelectedRoomDisplay();
+  const [logo, nfcLogo] = await Promise.all([loadNfcCardLogo(), loadNfcLogo(), waitForNfcCardFonts()]);
+  if (renderToken !== nfcCardRenderToken) return;
+
+  canvas.width = width;
+  canvas.height = height;
+  canvas.style.aspectRatio = `${widthMm} / ${heightMm}`;
+
+  const ctx = canvas.getContext("2d");
+  const mm = value => value * pxPerMm;
+  const margin = mm(Math.min(6.5, widthMm * 0.065));
+  const cardX = margin;
+  const cardY = margin;
+  const cardWidth = width - margin * 2;
+  const cardHeight = height - margin * 2;
+  const drillInset = mm(Math.min(20, Math.max(7, Math.min(widthMm, heightMm) / 2 - 4)) * 0.575);
+  const drillRadius = mm(Math.max(0.65, Math.min(widthMm, heightMm) * 0.012));
+
+  ctx.fillStyle = "#f7f4fb";
+  ctx.fillRect(0, 0, width, height);
+
+  ctx.fillStyle = "#ffffff";
+  drawRoundRect(ctx, cardX, cardY, cardWidth, cardHeight, mm(3.2));
+  ctx.fill();
+
+  ctx.strokeStyle = "#d8ccef";
+  ctx.lineWidth = Math.max(1, mm(0.18));
+  ctx.stroke();
+
+  ctx.save();
+  drawRoundRect(ctx, cardX, cardY, cardWidth, cardHeight, mm(3.2));
+  ctx.clip();
+
+  const logoSize = Math.min(cardHeight * 0.34, cardWidth * 0.17);
+  const logoX = cardX + margin * 0.9;
+  const logoY = cardY + cardHeight * 0.18;
+  if (logo) {
+    ctx.drawImage(logo, logoX, logoY, logoSize, logoSize);
+  } else {
+    ctx.fillStyle = "#624292";
+    ctx.font = `700 ${logoSize * 0.32}px Inter, Arial, sans-serif`;
+    ctx.textAlign = "center";
+    ctx.fillText("SAC", logoX + logoSize / 2, logoY + logoSize * 0.58);
+  }
+
+  const textX = logoX + logoSize + margin * 0.9;
+  const textWidth = cardX + cardWidth - textX - margin * 0.9;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "alphabetic";
+
+  const title = "Saintonge Access Control";
+  const titleFont = fitFontSize(ctx, title, textWidth, Math.max(18, mm(3.3)), Math.max(11, mm(2)), 800);
+  const titleWidth = ctx.measureText(title).width;
+  const subtitle = "Cette salle utilise";
+  const subtitleFont = Math.max(7, mm(1.35));
+  ctx.fillStyle = "#6b5b80";
+  ctx.font = `600 ${subtitleFont}px Inter, Arial, sans-serif`;
+  const subtitleWidth = ctx.measureText(subtitle).width;
+  const subtitleX = Math.min(
+    textX + textWidth - subtitleWidth,
+    Math.max(textX, textX + titleWidth / 2 - subtitleWidth / 2)
+  );
+  ctx.fillText(subtitle, subtitleX, cardY + cardHeight * 0.2);
+
+  ctx.fillStyle = "#624292";
+  ctx.font = `800 ${titleFont}px Inter, Arial, sans-serif`;
+  ctx.fillText(title, textX, cardY + cardHeight * 0.32);
+
+  const roomName = String(room.name || "Salle");
+  const roomFont = fitFontSize(ctx, roomName, textWidth, Math.max(24, cardHeight * 0.19), Math.max(13, cardHeight * 0.095), 800);
+  ctx.font = `800 ${roomFont}px Inter, Arial, sans-serif`;
+  ctx.fillStyle = "#111827";
+  drawWrappedText(ctx, roomName, textX, cardY + cardHeight * 0.55, textWidth, roomFont * 1.05, 2);
+
+  const noticeX = cardX + margin * 0.95;
+  const noticeY = cardY + cardHeight * 0.68;
+  const glyphSize = Math.min(mm(7.5), cardHeight * 0.17);
+  drawNfcGlyph(ctx, nfcLogo, noticeX, noticeY - glyphSize * 0.58, glyphSize);
+  ctx.fillStyle = "#2b1748";
+  ctx.font = `700 ${Math.max(10, mm(1.9))}px Inter, Arial, sans-serif`;
+  ctx.textAlign = "left";
+  ctx.fillText("Scannez-moi pour démarrer le cours", noticeX + glyphSize + mm(2), noticeY - glyphSize * 0.08);
+  ctx.fillStyle = "#6b5b80";
+  ctx.font = `500 ${Math.max(8, mm(1.45))}px Inter, Arial, sans-serif`;
+  const listX = noticeX + glyphSize + mm(2);
+  const numberX = listX;
+  const listTextX = listX + mm(4.2);
+  const listStartY = noticeY + glyphSize * 0.34;
+  const listLineHeight = Math.max(10, mm(2.1));
+  [
+    "Enseignant: scan au début",
+    "Élèves: scan après",
+    "Enseignant: scan final pour valider l'appel",
+  ].forEach((item, index) => {
+    const y = listStartY + index * listLineHeight;
+    ctx.fillText(`${index + 1}.`, numberX, y);
+    drawWrappedText(ctx, item, listTextX, y, cardX + cardWidth - listTextX - margin * 0.8, listLineHeight, 1);
+  });
+
+  if (drillMarksEnabled) {
+    drawDrillMark(ctx, width - drillInset, drillInset, drillRadius);
+    drawDrillMark(ctx, drillInset, height - drillInset, drillRadius);
+    drawDrillMark(ctx, width - drillInset, height - drillInset, drillRadius);
+    drawDrillMark(ctx, width / 2, height / 2, drillRadius);
+  }
+
+  if (debugInfoEnabled) {
+    ctx.fillStyle = "#6b7280";
+    ctx.font = `500 ${Math.max(7, mm(1.25))}px Inter, Arial, sans-serif`;
+    ctx.textAlign = "right";
+    ctx.fillText(`room:${room.id || "?"} uid:${room.uid || "?"}`, cardX + cardWidth - margin * 0.7, cardY + cardHeight - margin * 0.45);
+  }
+  ctx.restore();
+}
+
+async function downloadNfcCardDesign() {
+  await renderNfcCardDesign();
+  const canvas = document.getElementById("admin-nfc-card-preview");
+  const room = getSelectedRoomDisplay();
+  if (!canvas) return;
+
+  const link = document.createElement("a");
+  const safeRoomName = String(room.name || "salle").replace(/[<>:"/\\|?*]+/g, "").trim() || "salle";
+  link.download = `carte-nfc-${safeRoomName}-${room.uid || "uid"}.png`;
+  link.href = canvas.toDataURL("image/png");
+  link.click();
+}
+
+async function printNfcCardDesign() {
+  await renderNfcCardDesign();
+  const canvas = document.getElementById("admin-nfc-card-preview");
+  if (!canvas) return;
+
+  const { widthMm, heightMm } = getCardDesignConfig();
+  const dataUrl = canvas.toDataURL("image/png");
+  const printWindow = window.open("", "_blank", "width=900,height=700");
+  if (!printWindow) {
+    throw new Error("Fenêtre d'impression bloquée par le navigateur.");
+  }
+
+  printWindow.document.open();
+  printWindow.document.write(`
+    <!doctype html>
+    <html lang="fr">
+      <head>
+        <meta charset="utf-8" />
+        <title></title>
+        <style>
+          @page {
+            size: ${widthMm}mm ${heightMm}mm;
+            margin: 0;
+          }
+          * {
+            box-sizing: border-box;
+          }
+          html,
+          body {
+            width: ${widthMm}mm;
+            height: ${heightMm}mm;
+            margin: 0;
+            padding: 0;
+            background: #ffffff;
+            overflow: hidden;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          img {
+            display: block;
+            width: ${widthMm}mm;
+            height: ${heightMm}mm;
+            object-fit: fill;
+          }
+          @media print {
+            html,
+            body {
+              margin: 0 !important;
+              padding: 0 !important;
+              overflow: hidden !important;
+            }
+          }
+        </style>
+      </head>
+      <body>
+        <img id="card" src="${dataUrl}" alt="Design carte NFC" />
+        <script>
+          const card = document.getElementById("card");
+          const printCard = () => {
+            window.focus();
+            setTimeout(() => window.print(), 150);
+          };
+          card.addEventListener("load", printCard);
+          if (card.complete) printCard();
+        </script>
+      </body>
+    </html>
+  `);
+  printWindow.document.close();
 }
 
 function canUseWebNfc() {
@@ -736,6 +1102,7 @@ function renderNfcRooms() {
   if (uidInput && room) uidInput.value = room.nfcUid || "";
   updateNfcCardUrl();
   refreshWebNfcUi();
+  renderNfcCardDesign();
 }
 
 async function loadNfcRooms() {
@@ -1002,6 +1369,23 @@ export async function init() {
   document.getElementById("admin-nfc-refresh-rooms")?.addEventListener("click", () => loadNfcRooms().catch(error => showAlert(error.message, "error")));
   document.getElementById("admin-nfc-domain")?.addEventListener("input", updateNfcCardUrl);
   document.getElementById("admin-nfc-uid")?.addEventListener("input", updateNfcCardUrl);
+  document.getElementById("admin-nfc-card-width-mm")?.addEventListener("input", renderNfcCardDesign);
+  document.getElementById("admin-nfc-card-height-mm")?.addEventListener("input", renderNfcCardDesign);
+  document.getElementById("admin-nfc-card-dpi")?.addEventListener("input", renderNfcCardDesign);
+  document.getElementById("admin-nfc-card-drill-marks")?.addEventListener("change", event => {
+    localStorage.setItem(NFC_CARD_DRILL_MARKS_STORAGE_KEY, String(event.target.checked));
+    renderNfcCardDesign();
+  });
+  document.getElementById("admin-nfc-card-debug-info")?.addEventListener("change", event => {
+    localStorage.setItem(NFC_CARD_DEBUG_INFO_STORAGE_KEY, String(event.target.checked));
+    renderNfcCardDesign();
+  });
+  document.getElementById("admin-nfc-card-download")?.addEventListener("click", () => {
+    downloadNfcCardDesign().catch(error => showAlert(error.message || "Export PNG impossible.", "error"));
+  });
+  document.getElementById("admin-nfc-card-print")?.addEventListener("click", () => {
+    printNfcCardDesign().catch(error => showAlert(error.message || "Impression impossible.", "error"));
+  });
   document.getElementById("admin-nfc-room")?.addEventListener("change", () => {
     const room = selectedNfcRoom();
     const uidInput = document.getElementById("admin-nfc-uid");
@@ -1041,6 +1425,8 @@ export async function init() {
 
   const dateInput = document.getElementById("admin-sessions-date");
   if (dateInput) dateInput.value = toIsoDate();
+  initNfcCardBooleanPreference("admin-nfc-card-drill-marks", NFC_CARD_DRILL_MARKS_STORAGE_KEY);
+  initNfcCardBooleanPreference("admin-nfc-card-debug-info", NFC_CARD_DEBUG_INFO_STORAGE_KEY);
   refreshWebNfcUi();
   if (sessionStorage.getItem("sacAdminOpenNfcCards") === "1") {
     sessionStorage.removeItem("sacAdminOpenNfcCards");
