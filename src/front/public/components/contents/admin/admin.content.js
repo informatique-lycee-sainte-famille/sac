@@ -559,7 +559,7 @@ function drawRoundRect(ctx, x, y, width, height, radius) {
 
 function drawDrillMark(ctx, x, y, radius) {
   ctx.save();
-  ctx.globalAlpha = 0.18;
+  ctx.globalAlpha = 0.68;
   ctx.strokeStyle = "#624292";
   ctx.lineWidth = Math.max(1, radius * 0.06);
   ctx.beginPath();
@@ -703,12 +703,12 @@ async function renderNfcCardDesign() {
   ctx.textAlign = "left";
   ctx.fillText("Scannez-moi pour démarrer le cours", noticeX + glyphSize + mm(2), noticeY - glyphSize * 0.08);
   ctx.fillStyle = "#6b5b80";
-  ctx.font = `500 ${Math.max(8, mm(1.45))}px Inter, Arial, sans-serif`;
+  ctx.font = `600 ${Math.max(10, mm(1.85))}px Inter, Arial, sans-serif`;
   const listX = noticeX + glyphSize + mm(2);
   const numberX = listX;
-  const listTextX = listX + mm(4.2);
+  const listTextX = listX + mm(4.8);
   const listStartY = noticeY + glyphSize * 0.34;
-  const listLineHeight = Math.max(10, mm(2.1));
+  const listLineHeight = Math.max(12, mm(2.55));
   [
     "Enseignant: scan au début",
     "Élèves: scan après",
