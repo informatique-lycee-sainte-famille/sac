@@ -559,7 +559,7 @@ function drawRoundRect(ctx, x, y, width, height, radius) {
 
 function drawDrillMark(ctx, x, y, radius) {
   ctx.save();
-  ctx.globalAlpha = 0.68;
+  ctx.globalAlpha = 1;
   ctx.strokeStyle = "#624292";
   ctx.lineWidth = Math.max(1, radius * 0.06);
   ctx.beginPath();
@@ -605,10 +605,12 @@ function drawWrappedText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 2) {
   });
   if (line) lines.push(line);
 
-  lines.slice(0, maxLines).forEach((item, index) => {
+  const renderedLines = lines.slice(0, maxLines);
+  renderedLines.forEach((item, index) => {
     const output = index === maxLines - 1 && lines.length > maxLines ? `${item.replace(/\s+\S+$/, "")}...` : item;
     ctx.fillText(output, x, y + index * lineHeight);
   });
+  return renderedLines.length;
 }
 
 async function renderNfcCardDesign() {
@@ -631,15 +633,12 @@ async function renderNfcCardDesign() {
   const ctx = canvas.getContext("2d");
   const mm = value => value * pxPerMm;
   const margin = mm(Math.min(6.5, widthMm * 0.065));
-  const cardX = margin;
-  const cardY = margin;
-  const cardWidth = width - margin * 2;
-  const cardHeight = height - margin * 2;
+  const cardX = 0;
+  const cardY = 0;
+  const cardWidth = width;
+  const cardHeight = height;
   const drillInset = mm(Math.min(20, Math.max(7, Math.min(widthMm, heightMm) / 2 - 4)) * 0.575);
   const drillRadius = mm(Math.max(0.65, Math.min(widthMm, heightMm) * 0.012));
-
-  ctx.fillStyle = "#f7f4fb";
-  ctx.fillRect(0, 0, width, height);
 
   ctx.fillStyle = "#ffffff";
   drawRoundRect(ctx, cardX, cardY, cardWidth, cardHeight, mm(3.2));
@@ -674,7 +673,7 @@ async function renderNfcCardDesign() {
   const titleFont = fitFontSize(ctx, title, textWidth, Math.max(18, mm(3.3)), Math.max(11, mm(2)), 800);
   const titleWidth = ctx.measureText(title).width;
   const subtitle = "Cette salle utilise";
-  const subtitleFont = Math.max(7, mm(1.35));
+  const subtitleFont = Math.max(12, mm(2.5));
   ctx.fillStyle = "#6b5b80";
   ctx.font = `600 ${subtitleFont}px Inter, Arial, sans-serif`;
   const subtitleWidth = ctx.measureText(subtitle).width;
@@ -689,10 +688,14 @@ async function renderNfcCardDesign() {
   ctx.fillText(title, textX, cardY + cardHeight * 0.32);
 
   const roomName = String(room.name || "Salle");
-  const roomFont = fitFontSize(ctx, roomName, textWidth, Math.max(24, cardHeight * 0.19), Math.max(13, cardHeight * 0.095), 800);
+  const roomTextWidth = cardWidth - margin * 1.8;
+  const roomFont = fitFontSize(ctx, roomName, roomTextWidth, Math.max(24, cardHeight * 0.19), Math.max(13, cardHeight * 0.095), 800);
+  const roomBaselineY = cardY + cardHeight * 0.55;
   ctx.font = `800 ${roomFont}px Inter, Arial, sans-serif`;
   ctx.fillStyle = "#111827";
-  drawWrappedText(ctx, roomName, textX, cardY + cardHeight * 0.55, textWidth, roomFont * 1.05, 2);
+  ctx.textAlign = "center";
+  const roomLineCount = drawWrappedText(ctx, roomName, cardX + cardWidth / 2, roomBaselineY, roomTextWidth, roomFont * 1.05, 2);
+  ctx.textAlign = "left";
 
   const noticeX = cardX + margin * 0.95;
   const noticeY = cardY + cardHeight * 0.68;
@@ -703,12 +706,12 @@ async function renderNfcCardDesign() {
   ctx.textAlign = "left";
   ctx.fillText("Scannez-moi pour démarrer le cours", noticeX + glyphSize + mm(2), noticeY - glyphSize * 0.08);
   ctx.fillStyle = "#6b5b80";
-  ctx.font = `600 ${Math.max(10, mm(1.85))}px Inter, Arial, sans-serif`;
+  ctx.font = `600 ${Math.max(14, mm(2.6))}px Inter, Arial, sans-serif`;
   const listX = noticeX + glyphSize + mm(2);
   const numberX = listX;
-  const listTextX = listX + mm(4.8);
+  const listTextX = listX + mm(5.8);
   const listStartY = noticeY + glyphSize * 0.34;
-  const listLineHeight = Math.max(12, mm(2.55));
+  const listLineHeight = Math.max(17, mm(3.4));
   [
     "Enseignant: scan au début",
     "Élèves: scan après",
@@ -720,10 +723,12 @@ async function renderNfcCardDesign() {
   });
 
   if (drillMarksEnabled) {
+    const roomTextBottom = roomBaselineY + Math.max(0, roomLineCount - 1) * roomFont * 1.05;
+    const centerDrillY = Math.min(roomTextBottom + roomFont * 0.65, noticeY - glyphSize * 0.72);
     drawDrillMark(ctx, width - drillInset, drillInset, drillRadius);
     drawDrillMark(ctx, drillInset, height - drillInset, drillRadius);
     drawDrillMark(ctx, width - drillInset, height - drillInset, drillRadius);
-    drawDrillMark(ctx, width / 2, height / 2, drillRadius);
+    drawDrillMark(ctx, width / 2, centerDrillY, drillRadius);
   }
 
   if (debugInfoEnabled) {
