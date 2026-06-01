@@ -505,6 +505,7 @@
           `;
         }
         bindUserInfoPopup();
+        window.dispatchEvent(new CustomEvent("sac:user-updated", { detail: { user: null } }));
         return;
       }
 
@@ -565,6 +566,7 @@
         avatar.src = getUserAvatarSrc(data);
         avatar.classList.remove("hidden");
       }
+      window.dispatchEvent(new CustomEvent("sac:user-updated", { detail: { user: data } }));
     }
 
     async function loadAuthenticatedSidebar() {

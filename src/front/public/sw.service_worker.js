@@ -1,5 +1,5 @@
 // ./front/public/sw.service_worker.js
-const CACHE_NAME = "sac-pwa-v7"; // Change this value to force reload of all cached assets (e.g. after a new deployment)
+const CACHE_NAME = "sac-pwa-v8"; // Change this value to force reload of all cached assets (e.g. after a new deployment)
 const APP_SHELL = [
   "/",
   "/index.page.html",
@@ -10,6 +10,10 @@ const APP_SHELL = [
   "/politique-confidentialite.html",
   "/cookies.html",
   "/accessibilite.html",
+  "/resources/Guide_utilisation_SAC_admins.docx",
+  "/resources/Guide_utilisation_SAC_eleves.docx",
+  "/resources/Guide_utilisation_SAC_enseignants.docx",
+  "/resources/Guide_utilisation_SAC_personnels.docx",
   "/resources/ensemble_scolaire_lycee_sainte_famille_saintonge_formation_logo_512x512.png",
   "/resources/fond_page_login.png",
 ];
