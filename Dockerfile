@@ -1,37 +1,12 @@
-# Stage 1: Build dependencies
-FROM node:25-alpine AS build
-LABEL org.opencontainers.image.description="A Docker image for the Node.js application built on Alpine Linux."
-# Set the working directory
-WORKDIR /app
-
-RUN npm install -g npm@latest
-
-# Copy package.json and package-lock.json to install dependencies
-COPY package*.json ./
-
-# Install dependencies
-RUN npm ci
-
-# Copy the rest of the application files
-COPY ./src/ .
-COPY ./src/.env.example .env
-
-RUN npx prisma generate
-
-# Stage 2: runtime
-FROM node:25-alpine AS runtime
-
-# Set the working directory
-WORKDIR /app
-
-RUN npm install -g npm@latest
-RUN apk add --no-cache fontconfig ttf-dejavu
-
-# Copy node_modules and application code from the build stage
-COPY --from=build /app /app
-
-# Expose the port your app runs on
-EXPOSE 3000
-
-# Apply database migrations, then run the server
-CMD [ "sh", "-c", "npx prisma migrate deploy --schema prisma/schema.prisma && node API_SAC/app.server.js" ]
+--- a/Dockerfile
++++ b/Dockerfile
+@@
+-FROM node:25-alpine AS build
++FROM node:26-alpine AS build
+@@
+-FROM node:25-alpine AS runtime
++FROM node:26-alpine AS runtime
+@@
+-RUN npm install -g npm@latest
+-RUN apk add --no-cache fontconfig ttf-dejavu
++RUN apk add --no-cache fontconfig ttf-dejavu
