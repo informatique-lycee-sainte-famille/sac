@@ -1,5 +1,5 @@
 # Stage 1: Build dependencies
-FROM node:25-alpine AS build
+FROM node:26-alpine AS build
 LABEL org.opencontainers.image.description="A Docker image for the Node.js application built on Alpine Linux."
 # Set the working directory
 WORKDIR /app
@@ -19,12 +19,12 @@ COPY ./src/.env.example .env
 RUN npx prisma generate
 
 # Stage 2: runtime
-FROM node:25-alpine AS runtime
+FROM node:26-alpine AS runtime
 
 # Set the working directory
 WORKDIR /app
 
-RUN npm install -g npm@latest
+# Only needed runtime packages
 RUN apk add --no-cache fontconfig ttf-dejavu
 
 # Copy node_modules and application code from the build stage
