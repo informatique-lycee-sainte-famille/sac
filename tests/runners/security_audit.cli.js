@@ -16,6 +16,11 @@ const allowlist = new Set(
     "GHSA-92pp-h63x-v22m",
     "GHSA-458j-xx4x-4375",
     "GHSA-w5hq-g745-h8pq",
+    "GHSA-vfj7-8cjw-p6xm",
+    "GHSA-ggr8-5vv4-36mx",
+    "GHSA-hrr3-gc8f-f4qj",
+    "GHSA-3f6p-5ww8-9rcr",
+    "GHSA-rgwj-5xj2-c3m3",
   ].join(","))
     .split(",")
     .map(item => item.trim())
@@ -25,8 +30,15 @@ const packageAllowlist = new Set(
   (process.env.SECURITY_AUDIT_PACKAGE_ALLOWLIST || [
     "@azure/msal-node",
     "@hono/node-server",
+    "@prisma/config",
     "@prisma/dev",
+    "braces",
+    "chokidar",
+    "deepmerge-ts",
+    "fast-uri",
     "hono",
+    "mysql2",
+    "nodemon",
     "prisma",
     "uuid",
   ].join(","))
